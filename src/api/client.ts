@@ -34,7 +34,11 @@ export const request = async <T = any>(
 
         if (token) headers['Authorization'] = `Bearer ${token}`;
 
-        const response = await fetch(`${API_URL}${endpoint}`, {
+        const fullUrl = `${API_URL}${endpoint}`;
+        // console.log("[REQ] URL", fullUrl); 
+        // console.log("[REQ] METHOD", method);
+
+        const response = await fetch(fullUrl, {
             method,
             headers,
             body: body ? JSON.stringify(body) : undefined,
@@ -47,12 +51,17 @@ export const request = async <T = any>(
         // Always read text first (prevents crash if backend returns HTML or plain text)
         const text = await response.text();
 
+        if (!response.ok) {
+            console.error(`[REQUEST] failure ${status} on ${endpoint}:`, text);
+        }
+
         let data: any = {};
         if (text) {
             try {
                 data = JSON.parse(text);
             } catch {
                 // Non-JSON response (HTML error page, proxy page, etc.)
+                console.warn("[REQ] NON_JSON_RESPONSE on", endpoint);
                 const snippet = text.replace(/\n|\r/g, ' ').trim().slice(0, 200);
 
                 DiagnosticsState.lastError = {
@@ -187,9 +196,19 @@ export const resetPassword = async (token: string, newPassword: string) => {
 
 // --- TICKETS ---
 export const getTickets = async (token: string) => {
-    const res = await request('/tickets/my', 'GET', undefined, token);
+    // console.log("[TICKETS] calling getTickets tokenLen", token?.length);
+    const res = await request('/api/tickets/my', 'GET', undefined, token);
     if (!res.ok) throw new Error(res.error || 'Failed to fetch tickets');
     return res.data;
+};
+
+// --- DRIVER PROFILE ---
+export const getDriverProfile = async (token: string) => {
+    return request('/api/drivers/profile', 'GET', undefined, token);
+};
+
+export const updateDriverProfile = async (payload: any, token: string) => {
+    return request('/api/drivers/profile', 'PUT', payload, token);
 };
 
 // --- REQUESTS API (Phase 2) ---
@@ -328,9 +347,14 @@ export const voidTicket = async (
     }
 };
 
-export const createCheckoutSession = async (ticketId: number, token: string) => {
-    const res = await request(`/billing/tickets/${ticketId}/checkout`, 'POST', undefined, token);
-    if (!res.ok) throw new Error(res.error || 'Failed to create payment session');
+// --- BILLING / STRIPE ---
+export const createCheckoutSession = async (token: string, ticketId: number) => {
+    return request(`/billing/tickets/${ticketId}/checkout`, 'POST', undefined, token);
+};
+
+export const createInvoiceCheckoutSession = async (token: string, invoiceId: number) => {
+    const res = await request(`/api/billing/invoices/${invoiceId}/checkout`, 'POST', undefined, token);
+    if (!res.ok) throw new Error(res.error || 'Failed to create checkout session');
     return res.data;
 };
 

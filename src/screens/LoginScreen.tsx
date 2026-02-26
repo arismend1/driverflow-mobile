@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 
 export default function LoginScreen() {
     const navigation = useNavigation<any>();
-    const { login: authLogin } = useAuth();
+    const { login: authLogin, hasPin } = useAuth();
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -22,15 +22,8 @@ export default function LoginScreen() {
         setLoading(true);
         try {
             await authLogin(email.trim(), password, userType, remember);
-
-            // IMPORTANTE:
-            // - NO navegamos a Home aquí.
-            // - RootNavigator debe mandar a Home automáticamente cuando token exista.
-            // - Solo forzamos PinScreen si el usuario pidió "recordar" y necesita crear PIN.
-            if (remember) {
-                navigation.replace('PinScreen', { mode: 'create' });
-            }
-            // si remember=false: no hacemos nada. RootNavigator reaccionará al token.
+            // Si remember es false, el RootNavigator nos llevará a Home automáticamente.
+            // Si remember es true, el AuthContext seteará pinGate y el RootNavigator nos llevará a PinScreen.
         } catch (error: any) {
             Alert.alert('Login Failed', error?.message || 'Invalid credentials');
         } finally {

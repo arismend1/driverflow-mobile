@@ -9,7 +9,7 @@ export default function PinScreen() {
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
 
-    const { hasPin, savePin, verifyPinAndLogin, logout, userInfo, token } = useAuth();
+    const { hasPin, savePin, verifyPinAndLogin, logout, userInfo, token, clearPinGate, unlockApp, clearSavedCredentials, appLocked } = useAuth();
 
     // mode puede venir de Login: { mode: 'create' }
     const forcedMode: 'create' | undefined = route?.params?.mode === 'create' ? 'create' : undefined;
@@ -45,8 +45,8 @@ export default function PinScreen() {
                 return;
             }
 
-            // ✅ NO navegues a Home. RootNavigator lo hará cuando token exista.
-            // Si por alguna razón no hay token aún, igual no forces Home.
+            await clearPinGate();
+            unlockApp();
             setPin('');
             return;
         }
@@ -61,12 +61,12 @@ export default function PinScreen() {
         // confirm
         if (enteredPin === confirmPin) {
             await savePin(enteredPin);
+            await clearPinGate();
+            unlockApp();
             setPin('');
             setConfirmPin('');
 
-            // ✅ NO navegues a Home.
-            // Si ya había token, RootNavigator ya debe sacarte de aquí.
-            // Si no hay token, te quedas aquí hasta que hagan login.
+            navigation.navigate('Home');
             return;
         }
 
@@ -89,7 +89,10 @@ export default function PinScreen() {
 
     const handleLogout = async () => {
         await logout();
-        navigation.replace('Login');
+        navigation.reset({
+            index: 0,
+            routes: [{ name: 'Login' }],
+        });
     };
 
     const renderDots = () => {
@@ -137,8 +140,8 @@ export default function PinScreen() {
                     </TouchableOpacity>
                 ))}
 
-                <TouchableOpacity style={styles.numKey} onPress={handleLogout}>
-                    <Text style={styles.actionText}>Cerrar</Text>
+                <TouchableOpacity style={styles.numKey} onPress={() => setPin('')}>
+                    <Text style={styles.actionText}>Limpiar</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.numKey} onPress={() => handleKeyPress('0')}>
@@ -149,6 +152,17 @@ export default function PinScreen() {
                     <Text style={styles.actionText}>⌫</Text>
                 </TouchableOpacity>
             </View>
+
+            <TouchableOpacity
+                style={styles.switchAccountButton}
+                onPress={async () => {
+                    await clearSavedCredentials();
+                    await logout();
+                    navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+                }}
+            >
+                <Text style={styles.switchAccountText}>Cambiar cuenta</Text>
+            </TouchableOpacity>
         </View>
     );
 }
@@ -230,5 +244,15 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         color: '#495057',
+    },
+    switchAccountButton: {
+        marginTop: 30,
+        padding: 10,
+    },
+    switchAccountText: {
+        color: '#007BFF',
+        fontSize: 16,
+        fontWeight: '600',
+        textDecorationLine: 'underline',
     },
 });

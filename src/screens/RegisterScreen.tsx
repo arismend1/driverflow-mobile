@@ -58,7 +58,7 @@ export default function RegisterScreen() {
             Alert.alert('Success', 'Account created! Logging in...');
 
             await authLogin(contacto, password, type);
-            navigation.replace('Home');
+            navigation.navigate('Home');
 
         } catch (error: any) {
             Alert.alert('Registration Failed', error.message);

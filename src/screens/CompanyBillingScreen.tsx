@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, ActivityIndicator, StyleSheet, Alert, TouchableOpacity, Modal, TextInput, Linking } from 'react-native';
-import { getBillingSummary, getBillingTickets, markTicketPaid, voidTicket, createCheckoutSession, BillingSummary } from '../api/client';
+import { getBillingSummary, getBillingTickets, createCheckoutSession, createInvoiceCheckoutSession, BillingSummary } from '../api/client';
 
 import { useAuth } from '../context/AuthContext';
 
@@ -41,6 +41,39 @@ export const CompanyBillingScreen = () => {
         }
     };
 
+    const payTicket = async (item: any) => {
+        if (!token) {
+            Alert.alert('Error', 'Sesión no válida');
+            return;
+        }
+        try {
+            setLoading(true);
+            // console.log("[BILLING] invoiceId", item.id);
+            // Alerta informativa si es pago anticipado
+            if (item.billing_status === 'pending') {
+                console.log("[BILLING] Iniciando pago anticipado para invoice:", item.id);
+            }
+
+            const data = await createInvoiceCheckoutSession(token, item.id);
+            console.log("[BILLING] checkout response", JSON.stringify(data));
+            const url = data?.url || data?.checkout_url;
+
+            if (!url) {
+                Alert.alert("Error", "No se encontró URL de pago");
+                return;
+            }
+
+            await Linking.openURL(url);
+
+            // Recargar datos tras un momento
+            setTimeout(loadData, 3000);
+        } catch (error: any) {
+            Alert.alert('Error', error.message || 'Error al iniciar pago');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const openReceipt = async (url: string) => {
         try {
             const supported = await Linking.canOpenURL(url);
@@ -74,27 +107,52 @@ export const CompanyBillingScreen = () => {
         );
     };
 
-    const renderItem = ({ item }: { item: any }) => (
-        <View style={styles.card}>
-            <View style={styles.cardHeader}>
-                <Text style={styles.title}>Invoice #{item.id}</Text>
-                <Text style={[styles.statusBadge, { backgroundColor: item.billing_status === 'paid' ? '#d4edda' : '#fff3cd' }]}>
-                    {item.billing_status.toUpperCase()}
-                </Text>
-            </View>
-            <Text>Periodo: {item.request_id}</Text>
-            <Text>Generada: {new Date(item.created_at).toLocaleDateString()}</Text>
-            <Text style={styles.amount}>{formatCurrency(item.amount_cents, item.currency)}</Text>
+    const renderItem = ({ item }: { item: any }) => {
+        const amount = item.amount_cents || 0;
+        const status = item.billing_status;
+        const canPayByStatus = ['pending', 'failed', 'retrying', 'suspended'].includes(status);
+        const canPayByAmount = amount > 0;
+        const isPrepay = status === 'pending';
 
-            {item.receipt_url && (
-                <View style={styles.actionsRow}>
-                    <TouchableOpacity style={[styles.btn, styles.btnPayOnline]} onPress={() => openReceipt(item.receipt_url)}>
-                        <Text style={styles.btnText}>VER RECIBO (STRIPE)</Text>
-                    </TouchableOpacity>
+        return (
+            <View style={styles.card}>
+                <View style={styles.cardHeader}>
+                    <Text style={styles.title}>Invoice #{item.id}</Text>
+                    <Text style={[styles.statusBadge, { backgroundColor: status === 'paid' ? '#d4edda' : '#fff3cd' }]}>
+                        {status.toUpperCase()}
+                    </Text>
                 </View>
-            )}
-        </View>
-    );
+                <Text>Periodo: {item.request_id}</Text>
+                <Text>Generada: {new Date(item.created_at).toLocaleDateString()}</Text>
+                <Text style={styles.amount}>{formatCurrency(item.amount_cents, item.currency)}</Text>
+
+                {amount <= 0 && (
+                    <Text style={{ color: '#888', fontStyle: 'italic', marginTop: 4 }}>
+                        Sin cargos esta semana
+                    </Text>
+                )}
+
+                {canPayByStatus && canPayByAmount && (
+                    <View style={styles.actionsRow}>
+                        <TouchableOpacity
+                            style={[styles.btn, styles.btnPayOnline, isPrepay && { backgroundColor: '#007bff' }]}
+                            onPress={() => payTicket(item)}
+                        >
+                            <Text style={styles.btnText}>{isPrepay ? 'PAGAR ANTICIPADO' : 'PAGAR AHORA'}</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+
+                {status === 'paid' && item.receipt_url && (
+                    <View style={styles.actionsRow}>
+                        <TouchableOpacity style={[styles.btn, styles.btnPayOnline]} onPress={() => openReceipt(item.receipt_url)}>
+                            <Text style={styles.btnText}>VER RECIBO (STRIPE)</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+            </View>
+        );
+    };
 
     return (
         <View style={styles.container}>

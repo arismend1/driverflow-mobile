@@ -28,7 +28,7 @@ export default function VerifyEmailScreen() {
 
         if (res.ok) {
             Alert.alert('¡Verificado!', 'Tu correo ha sido confirmado.', [
-                { text: 'Ir a Login', onPress: () => navigation.replace('Login') }
+                { text: 'Ir a Login', onPress: () => navigation.navigate('Login') }
             ]);
         } else {
             const msg = mapErrorToMessage(res.error);
@@ -80,7 +80,7 @@ export default function VerifyEmailScreen() {
                 </TouchableOpacity>
             )}
 
-            <TouchableOpacity style={styles.backButton} onPress={() => navigation.replace('Login')}>
+            <TouchableOpacity style={styles.backButton} onPress={() => navigation.navigate('Login')}>
                 <Text style={styles.backText}>Volver a Login</Text>
             </TouchableOpacity>
         </View>

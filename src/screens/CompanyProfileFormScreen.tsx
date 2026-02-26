@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TextInput, TouchableOpacity, Alert, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { API_URL } from '../api/config';
-import { useNavigation, CommonActions } from '@react-navigation/native';
+import { request, mapErrorToMessage } from '../api/client';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons'; // Assuming Expo or similar icon lib is available, otherwise use text
 
 // --- REUSABLE COMPONENTS ---
@@ -106,32 +106,29 @@ export default function CompanyProfileFormScreen() {
 
     const loadReqs = async () => {
         try {
-            const res = await fetch(`${API_URL}/companies/requirements`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) {
-                const data = await res.json();
-                if (data.company_id) {
-                    setReqCdl(!!data.req_cdl);
-                    setReqLicenseTypes(data.req_license_types ? JSON.parse(data.req_license_types) : []);
-                    setReqEndorsements(data.req_endorsements ? JSON.parse(data.req_endorsements) : []);
-                    setReqOpsTypes(data.req_operation_types ? JSON.parse(data.req_operation_types) : []);
-
-                    // Decode Experience
-                    // If we saved it as explicit years previously, map it back or keep separate.
-                    // Spec says: Select + Optional Field. 
-                    // We'll trust the user input mainly. If data exists, we try to populate.
-                    // For now, start fresh or use raw years if simple.
-
-                    setReqModalities(data.req_modalities ? JSON.parse(data.req_modalities) : []);
-                    setReqTruck(!!data.req_truck);
-                    setOfferedPayments(data.offered_payment_methods ? JSON.parse(data.offered_payment_methods) : []);
-                    setReqRelationships(data.req_relationships ? JSON.parse(data.req_relationships) : []);
-                    setAvailability(data.availability || 'Inmediata');
-                }
+            const res = await request('/api/companies/requirements', 'GET', undefined, token || undefined);
+            if (!res.ok) {
+                Alert.alert('Error', mapErrorToMessage(res.error) + (res.raw ? `\n${res.raw}` : ''));
+                setLoading(false);
+                return;
             }
-        } catch (e) {
+
+            const data: any = res.data || {};
+
+            setReqCdl(!!data.req_cdl);
+            setReqLicenseTypes(Array.isArray(data.req_license_types) ? data.req_license_types : (data.req_license_types ? JSON.parse(data.req_license_types) : []));
+            setReqEndorsements(Array.isArray(data.req_endorsements) ? data.req_endorsements : (data.req_endorsements ? JSON.parse(data.req_endorsements) : []));
+            setReqOpsTypes(Array.isArray(data.req_operation_types) ? data.req_operation_types : (data.req_operation_types ? JSON.parse(data.req_operation_types) : []));
+
+            setReqModalities(Array.isArray(data.req_modalities) ? data.req_modalities : (data.req_modalities ? JSON.parse(data.req_modalities) : []));
+            setReqTruck(!!data.req_truck);
+            setOfferedPayments(Array.isArray(data.offered_payment_methods) ? data.offered_payment_methods : (data.offered_payment_methods ? JSON.parse(data.offered_payment_methods) : []));
+            setReqRelationships(Array.isArray(data.req_relationships) ? data.req_relationships : (data.req_relationships ? JSON.parse(data.req_relationships) : []));
+            setAvailability(data.availability || 'Inmediata');
+
+        } catch (e: any) {
             console.error(e);
+            Alert.alert('Error', 'Error al cargar perfil: ' + e.message);
         } finally {
             setLoading(false);
         }
@@ -150,38 +147,6 @@ export default function CompanyProfileFormScreen() {
                 finalExp = 2;
             }
 
-            const payload = {
-                req_cdl: reqCdl,
-                req_license_types: JSON.stringify(reqLicenseTypes),
-                req_endorsements: JSON.stringify(reqEndorsements),
-                req_operation_types: JSON.stringify(reqOpsTypes),
-                req_modalities: JSON.stringify(reqModalities),
-                req_truck: reqTruck,
-                offered_payment_methods: JSON.stringify(offeredPayments),
-                req_relationships: JSON.stringify(reqRelationships),
-                availability: availability,
-                // We use standard backend fields but map UI to them
-                // Backend expects arrays usually? The endpoint parses JSON in existing code?
-                // Wait, existing code used `JSON.stringify` on payload properties but previous `match_service.js` used `parseJson`.
-                // Looking at `CompanyRequirementsScreen.tsx`, it sends arrays directly in payload, and `JSON.stringify` is called on body.
-                // Wait, `CompanyRequirementsScreen.tsx` line 102: `body: JSON.stringify(payload)`.
-                // And `payload` has arrays. `match_service.js` lines 34-38: uses `parseJson`.
-                // `parseJson` handles parsing stored strings.
-                // It seems the DB stores strings (sqlite). `server.js` or `reqs` handler likely stringifies arrays?
-                // Let's check `CompanyRequirementsScreen` again.
-                // It was sending `req_license_types: reqLicenseTypes` (array).
-                // `JSON.stringify(payload)` converts the whole object to JSON string.
-                // The SERVER likely receives the JSON object.
-                // Does the server insert JSON strings into DB?
-                // Yes, SQLite usually stores text. Ensuring we send what server expects.
-                // If previous code sent arrays, and server handled it, we stick to that.
-                // Actually, `CompanyRequirementsScreen` payload (lines 84-93) had arrays.
-                // So I should NOT JSON.stringify individual fields here if the API expects JSON body.
-                // Correction: Send arrays directly.
-            };
-
-            // Correction based on `CompanyRequirementsScreen.tsx`:
-            // It sends pure arrays in the JSON body.
             const apiPayload = {
                 req_cdl: reqCdl,
                 req_license_types: reqLicenseTypes,
@@ -192,40 +157,21 @@ export default function CompanyProfileFormScreen() {
                 offered_payment_methods: offeredPayments,
                 req_relationships: reqRelationships,
                 availability: availability,
-                // Map exp to range or custom
-                req_experience_range: JSON.stringify([expOption === 'Practicante' ? '0' : finalExp.toString()])
+                req_experience_years: finalExp
             };
 
+            // console.log("[COMPANY_PROFILE] payload", JSON.stringify(apiPayload));
 
-            const res = await fetch(`${API_URL}/companies/requirements`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(apiPayload)
-            });
+            const res = await request('/api/companies/requirements', 'PUT', apiPayload, token || undefined);
 
             if (res.ok) {
-                // UX Confirmation
-                Alert.alert(
-                    'Perfil Guardado',
-                    'Perfil de empresa guardado ✅',
-                    [{
-                        text: 'OK',
-                        onPress: () => navigation.dispatch(
-                            CommonActions.reset({
-                                index: 0,
-                                routes: [{ name: 'Home' }],
-                            })
-                        )
-                    }]
-                );
+                Alert.alert('Perfil Guardado', 'Perfil de empresa guardado ✅');
+                navigation.goBack();
             } else {
-                Alert.alert('Error', 'No se pudo guardar.');
+                Alert.alert('Error', mapErrorToMessage(res.error) + (res.raw ? `\n${res.raw}` : ''));
             }
-        } catch (e) {
-            Alert.alert('Error', 'Error de conexión.');
+        } catch (e: any) {
+            Alert.alert('Error', 'Error de conexión: ' + e.message);
         } finally {
             setSaving(false);
         }

@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, ActivityIndicator, StyleSheet, Alert } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { View, Text, FlatList, ActivityIndicator, StyleSheet, TouchableOpacity } from 'react-native';
 import { getTickets } from '../api/client';
-
 import { useAuth } from '../context/AuthContext';
 
 interface Ticket {
@@ -17,22 +15,27 @@ interface Ticket {
 export const DriverTicketsScreen = () => {
     const { token } = useAuth();
     const [tickets, setTickets] = useState<Ticket[]>([]);
-    const [loading, setLoading] = useState(true);
-    const navigation = useNavigation();
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        if (!token) return;
         loadTickets();
     }, [token]);
 
     const loadTickets = async () => {
+        if (!token) {
+            setError('No hay sesión activa.');
+            return;
+        }
+
         try {
-            if (!token) return;
             setLoading(true);
+            setError(null);
             const data = await getTickets(token);
-            setTickets(data);
-        } catch (error) {
-            Alert.alert('Error', 'No se pudieron cargar los tickets');
+            setTickets(data || []);
+        } catch (err: any) {
+            console.error("[TICKETS] Load failed", err);
+            setError(`Error cargando tickets: ${err.message || 'Error desconocido'}`);
         } finally {
             setLoading(false);
         }
@@ -48,7 +51,24 @@ export const DriverTicketsScreen = () => {
         </View>
     );
 
-    if (loading) return <ActivityIndicator style={styles.center} size="large" />;
+    if (loading) {
+        return (
+            <View style={styles.center}>
+                <ActivityIndicator size="large" color="#007BFF" />
+            </View>
+        );
+    }
+
+    if (error) {
+        return (
+            <View style={styles.center}>
+                <Text style={styles.errorText}>{error}</Text>
+                <TouchableOpacity style={styles.retryButton} onPress={loadTickets}>
+                    <Text style={styles.retryText}>Reintentar</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
 
     return (
         <View style={styles.container}>
@@ -58,6 +78,8 @@ export const DriverTicketsScreen = () => {
                 keyExtractor={(item) => item.id.toString()}
                 renderItem={renderItem}
                 ListEmptyComponent={<Text style={styles.empty}>Aún no tienes tickets.</Text>}
+                onRefresh={loadTickets}
+                refreshing={loading}
             />
         </View>
     );
@@ -65,10 +87,13 @@ export const DriverTicketsScreen = () => {
 
 const styles = StyleSheet.create({
     container: { flex: 1, padding: 16, backgroundColor: '#f5f5f5' },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    header: { fontSize: 24, fontWeight: 'bold', marginBottom: 16 },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
+    header: { fontSize: 24, fontWeight: 'bold', marginBottom: 16, color: '#333' },
     card: { backgroundColor: 'white', padding: 16, marginVertical: 8, borderRadius: 8, elevation: 2 },
     title: { fontWeight: 'bold', fontSize: 16 },
-    status: { color: 'blue', fontWeight: 'bold', marginVertical: 4 },
-    empty: { textAlign: 'center', marginTop: 20, fontSize: 16, color: '#666' }
+    status: { color: '#007BFF', fontWeight: 'bold', marginVertical: 4 },
+    empty: { textAlign: 'center', marginTop: 20, fontSize: 16, color: '#666' },
+    errorText: { color: '#dc3545', fontSize: 16, marginBottom: 20, textAlign: 'center' },
+    retryButton: { backgroundColor: '#007BFF', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
+    retryText: { color: 'white', fontWeight: 'bold' }
 });

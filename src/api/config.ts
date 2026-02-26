@@ -38,7 +38,7 @@ const getBaseUrl = (): string => {
     case 'DEVICE_LAN':
       // Cambia la X por el IP real de tu PC:
       // ejemplo: http://192.168.1.50:3000
-      return 'http://192.168.1.X:3000';
+      return 'http://192.168.1.99:3000';
 
     default:
       return 'http://localhost:3000';

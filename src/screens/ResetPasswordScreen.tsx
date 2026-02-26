@@ -46,7 +46,7 @@ export default function ResetPasswordScreen() {
 
         if (res.ok) {
             Alert.alert('Éxito', 'Contraseña actualizada. Inicia sesión.', [
-                { text: 'OK', onPress: () => navigation.replace('Login') }
+                { text: 'OK', onPress: () => navigation.navigate('Login') }
             ]);
         } else {
             const msg = mapErrorToMessage(res.error);
@@ -91,7 +91,7 @@ export default function ResetPasswordScreen() {
                     </TouchableOpacity>
                 )}
 
-                <TouchableOpacity style={styles.backButton} onPress={() => navigation.replace('Login')}>
+                <TouchableOpacity style={styles.backButton} onPress={() => navigation.navigate('Login')}>
                     <Text style={styles.backText}>Cancelar</Text>
                 </TouchableOpacity>
             </View>

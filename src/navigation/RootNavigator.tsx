@@ -1,6 +1,6 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, View, Modal, StyleSheet } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
 import LoginScreen from '../screens/LoginScreen';
@@ -26,7 +26,7 @@ export type RootStackParamList = Record<string, any>;
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function RootNavigator() {
-    const { isLoading, hasPin, token } = useAuth();
+    const { isLoading, token, pinGate, pinReady, appLocked } = useAuth();
 
     if (isLoading) {
         return (
@@ -39,31 +39,61 @@ export default function RootNavigator() {
     const isAuthed = !!token;
 
     return (
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-            {!isAuthed ? (
-                <>
-                    <Stack.Screen name="Login" component={LoginScreen} />
-                    <Stack.Screen name="PinScreen" component={PinScreen} />
-                    <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-                    <Stack.Screen name="Register" component={RegisterScreen} />
-                    <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} />
-                    <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
-                </>
-            ) : (
-                <>
-                    <Stack.Screen name="Home" component={HomeScreen} />
-                    <Stack.Screen name="AvailableRequests" component={AvailableRequestsScreen} />
-                    <Stack.Screen name="CompanyBilling" component={CompanyBillingScreen} />
-                    <Stack.Screen name="CompanyProfileForm" component={CompanyProfileFormScreen} />
-                    <Stack.Screen name="CompanyRequests" component={CompanyRequestsScreen} />
-                    <Stack.Screen name="CompanyRequirements" component={CompanyRequirementsScreen} />
-                    <Stack.Screen name="DriverProfileForm" component={DriverProfileFormScreen} />
-                    <Stack.Screen name="DriverProfile" component={DriverProfileScreen} />
-                    <Stack.Screen name="DriverTickets" component={DriverTicketsScreen} />
-                    <Stack.Screen name="Matches" component={MatchesScreen} />
-                    <Stack.Screen name="Notifications" component={NotificationsScreen} />
-                </>
-            )}
-        </Stack.Navigator>
+        <View style={{ flex: 1 }}>
+            <Stack.Navigator screenOptions={{ headerShown: true }}>
+                {!isAuthed ? (
+                    <>
+                        {pinReady ? (
+                            <>
+                                <Stack.Screen name="PinScreen" component={PinScreen} initialParams={{ mode: 'enter' }} options={{ headerShown: false }} />
+                                <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+                            </>
+                        ) : (
+                            <>
+                                <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+                                <Stack.Screen name="PinScreen" component={PinScreen} options={{ headerShown: false }} />
+                            </>
+                        )}
+                        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+                        <Stack.Screen name="Register" component={RegisterScreen} />
+                        <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} />
+                        <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+                    </>
+                ) : (
+                    <>
+                        {pinGate ? (
+                            <>
+                                <Stack.Screen
+                                    name="PinScreen"
+                                    component={PinScreen}
+                                    initialParams={{ mode: pinGate }}
+                                    options={{ headerShown: false }}
+                                />
+                                <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
+                            </>
+                        ) : (
+                            <>
+                                <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
+                                <Stack.Screen name="PinScreen" component={PinScreen} options={{ headerShown: false }} />
+                            </>
+                        )}
+                        <Stack.Screen name="AvailableRequests" component={AvailableRequestsScreen} />
+                        <Stack.Screen name="CompanyBilling" component={CompanyBillingScreen} />
+                        <Stack.Screen name="CompanyProfileForm" component={CompanyProfileFormScreen} />
+                        <Stack.Screen name="CompanyRequests" component={CompanyRequestsScreen} />
+                        <Stack.Screen name="CompanyRequirements" component={CompanyRequirementsScreen} />
+                        <Stack.Screen name="DriverProfileForm" component={DriverProfileFormScreen} />
+                        <Stack.Screen name="DriverProfile" component={DriverProfileScreen} />
+                        <Stack.Screen name="DriverTickets" component={DriverTicketsScreen} />
+                        <Stack.Screen name="Matches" component={MatchesScreen} />
+                        <Stack.Screen name="Notifications" component={NotificationsScreen} />
+                    </>
+                )}
+            </Stack.Navigator>
+
+            <Modal visible={appLocked === true} animationType="fade" transparent={false}>
+                <PinScreen />
+            </Modal>
+        </View>
     );
 }

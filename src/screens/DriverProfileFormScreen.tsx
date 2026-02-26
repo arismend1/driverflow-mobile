@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TextInput, TouchableOpacity, Alert, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { API_URL } from '../api/config';
 import { useNavigation, CommonActions } from '@react-navigation/native';
+import { getDriverProfile, updateDriverProfile, mapErrorToMessage } from '../api/client';
 
 // --- REUSABLE COMPONENTS ---
 
@@ -51,7 +51,7 @@ const RadioYesNo = ({ label, value, onChange }: any) => {
 };
 
 export default function DriverProfileFormScreen() {
-    const { token, user } = useAuth();
+    const { token, userInfo } = useAuth();
     const navigation = useNavigation();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -76,25 +76,26 @@ export default function DriverProfileFormScreen() {
 
     const loadProfile = async () => {
         try {
-            const res = await fetch(`${API_URL}/drivers/profile`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) {
-                const data = await res.json();
-                if (data.driver_id) {
+            const res = await getDriverProfile(token || '');
+            if (res.ok && res.data) {
+                const data = res.data;
+                if (data.id) {
                     setHasCdl(!!data.has_cdl);
                     setLicenseTypes(data.license_types || []);
                     setEndorsements(data.endorsements || []);
                     setOpsTypes(data.operation_types || []);
-                    // Logic to map back exp years if possible, else leave blank
+                    setExpOption(data.experience_range || '');
+                    setExpYearsExact(data.experience_years ? String(data.experience_years) : '');
                     setModalities(data.job_preferences || []);
                     setHasTruck(!!data.has_truck);
                     setPaymentMethods(data.payment_methods || []);
                     setRelationships(data.work_relationships || []);
                 }
+            } else {
+                console.warn("[LOAD_PROFILE] Failed", res.status, res.error);
             }
         } catch (e) {
-            console.error(e);
+            console.error("[LOAD_PROFILE] Crash", e);
         } finally {
             setLoading(false);
         }
@@ -103,7 +104,6 @@ export default function DriverProfileFormScreen() {
     const saveProfile = async () => {
         setSaving(true);
         try {
-            // Determine final experience value
             let finalExp = 0;
             if (expYearsExact) {
                 finalExp = parseInt(expYearsExact);
@@ -126,14 +126,7 @@ export default function DriverProfileFormScreen() {
                 work_relationships: relationships
             };
 
-            const res = await fetch(`${API_URL}/drivers/profile`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(payload)
-            });
+            const res = await updateDriverProfile(payload, token || '');
 
             if (res.ok) {
                 Alert.alert(
@@ -150,10 +143,11 @@ export default function DriverProfileFormScreen() {
                     }]
                 );
             } else {
-                Alert.alert('Error', 'No se pudo guardar el perfil.');
+                const msg = mapErrorToMessage(res.error);
+                Alert.alert('Error al guardar', `${msg}\n\nStatus: ${res.status}\nRaw: ${res.raw?.slice(0, 100)}`);
             }
-        } catch (e) {
-            Alert.alert('Error', 'Error de conexión.');
+        } catch (e: any) {
+            Alert.alert('Error', 'Error de conexión: ' + e.message);
         } finally {
             setSaving(false);
         }
@@ -176,7 +170,7 @@ export default function DriverProfileFormScreen() {
         >
             <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 60 }}>
                 {/* UX Banner */}
-                {user && (
+                {userInfo && (
                     <View style={styles.statusBanner}>
                         <Text style={styles.statusTitle}>✅ Tu perfil está activo y visible</Text>
                     </View>

@@ -6,8 +6,10 @@ import { useAuth } from '../context/AuthContext';
 
 export default function HomeScreen() {
     const navigation = useNavigation<any>();
-    const { userInfo, logout } = useAuth();
+    const { userInfo, logout, token, hasPin } = useAuth();
     const [connected, setConnected] = useState<boolean | null>(null);
+
+    const tokenLen = token ? token.length : 0;
 
     useEffect(() => {
         let alive = true;
@@ -57,6 +59,7 @@ export default function HomeScreen() {
 
     return (
         <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+
             <View style={styles.header}>
                 <Text style={styles.greeting}>Hola, {userInfo.name || 'Usuario'}</Text>
                 <Text style={styles.subtitle}>Panel de {isCompany ? 'Empresa' : 'Chofer'}</Text>
