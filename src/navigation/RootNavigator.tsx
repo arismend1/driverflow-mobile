@@ -14,7 +14,6 @@ import ResetPasswordScreen from '../screens/ResetPasswordScreen';
 import { AvailableRequestsScreen } from '../screens/AvailableRequestsScreen';
 import { CompanyBillingScreen } from '../screens/CompanyBillingScreen';
 import CompanyProfileFormScreen from '../screens/CompanyProfileFormScreen';
-import { CompanyRequestsScreen } from '../screens/CompanyRequestsScreen';
 import CompanyRequirementsScreen from '../screens/CompanyRequirementsScreen';
 import DriverProfileFormScreen from '../screens/DriverProfileFormScreen';
 import DriverProfileScreen from '../screens/DriverProfileScreen';
@@ -80,7 +79,6 @@ export default function RootNavigator() {
                         <Stack.Screen name="AvailableRequests" component={AvailableRequestsScreen} />
                         <Stack.Screen name="CompanyBilling" component={CompanyBillingScreen} />
                         <Stack.Screen name="CompanyProfileForm" component={CompanyProfileFormScreen} />
-                        <Stack.Screen name="CompanyRequests" component={CompanyRequestsScreen} />
                         <Stack.Screen name="CompanyRequirements" component={CompanyRequirementsScreen} />
                         <Stack.Screen name="DriverProfileForm" component={DriverProfileFormScreen} />
                         <Stack.Screen name="DriverProfile" component={DriverProfileScreen} />

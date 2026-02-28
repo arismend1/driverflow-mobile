@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { checkHealth } from '../api/client';
+import { API_URL } from '../api/config';
 import { useAuth } from '../context/AuthContext';
 
 export default function HomeScreen() {
     const navigation = useNavigation<any>();
     const { userInfo, logout, token, hasPin } = useAuth();
     const [connected, setConnected] = useState<boolean | null>(null);
+    const [searchStatus, setSearchStatus] = useState<string>('OFF');
 
     const tokenLen = token ? token.length : 0;
 
@@ -21,6 +23,11 @@ export default function HomeScreen() {
         };
 
         verifyConnection();
+
+        if (userInfo && userInfo.type === 'empresa' && userInfo.search_status) {
+            setSearchStatus(userInfo.search_status);
+        }
+
         return () => {
             alive = false;
         };
@@ -57,6 +64,30 @@ export default function HomeScreen() {
 
     const isCompany = userInfo.type === 'empresa';
 
+    const toggleSearchStatus = async (value: boolean) => {
+        const newStatus = value ? 'ON' : 'OFF';
+        // Optimistic update
+        setSearchStatus(newStatus);
+
+        try {
+            const res = await fetch(`${API_URL}/company/search_status`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ status: newStatus })
+            });
+            if (!res.ok) {
+                setSearchStatus(value ? 'OFF' : 'ON'); // Revert
+                Alert.alert('Error', 'No se pudo actualizar el estado.');
+            }
+        } catch (e) {
+            setSearchStatus(value ? 'OFF' : 'ON'); // Revert
+            Alert.alert('Error de Conexión', 'Revisa tu internet.');
+        }
+    };
+
     return (
         <ScrollView style={styles.container} contentContainerStyle={styles.content}>
 
@@ -77,10 +108,26 @@ export default function HomeScreen() {
             <View style={styles.menuGrid}>
                 {isCompany ? (
                     <>
-                        <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('CompanyRequests')}>
-                            <Text style={styles.cardIcon}>📦</Text>
-                            <Text style={styles.cardTitle}>Mis Solicitudes</Text>
-                            <Text style={styles.cardDesc}>Gestiona tus viajes y requerimientos</Text>
+                        <View style={[styles.card, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: searchStatus === 'ON' ? '#e8f5e9' : '#fff' }]}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.cardIcon}>📡</Text>
+                                <Text style={styles.cardTitle}>Buscando Choferes</Text>
+                                <Text style={styles.cardDesc}>
+                                    {searchStatus === 'ON' ? 'El sistema está buscando choferes automáticamente.' : 'En reposo. Activa para buscar perfiles.'}
+                                </Text>
+                            </View>
+                            <Switch
+                                value={searchStatus === 'ON'}
+                                onValueChange={toggleSearchStatus}
+                                trackColor={{ false: '#767577', true: '#4CAF50' }}
+                                thumbColor={searchStatus === 'ON' ? '#ffffff' : '#f4f3f4'}
+                            />
+                        </View>
+
+                        <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('Matches')}>
+                            <Text style={styles.cardIcon}>🔍</Text>
+                            <Text style={styles.cardTitle}>Candidatos Encontrados</Text>
+                            <Text style={styles.cardDesc}>Mira los choferes que coinciden con tu empresa</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('CompanyProfileForm')}>

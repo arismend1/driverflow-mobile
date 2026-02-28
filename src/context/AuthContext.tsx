@@ -7,6 +7,7 @@ interface UserInfo {
     id: number;
     name: string;
     type: 'driver' | 'empresa';
+    search_status?: string;
 }
 
 interface AuthContextType {
