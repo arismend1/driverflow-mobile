@@ -24,7 +24,7 @@ export default function HomeScreen() {
 
         verifyConnection();
 
-        if (userInfo && userInfo.type === 'empresa' && userInfo.search_status) {
+        if (userInfo && userInfo.search_status) {
             setSearchStatus(userInfo.search_status);
         }
 
@@ -69,8 +69,10 @@ export default function HomeScreen() {
         // Optimistic update
         setSearchStatus(newStatus);
 
+        const endpoint = isCompany ? '/company/search_status' : '/driver/search_status';
+
         try {
-            const res = await fetch(`${API_URL}/company/search_status`, {
+            const res = await fetch(`${API_URL}${endpoint}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -80,7 +82,7 @@ export default function HomeScreen() {
             });
             if (!res.ok) {
                 setSearchStatus(value ? 'OFF' : 'ON'); // Revert
-                Alert.alert('Error', 'Could not update status.');
+                Alert.alert('Error', 'Could not update status. Please try again.');
             } else {
                 await updateUserSearchStatus(newStatus);
             }
@@ -146,9 +148,25 @@ export default function HomeScreen() {
                     </>
                 ) : (
                     <>
+                        <View style={[styles.card, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: searchStatus === 'ON' ? '#e8f5e9' : '#fff' }]}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.cardIcon}>📡</Text>
+                                <Text style={styles.cardTitle}>Searching for Jobs</Text>
+                                <Text style={styles.cardDesc}>
+                                    {searchStatus === 'ON' ? 'Active. System is looking for matches.' : 'Hired/Idle. Turn on to find work.'}
+                                </Text>
+                            </View>
+                            <Switch
+                                value={searchStatus === 'ON'}
+                                onValueChange={toggleSearchStatus}
+                                trackColor={{ false: '#767577', true: '#4CAF50' }}
+                                thumbColor={searchStatus === 'ON' ? '#ffffff' : '#f4f3f4'}
+                            />
+                        </View>
+
                         <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('AvailableRequests')}>
                             <Text style={styles.cardIcon}>🔍</Text>
-                            <Text style={styles.cardTitle}>Search Jobs</Text>
+                            <Text style={styles.cardTitle}>Manual Job Search</Text>
                             <Text style={styles.cardDesc}>Find open requests from companies</Text>
                         </TouchableOpacity>
 
