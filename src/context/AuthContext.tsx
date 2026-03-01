@@ -245,7 +245,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             if (!token) throw new Error("NO_TOKEN_FROM_SERVER");
 
             const finalType: 'driver' | 'empresa' = (serverType || type) as any;
-            const info: UserInfo = { id, name, type: finalType };
+            const info: UserInfo = { id, name, type: finalType, search_status: res.data.search_status || 'ON' };
 
             // GUARDAR EN ASYNCSTORAGE PRIMERO
             await AsyncStorage.setItem('auth_token', token);

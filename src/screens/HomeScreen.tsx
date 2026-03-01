@@ -22,7 +22,27 @@ export default function HomeScreen() {
             if (alive) setConnected(result.ok);
         };
 
+        const fetchRealSearchStatus = async () => {
+            if (!userInfo || !token) return;
+            try {
+                const endpoint = userInfo.type === 'empresa' ? '/api/companies/requirements' : '/api/drivers/profile';
+                const res = await fetch(`${API_URL}${endpoint}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.search_status) {
+                        setSearchStatus(data.search_status);
+                        updateUserSearchStatus(data.search_status);
+                    }
+                }
+            } catch (e) {
+                console.log("Error fetching real search status", e);
+            }
+        };
+
         verifyConnection();
+        fetchRealSearchStatus();
 
         if (userInfo && userInfo.search_status) {
             setSearchStatus(userInfo.search_status);
@@ -31,7 +51,7 @@ export default function HomeScreen() {
         return () => {
             alive = false;
         };
-    }, []);
+    }, [userInfo?.id]);
 
     // ✅ Guardrail: si hay token pero userInfo no está listo, NO navegues a nada.
     if (!userInfo) {
