@@ -39,15 +39,24 @@ export default function PinScreen() {
 
     const handlePinComplete = async (enteredPin: string) => {
         if (step === 'enter') {
+            console.log(`[PIN] step=enter | entered length=${enteredPin.length}`);
+            console.log(`[PIN] calling verifyPinAndLogin...`);
+
             const success = await verifyPinAndLogin(enteredPin);
+
+            console.log(`[PIN] verifyPinAndLogin result=${success}`);
+
             if (!success) {
+                console.log(`[PIN] PIN FAILED — triggering error`);
                 triggerError();
                 return;
             }
 
+            console.log(`[PIN] PIN OK — clearing gate and unlocking`);
             await clearPinGate();
             unlockApp();
             setPin('');
+            console.log(`[PIN] unlockApp() called — appLocked should now be false`);
             return;
         }
 
@@ -60,12 +69,13 @@ export default function PinScreen() {
 
         // confirm
         if (enteredPin === confirmPin) {
+            console.log(`[PIN] create+confirm matched — saving PIN`);
             await savePin(enteredPin);
             await clearPinGate();
             unlockApp();
             setPin('');
             setConfirmPin('');
-
+            console.log(`[PIN] navigating to Home`);
             navigation.navigate('Home');
             return;
         }

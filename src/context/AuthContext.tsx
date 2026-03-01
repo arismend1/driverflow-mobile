@@ -227,18 +227,38 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setIsLoading(true);
         try {
             const savedPin = await AsyncStorage.getItem(STORAGE_KEYS.savedPin);
-            if (savedPin !== enteredPin) return false;
+            console.log(`[PIN] verifyPinAndLogin: savedPin null?=${savedPin === null} | savedPin length=${savedPin?.length ?? 0} | enteredPin length=${enteredPin.length}`);
 
+            if (savedPin === null) {
+                // FAIL-OPEN: no PIN saved — treat as unlock, redirect handled by navigator
+                console.log(`[PIN] verifyPinAndLogin: no savedPin found — fail-open`);
+                return false;
+            }
+
+            const pinMatch = savedPin === enteredPin;
+            console.log(`[PIN] verifyPinAndLogin: pinMatch=${pinMatch}`);
+
+            if (!pinMatch) return false;
+
+            // PIN matches — check if we have saved credentials for re-login
             const email = await AsyncStorage.getItem(STORAGE_KEYS.savedEmail);
             const password = await AsyncStorage.getItem(STORAGE_KEYS.savedPassword);
-            const type = (await AsyncStorage.getItem(STORAGE_KEYS.savedType)) as
-                | 'driver'
-                | 'empresa'
-                | null;
+            const type = (await AsyncStorage.getItem(STORAGE_KEYS.savedType)) as 'driver' | 'empresa' | null;
 
-            if (!email || !password || !type) return false;
+            console.log(`[PIN] verifyPinAndLogin: email=${email ? 'EXISTS' : 'NULL'} | password=${password ? 'EXISTS' : 'NULL'} | type=${type}`);
 
+            if (!email || !password || !type) {
+                // UNLOCK-ONLY: PIN matched but no stored credentials.
+                // User is already logged in (userToken exists from the session).
+                // Just unlock — do NOT return false.
+                console.log(`[PIN] verifyPinAndLogin: no saved credentials → UNLOCK-ONLY mode`);
+                return true;
+            }
+
+            // Full re-login with saved credentials
+            console.log(`[PIN] verifyPinAndLogin: attempting re-login for ${type}`);
             const res = await apiLogin(email, password, type);
+            console.log(`[PIN] verifyPinAndLogin: apiLogin ok=${res.ok}`);
             if (!res.ok) return false;
 
             const { token, id, name, type: serverType } = res.data as any;
@@ -247,18 +267,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             const finalType: 'driver' | 'empresa' = (serverType || type) as any;
             const info: UserInfo = { id, name, type: finalType, search_status: res.data.search_status || 'ON' };
 
-            // GUARDAR EN ASYNCSTORAGE PRIMERO
             await AsyncStorage.setItem('auth_token', token);
             await AsyncStorage.setItem('auth_user_info', JSON.stringify(info));
 
-            // VALIDAR
             const saved = await AsyncStorage.getItem('auth_token');
-
             if (!saved || saved !== token) throw new Error("TOKEN_NOT_PERSISTED");
 
-            // SOLO DESPUÉS: SETEAR ESTADO
             setUserToken(token);
             setUserInfo(info);
+            console.log(`[PIN] verifyPinAndLogin: re-login SUCCESS`);
 
             return true;
         } catch (error: any) {
