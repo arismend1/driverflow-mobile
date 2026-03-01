@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
 import { API_URL } from '../api/config';
 
@@ -8,22 +9,50 @@ export default function MatchesScreen() {
     const [loading, setLoading] = useState(true);
     const [matches, setMatches] = useState<any[]>([]);
 
+    // Depend on token + user.type so we retry once async bootstrap finishes
     useEffect(() => {
         loadMatches();
-    }, []);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [token, user?.type]);
 
     const loadMatches = async () => {
+        setLoading(true);
         try {
+            // Fallback: read directly from AsyncStorage if context token is still null
+            const activeToken = token ?? await AsyncStorage.getItem('auth_token');
             const endpoint = user?.type === 'empresa' ? '/matches/candidates' : '/matches/opportunities';
-            const res = await fetch(`${API_URL}${endpoint}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+            const url = `${API_URL}${endpoint}`;
+
+            console.log(`[Matches] url=${url}`);
+            console.log(`[Matches] context token: ${token ? 'EXISTS len=' + token.length : 'NULL'}`);
+            console.log(`[Matches] activeToken: ${activeToken ? 'EXISTS len=' + activeToken.length : 'NULL'}`);
+            console.log(`[Matches] user.type=${user?.type} user.id=${(user as any)?.id}`);
+
+            if (!activeToken) {
+                console.warn('[Matches] No token available — aborting fetch');
+                setLoading(false);
+                return;
+            }
+
+            const res = await fetch(url, {
+                headers: {
+                    'Authorization': `Bearer ${activeToken}`,
+                    'Content-Type': 'application/json',
+                },
             });
+
+            console.log(`[Matches] status=${res.status} ok=${res.ok}`);
+
             if (res.ok) {
                 const data = await res.json();
+                console.log(`[Matches] received ${data.length} matches`);
                 setMatches(data);
+            } else {
+                const errBody = await res.text();
+                console.error(`[Matches] error response: ${errBody}`);
             }
         } catch (e) {
-            console.error(e);
+            console.error('[Matches] fetch exception:', e);
         } finally {
             setLoading(false);
         }
