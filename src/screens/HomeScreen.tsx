@@ -89,13 +89,19 @@ export default function HomeScreen() {
 
     const toggleSearchStatus = async (value: boolean) => {
         const newStatus = value ? 'ON' : 'OFF';
+        const prevStatus = searchStatus; // save for rollback
+
         // Optimistic update
         setSearchStatus(newStatus);
+        console.log(`[Toggle] Attempting ${prevStatus} → ${newStatus}`);
 
-        const endpoint = isCompany ? '/company/search_status' : '/driver/search_status';
+        // ✅ Fixed: both endpoints now include the /api prefix
+        const endpoint = isCompany ? '/api/company/search_status' : '/api/driver/search_status';
+        const url = `${API_URL}${endpoint}`;
 
         try {
-            const res = await fetch(`${API_URL}${endpoint}`, {
+            console.log(`[Toggle] POST ${url}`, { status: newStatus });
+            const res = await fetch(url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -103,14 +109,25 @@ export default function HomeScreen() {
                 },
                 body: JSON.stringify({ status: newStatus })
             });
+
+            console.log(`[Toggle] Response status: ${res.status}, ok: ${res.ok}`);
+            const data = await res.json();
+            console.log(`[Toggle] Response body:`, data);
+
             if (!res.ok) {
-                setSearchStatus(value ? 'OFF' : 'ON'); // Revert
-                Alert.alert('Error', 'Could not update status. Please try again.');
+                // Rollback to previous state
+                setSearchStatus(prevStatus);
+                Alert.alert('Error', data.error || 'Could not update status. Please try again.');
             } else {
-                await updateUserSearchStatus(newStatus);
+                // Backend is source of truth: use what the server confirmed
+                const confirmedStatus = data.status || newStatus;
+                setSearchStatus(confirmedStatus);
+                await updateUserSearchStatus(confirmedStatus);
+                console.log(`[Toggle] Confirmed new status: ${confirmedStatus}`);
             }
         } catch (e) {
-            setSearchStatus(value ? 'OFF' : 'ON'); // Revert
+            console.log(`[Toggle] Network error:`, e);
+            setSearchStatus(prevStatus); // Rollback
             Alert.alert('Connection Error', 'Check your internet connection.');
         }
     };
