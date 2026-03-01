@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, Button, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { getAvailableRequests, applyToRequest, mapErrorToMessage } from '../api/client';
+import { useAuth } from '../context/AuthContext';
 
 interface RequestItem {
     id: number;
@@ -11,13 +12,14 @@ interface RequestItem {
 }
 
 export const AvailableRequestsScreen = () => {
+    const { token } = useAuth();
     const [requests, setRequests] = useState<RequestItem[]>([]);
     const [loading, setLoading] = useState(true);
 
     const loadParams = async () => {
         setLoading(true);
         try {
-            const data = await getAvailableRequests();
+            const data = await getAvailableRequests(token || '');
             setRequests(data);
         } catch (e) {
             console.error(e);
@@ -31,7 +33,7 @@ export const AvailableRequestsScreen = () => {
     }, []);
 
     const handleApply = async (id: number) => {
-        const res = await applyToRequest(id);
+        const res = await applyToRequest(id, token || '');
         if (res.ok) {
             Alert.alert('Aplicado', 'Has aplicado exitosamente. Espera confirmación.');
             loadParams(); // Refresh

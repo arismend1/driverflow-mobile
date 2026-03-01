@@ -61,8 +61,7 @@ export default function CompanyRequirementsScreen() {
                     setReqEndorsements(data.req_endorsements || []);
                     setReqOpsTypes(data.req_operation_types || []);
                     // Handle exp range as min years for simplicity or custom field
-                    // Let's assume user inputs a string like "2" 
-                    setExpYears(data.req_experience_range ? (JSON.parse(data.req_experience_range)[0] || '0') : '0');
+                    setExpYears(data.req_experience_years !== undefined ? String(data.req_experience_years) : '0');
                     setReqModalities(data.req_modalities || []);
                     setReqTruck(!!data.req_truck);
                     setOfferedPayments(data.offered_payment_methods || []);
@@ -85,7 +84,7 @@ export default function CompanyRequirementsScreen() {
                 req_license_types: reqLicenseTypes,
                 req_endorsements: reqEndorsements,
                 req_operation_types: reqOpsTypes,
-                req_experience_range: JSON.stringify([expYears]), // Hacky storage of min years
+                req_experience_years: parseInt(expYears) || 0, // FIXED: Sent to backend as integer directly
                 req_modalities: reqModalities,
                 req_truck: reqTruck,
                 offered_payment_methods: offeredPayments,
@@ -172,7 +171,7 @@ export default function CompanyRequirementsScreen() {
 
             <MultiSelect
                 label="6. Modalidad"
-                options={['1 viaje', '1 carga', 'Tiempo completo']}
+                options={['Un viaje', 'Una carga', 'Tiempo completo']}
                 selected={reqModalities}
                 onToggle={(v: string) => toggleSelection(reqModalities, setReqModalities, v)}
             />
@@ -184,7 +183,7 @@ export default function CompanyRequirementsScreen() {
 
             <MultiSelect
                 label="8. Formas de Pago Ofrecidas"
-                options={['Mile', 'Trip', 'Load', 'Hour', 'Salary']}
+                options={['Por milla', 'Por viaje', 'Por carga', 'Por horas', 'Sueldo']}
                 selected={offeredPayments}
                 onToggle={(v: string) => toggleSelection(offeredPayments, setOfferedPayments, v)}
             />

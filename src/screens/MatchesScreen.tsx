@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { API_URL } from '../api/config';
 
 export default function MatchesScreen() {
-    const { token, user } = useAuth();
+    const { token, userInfo: user } = useAuth();
     const [loading, setLoading] = useState(true);
     const [matches, setMatches] = useState<any[]>([]);
 

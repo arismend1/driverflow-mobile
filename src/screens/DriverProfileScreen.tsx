@@ -28,7 +28,7 @@ const MultiSelect = ({ label, options, selected = [], onToggle }: any) => {
 };
 
 export default function DriverProfileScreen() {
-    const { token, user } = useAuth();
+    const { token, userInfo: user } = useAuth();
     const navigation = useNavigation();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);

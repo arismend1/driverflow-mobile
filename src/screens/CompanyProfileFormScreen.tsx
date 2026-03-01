@@ -3,7 +3,7 @@ import { View, Text, ScrollView, TextInput, TouchableOpacity, Alert, StyleSheet,
 import { useAuth } from '../context/AuthContext';
 import { request, mapErrorToMessage } from '../api/client';
 import { useNavigation } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons'; // Assuming Expo or similar icon lib is available, otherwise use text
+
 
 // --- REUSABLE COMPONENTS ---
 

@@ -69,6 +69,7 @@ export default function DriverProfileFormScreen() {
     const [hasTruck, setHasTruck] = useState(false);
     const [paymentMethods, setPaymentMethods] = useState<string[]>([]);
     const [relationships, setRelationships] = useState<string[]>([]);
+    const [availability, setAvailability] = useState('Inmediata');
 
     useEffect(() => {
         loadProfile();
@@ -90,6 +91,7 @@ export default function DriverProfileFormScreen() {
                     setHasTruck(!!data.has_truck);
                     setPaymentMethods(data.payment_methods || []);
                     setRelationships(data.work_relationships || []);
+                    setAvailability(data.availability || 'Inmediata');
                 }
             } else {
                 console.warn("[LOAD_PROFILE] Failed", res.status, res.error);
@@ -107,10 +109,6 @@ export default function DriverProfileFormScreen() {
             let finalExp = 0;
             if (expYearsExact) {
                 finalExp = parseInt(expYearsExact);
-            } else if (expOption === '1–2 años') {
-                finalExp = 1;
-            } else if (expOption === '2–5 años') {
-                finalExp = 2;
             }
 
             const payload = {
@@ -123,7 +121,8 @@ export default function DriverProfileFormScreen() {
                 job_preferences: modalities,
                 has_truck: hasTruck,
                 payment_methods: paymentMethods,
-                work_relationships: relationships
+                work_relationships: relationships,
+                availability: availability
             };
 
             const res = await updateDriverProfile(payload, token || '');
@@ -213,25 +212,13 @@ export default function DriverProfileFormScreen() {
 
                 {/* 5. Experiencia */}
                 <View style={styles.section}>
-                    <Text style={styles.label}>5. Experiencia</Text>
-                    <View style={styles.optionContainer}>
-                        {['Practicante', '1–2 años', '2–5 años'].map(opt => (
-                            <TouchableOpacity
-                                key={opt}
-                                style={[styles.optionButton, expOption === opt && styles.optionSelected]}
-                                onPress={() => { setExpOption(opt); setExpYearsExact(''); }}
-                            >
-                                <Text style={[styles.optionText, expOption === opt && styles.optionTextSelected]}>{opt}</Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-                    <Text style={[styles.label, { marginTop: 10, fontSize: 14 }]}>Opcional: Años Exactos</Text>
+                    <Text style={styles.label}>5. Años de Experiencia</Text>
                     <TextInput
                         style={styles.input}
                         keyboardType="numeric"
                         placeholder="Ej. 3"
                         value={expYearsExact}
-                        onChangeText={(t) => { setExpYearsExact(t); setExpOption(''); }}
+                        onChangeText={(t) => { setExpYearsExact(t); setExpOption('Custom'); }}
                     />
                 </View>
 
@@ -258,13 +245,29 @@ export default function DriverProfileFormScreen() {
                     onToggle={(v: string) => toggleSelection(paymentMethods, setPaymentMethods, v)}
                 />
 
-                {/* 9. Modalidad */}
+                {/* 9. Relación Laboral */}
                 <MultiSelect
                     label="9. Modalidad de Trabajo"
-                    options={['Company Driver', 'Owner-Operator', 'Team', 'Solo']}
+                    options={['Company Driver', 'Owner Operator', 'Team', 'Solo']}
                     selected={relationships}
                     onToggle={(v: string) => toggleSelection(relationships, setRelationships, v)}
                 />
+
+                {/* 10. Disponibilidad */}
+                <View style={styles.section}>
+                    <Text style={styles.label}>10. Disponibilidad</Text>
+                    <View style={styles.optionContainer}>
+                        {['Inmediata', '1-2 semanas', '1 mes'].map(opt => (
+                            <TouchableOpacity
+                                key={opt}
+                                style={[styles.optionButton, availability === opt && styles.optionSelected]}
+                                onPress={() => setAvailability(opt)}
+                            >
+                                <Text style={[styles.optionText, availability === opt && styles.optionTextSelected]}>{opt}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </View>
 
                 {/* Save Button */}
                 <TouchableOpacity style={styles.saveButton} onPress={saveProfile} disabled={saving}>
