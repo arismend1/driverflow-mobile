@@ -25,15 +25,18 @@ export default function HomeScreen() {
         const fetchRealSearchStatus = async () => {
             if (!userInfo || !token) return;
             try {
-                const endpoint = userInfo.type === 'empresa' ? '/api/companies/requirements' : '/api/drivers/profile';
+                // Use dedicated search_status GET endpoints that read from empresas/drivers tables
+                const endpoint = userInfo.type === 'empresa'
+                    ? '/api/company/search_status'
+                    : '/api/driver/search_status';
                 const res = await fetch(`${API_URL}${endpoint}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (res.ok) {
                     const data = await res.json();
-                    if (data.search_status) {
-                        setSearchStatus(data.search_status);
-                        updateUserSearchStatus(data.search_status);
+                    if (data.status) {
+                        setSearchStatus(data.status);
+                        updateUserSearchStatus(data.status);
                     }
                 }
             } catch (e) {
