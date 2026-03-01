@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext';
 
 export default function HomeScreen() {
     const navigation = useNavigation<any>();
-    const { userInfo, logout, token, hasPin } = useAuth();
+    const { userInfo, logout, token, hasPin, updateUserSearchStatus } = useAuth();
     const [connected, setConnected] = useState<boolean | null>(null);
     const [searchStatus, setSearchStatus] = useState<string>('OFF');
 
@@ -81,6 +81,8 @@ export default function HomeScreen() {
             if (!res.ok) {
                 setSearchStatus(value ? 'OFF' : 'ON'); // Revert
                 Alert.alert('Error', 'No se pudo actualizar el estado.');
+            } else {
+                await updateUserSearchStatus(newStatus);
             }
         } catch (e) {
             setSearchStatus(value ? 'OFF' : 'ON'); // Revert

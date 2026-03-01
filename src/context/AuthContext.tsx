@@ -36,6 +36,7 @@ interface AuthContextType {
     lockApp: () => void;
     unlockApp: () => void;
     clearSavedCredentials: () => Promise<void>;
+    updateUserSearchStatus: (status: string) => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType>({
@@ -57,6 +58,7 @@ export const AuthContext = createContext<AuthContextType>({
     lockApp: () => { },
     unlockApp: () => { },
     clearSavedCredentials: async () => { },
+    updateUserSearchStatus: async () => { },
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -160,11 +162,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             const res = await apiLogin(contacto, password, type);
             if (!res.ok) throw new Error(res.error || 'Login failed');
 
-            const { token, id, name, type: serverType } = res.data as any;
+            const { token, id, name, type: serverType, search_status } = res.data as any;
             if (!token) throw new Error("NO_TOKEN_FROM_SERVER");
 
             const finalType: 'driver' | 'empresa' = (serverType || type) as any;
-            const info: UserInfo = { id, name, type: finalType };
+            const info: UserInfo = { id, name, type: finalType, search_status: search_status || 'ON' };
 
             // GUARDAR EN ASYNCSTORAGE PRIMERO
             await AsyncStorage.setItem('auth_token', token);
@@ -313,6 +315,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
     };
 
+    const updateUserSearchStatus = async (status: string) => {
+        if (!userInfo) return;
+        const newInfo = { ...userInfo, search_status: status };
+        setUserInfo(newInfo);
+        await AsyncStorage.setItem('auth_user_info', JSON.stringify(newInfo));
+    };
+
     const value: AuthContextType = {
         userToken,
         token: userToken,
@@ -332,6 +341,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         lockApp,
         unlockApp,
         clearSavedCredentials,
+        updateUserSearchStatus,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
