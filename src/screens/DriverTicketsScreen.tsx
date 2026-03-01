@@ -24,7 +24,7 @@ export const DriverTicketsScreen = () => {
 
     const loadTickets = async () => {
         if (!token) {
-            setError('No hay sesión activa.');
+            setError('No active session.');
             return;
         }
 
@@ -35,7 +35,7 @@ export const DriverTicketsScreen = () => {
             setTickets(data || []);
         } catch (err: any) {
             console.error("[TICKETS] Load failed", err);
-            setError(`Error cargando tickets: ${err.message || 'Error desconocido'}`);
+            setError(`Error loading accepted offers: ${err.message || 'Unknown error'}`);
         } finally {
             setLoading(false);
         }
@@ -43,11 +43,11 @@ export const DriverTicketsScreen = () => {
 
     const renderItem = ({ item }: { item: Ticket }) => (
         <View style={styles.card}>
-            <Text style={styles.title}>Ticket #{item.id}</Text>
-            <Text>Empresa: {item.company_name}</Text>
-            <Text style={styles.status}>Estado: {item.billing_status.toUpperCase()}</Text>
-            <Text>Fecha: {new Date(item.created_at).toLocaleDateString()}</Text>
-            <Text>Monto: {(item.price_cents / 100).toFixed(2)} {item.currency}</Text>
+            <Text style={styles.title}>Offer #{item.id}</Text>
+            <Text>Company: {item.company_name}</Text>
+            <Text style={styles.status}>Status: {item.billing_status.toUpperCase()}</Text>
+            <Text>Date: {new Date(item.created_at).toLocaleDateString()}</Text>
+            <Text>Amount: {(item.price_cents / 100).toFixed(2)} {item.currency}</Text>
         </View>
     );
 
@@ -64,7 +64,7 @@ export const DriverTicketsScreen = () => {
             <View style={styles.center}>
                 <Text style={styles.errorText}>{error}</Text>
                 <TouchableOpacity style={styles.retryButton} onPress={loadTickets}>
-                    <Text style={styles.retryText}>Reintentar</Text>
+                    <Text style={styles.retryText}>Retry</Text>
                 </TouchableOpacity>
             </View>
         );
@@ -72,12 +72,12 @@ export const DriverTicketsScreen = () => {
 
     return (
         <View style={styles.container}>
-            <Text style={styles.header}>Mis Tickets</Text>
+            <Text style={styles.header}>Accepted Offers</Text>
             <FlatList
                 data={tickets}
                 keyExtractor={(item) => item.id.toString()}
                 renderItem={renderItem}
-                ListEmptyComponent={<Text style={styles.empty}>Aún no tienes tickets.</Text>}
+                ListEmptyComponent={<Text style={styles.empty}>You have no accepted offers yet.</Text>}
                 onRefresh={loadTickets}
                 refreshing={loading}
             />

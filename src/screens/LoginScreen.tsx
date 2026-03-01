@@ -44,13 +44,13 @@ export default function LoginScreen() {
                         style={[styles.tab, userType === 'driver' && styles.activeTab]}
                         onPress={() => setUserType('driver')}
                     >
-                        <Text style={[styles.tabText, userType === 'driver' && styles.activeTabText]}>Chofer</Text>
+                        <Text style={[styles.tabText, userType === 'driver' && styles.activeTabText]}>Driver</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[styles.tab, userType === 'empresa' && styles.activeTab]}
                         onPress={() => setUserType('empresa')}
                     >
-                        <Text style={[styles.tabText, userType === 'empresa' && styles.activeTabText]}>Empresa</Text>
+                        <Text style={[styles.tabText, userType === 'empresa' && styles.activeTabText]}>Company</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -75,11 +75,11 @@ export default function LoginScreen() {
                 <View style={styles.optionsRow}>
                     <TouchableOpacity style={styles.checkboxContainer} onPress={() => setRemember(!remember)}>
                         <View style={[styles.checkbox, remember && styles.checkboxActive]} />
-                        <Text style={styles.rememberText}>Recordar mi cuenta</Text>
+                        <Text style={styles.rememberText}>Remember me</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
-                        <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
+                        <Text style={styles.forgotText}>Forgot your password?</Text>
                     </TouchableOpacity>
                 </View>
 

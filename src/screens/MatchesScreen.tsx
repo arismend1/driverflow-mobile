@@ -49,14 +49,14 @@ export default function MatchesScreen() {
             ) : (
                 <>
                     {/* UX Requirements: Op Type, Avail, Pay */}
-                    <Text style={styles.detail}>Operación: {item.op_types}</Text>
-                    <Text style={styles.detail}>Pago: {item.pay_methods}</Text>
-                    <Text style={styles.detail}>Disponibilidad: {item.availability}</Text>
+                    <Text style={styles.detail}>Operation: {item.op_types}</Text>
+                    <Text style={styles.detail}>Pay: {item.pay_methods}</Text>
+                    <Text style={styles.detail}>Availability: {item.availability}</Text>
                 </>
             )}
 
             <TouchableOpacity style={styles.button} onPress={() => handleAccept(item)}>
-                <Text style={styles.buttonText}>Ver Detalles / Aceptar</Text>
+                <Text style={styles.buttonText}>View Details / Accept</Text>
             </TouchableOpacity>
         </View>
     );
@@ -65,18 +65,18 @@ export default function MatchesScreen() {
 
     return (
         <View style={styles.container}>
-            <Text style={styles.pageTitle}>Resultados Compatibles</Text>
+            <Text style={styles.pageTitle}>Match Results</Text>
             {matches.length === 0 ? (
                 <View style={styles.empty}>
                     {user?.type === 'driver' ? (
                         <>
-                            <Text style={styles.emptyTitle}>Tu perfil está activo y visible ✅</Text>
-                            <Text style={styles.emptyText}>Aún no hay ofertas que coincidan 100% con tus requisitos hoy. Te avisaremos apenas una empresa busque tu perfil exacto.</Text>
+                            <Text style={styles.emptyTitle}>Your profile is active and visible ✅</Text>
+                            <Text style={styles.emptyText}>There are no offers matching 100% with your requirements today. We will let you know as soon as a company searches for your exact profile.</Text>
                         </>
                     ) : (
                         <>
-                            <Text style={styles.emptyTitle}>Buscando profesionales calificados...</Text>
-                            <Text style={styles.emptyText}>No encontramos choferes con estos requisitos exactos. Intenta flexibilizar la experiencia o endorsements si necesitas resultados rápidos.</Text>
+                            <Text style={styles.emptyTitle}>Searching for qualified professionals...</Text>
+                            <Text style={styles.emptyText}>We couldn't find drivers with these exact requirements. Try flexing the experience or endorsements if you need quick results.</Text>
                         </>
                     )}
                 </View>

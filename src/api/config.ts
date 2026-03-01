@@ -13,7 +13,7 @@ import { Platform } from 'react-native';
 
 export type ApiMode = 'PRODUCTION' | 'EMULATOR' | 'DEVICE_ADB' | 'DEVICE_LAN';
 
-// ✅ Deja esto en PRODUCTION para el build de Play Console
+// ✅ Temporal para pruebas en físico por cable
 export const API_MODE = 'PRODUCTION' as ApiMode;
 
 const getBaseUrl = (): string => {

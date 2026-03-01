@@ -170,33 +170,33 @@ export default function CompanyRequirementsScreen() {
             </View>
 
             <MultiSelect
-                label="6. Modalidad"
-                options={['Un viaje', 'Una carga', 'Tiempo completo']}
+                label="6. Modality"
+                options={['One trip', 'One load', 'Full time']}
                 selected={reqModalities}
                 onToggle={(v: string) => toggleSelection(reqModalities, setReqModalities, v)}
             />
 
             <View style={styles.row}>
-                <Text style={styles.label}>7. ¿Requiere Camión Propio?</Text>
+                <Text style={styles.label}>7. Require Native Truck?</Text>
                 <Switch value={reqTruck} onValueChange={setReqTruck} />
             </View>
 
             <MultiSelect
-                label="8. Formas de Pago Ofrecidas"
-                options={['Por milla', 'Por viaje', 'Por carga', 'Por horas', 'Sueldo']}
+                label="8. Offered Payment Methods"
+                options={['Per mile', 'Per trip', 'Per load', 'Hourly', 'Salary']}
                 selected={offeredPayments}
                 onToggle={(v: string) => toggleSelection(offeredPayments, setOfferedPayments, v)}
             />
 
             <MultiSelect
-                label="9. Relación Laboral"
+                label="9. Work Relationship"
                 options={['Company Driver', 'Owner Operator', 'Team', 'Solo']}
                 selected={reqRelationships}
                 onToggle={(v: string) => toggleSelection(reqRelationships, setReqRelationships, v)}
             />
 
             <View style={styles.section}>
-                <Text style={styles.label}>10. Disponibilidad</Text>
+                <Text style={styles.label}>10. Availability</Text>
                 <View style={styles.optionContainer}>
                     {['Immediate', '1-2 weeks', '1 month'].map(opt => (
                         <TouchableOpacity

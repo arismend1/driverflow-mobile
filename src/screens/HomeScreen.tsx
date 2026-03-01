@@ -80,13 +80,13 @@ export default function HomeScreen() {
             });
             if (!res.ok) {
                 setSearchStatus(value ? 'OFF' : 'ON'); // Revert
-                Alert.alert('Error', 'No se pudo actualizar el estado.');
+                Alert.alert('Error', 'Could not update status.');
             } else {
                 await updateUserSearchStatus(newStatus);
             }
         } catch (e) {
             setSearchStatus(value ? 'OFF' : 'ON'); // Revert
-            Alert.alert('Error de Conexión', 'Revisa tu internet.');
+            Alert.alert('Connection Error', 'Check your internet connection.');
         }
     };
 
@@ -94,15 +94,15 @@ export default function HomeScreen() {
         <ScrollView style={styles.container} contentContainerStyle={styles.content}>
 
             <View style={styles.header}>
-                <Text style={styles.greeting}>Hola, {userInfo.name || 'Usuario'}</Text>
-                <Text style={styles.subtitle}>Panel de {isCompany ? 'Empresa' : 'Chofer'}</Text>
+                <Text style={styles.greeting}>Hello, {userInfo.name || 'User'}</Text>
+                <Text style={styles.subtitle}>{isCompany ? 'Company' : 'Driver'} Dashboard</Text>
             </View>
 
             <View style={styles.networkBox}>
                 <View style={styles.networkStatus}>
                     <View style={[styles.dot, connected === null ? styles.dotGrey : connected ? styles.dotGreen : styles.dotRed]} />
                     <Text style={styles.networkText}>
-                        Servidor: {connected === null ? 'Conectando…' : connected ? 'En línea' : 'Desconectado'}
+                        Server: {connected === null ? 'Connecting...' : connected ? 'Online' : 'Offline'}
                     </Text>
                 </View>
             </View>
@@ -113,9 +113,9 @@ export default function HomeScreen() {
                         <View style={[styles.card, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: searchStatus === 'ON' ? '#e8f5e9' : '#fff' }]}>
                             <View style={{ flex: 1 }}>
                                 <Text style={styles.cardIcon}>📡</Text>
-                                <Text style={styles.cardTitle}>Buscando Choferes</Text>
+                                <Text style={styles.cardTitle}>Searching for Drivers</Text>
                                 <Text style={styles.cardDesc}>
-                                    {searchStatus === 'ON' ? 'El sistema está buscando choferes automáticamente.' : 'En reposo. Activa para buscar perfiles.'}
+                                    {searchStatus === 'ON' ? 'The system is automatically looking for drivers.' : 'Idle. Turn on to look for profiles.'}
                                 </Text>
                             </View>
                             <Switch
@@ -128,53 +128,53 @@ export default function HomeScreen() {
 
                         <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('Matches')}>
                             <Text style={styles.cardIcon}>🔍</Text>
-                            <Text style={styles.cardTitle}>Candidatos Encontrados</Text>
-                            <Text style={styles.cardDesc}>Mira los choferes que coinciden con tu empresa</Text>
+                            <Text style={styles.cardTitle}>Matches Found</Text>
+                            <Text style={styles.cardDesc}>View drivers matching your company</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('CompanyProfileForm')}>
                             <Text style={styles.cardIcon}>🏢</Text>
-                            <Text style={styles.cardTitle}>Mi Empresa</Text>
-                            <Text style={styles.cardDesc}>Actualiza la información comercial</Text>
+                            <Text style={styles.cardTitle}>My Company</Text>
+                            <Text style={styles.cardDesc}>Update your business information</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('CompanyBilling')}>
                             <Text style={styles.cardIcon}>💳</Text>
-                            <Text style={styles.cardTitle}>Facturación</Text>
-                            <Text style={styles.cardDesc}>Revisa y paga tickets pendientes</Text>
+                            <Text style={styles.cardTitle}>Billing</Text>
+                            <Text style={styles.cardDesc}>Review and pay pending tickets</Text>
                         </TouchableOpacity>
                     </>
                 ) : (
                     <>
                         <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('AvailableRequests')}>
                             <Text style={styles.cardIcon}>🔍</Text>
-                            <Text style={styles.cardTitle}>Buscar Trabajos</Text>
-                            <Text style={styles.cardDesc}>Encuentra solicitudes abiertas de Mula</Text>
+                            <Text style={styles.cardTitle}>Search Jobs</Text>
+                            <Text style={styles.cardDesc}>Find open requests from companies</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('DriverTickets')}>
                             <Text style={styles.cardIcon}>🎟️</Text>
-                            <Text style={styles.cardTitle}>Mis Tickets</Text>
-                            <Text style={styles.cardDesc}>Viajes que se te han asignado</Text>
+                            <Text style={styles.cardTitle}>Accepted Offers</Text>
+                            <Text style={styles.cardDesc}>Companies interested in your profile</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('DriverProfileForm')}>
                             <Text style={styles.cardIcon}>👤</Text>
-                            <Text style={styles.cardTitle}>Mi Perfil</Text>
-                            <Text style={styles.cardDesc}>Registra documentos e info de chofer</Text>
+                            <Text style={styles.cardTitle}>My Profile</Text>
+                            <Text style={styles.cardDesc}>Update documents and driver info</Text>
                         </TouchableOpacity>
                     </>
                 )}
 
                 <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('Notifications')}>
                     <Text style={styles.cardIcon}>🔔</Text>
-                    <Text style={styles.cardTitle}>Notificaciones</Text>
-                    <Text style={styles.cardDesc}>Alertas y notificaciones recientes</Text>
+                    <Text style={styles.cardTitle}>Notifications</Text>
+                    <Text style={styles.cardDesc}>Alerts and recent notifications</Text>
                 </TouchableOpacity>
             </View>
 
             <TouchableOpacity style={styles.logoutButton} onPress={() => logout()}>
-                <Text style={styles.logoutText}>Cerrar Sesión</Text>
+                <Text style={styles.logoutText}>Log Out</Text>
             </TouchableOpacity>
         </ScrollView>
     );

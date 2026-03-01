@@ -254,31 +254,31 @@ export default function CompanyProfileFormScreen() {
 
                 {/* 6. Tipo Trabajo */}
                 <MultiSelect
-                    label="6. Tipo de Trabajo"
-                    options={['Un viaje', 'Una carga', 'Tiempo completo']}
+                    label="6. Job Type"
+                    options={['One trip', 'One load', 'Full time']}
                     selected={reqModalities}
                     onToggle={(v: string) => toggleSelection(reqModalities, setReqModalities, v)}
                 />
 
                 {/* 7. Camión Propio */}
                 <RadioYesNo
-                    label="7. ¿Requiere Camión Propio?"
+                    label="7. Require Native Truck?"
                     value={reqTruck}
                     onChange={setReqTruck}
                 />
 
                 {/* 8. Modalidad Pago */}
                 <MultiSelect
-                    label="8. Modalidad de Pago"
-                    options={['Por milla', 'Por viaje', 'Por carga', 'Por horas', 'Sueldo']}
+                    label="8. Payment Methods"
+                    options={['Per mile', 'Per trip', 'Per load', 'Hourly', 'Salary']}
                     selected={offeredPayments}
                     onToggle={(v: string) => toggleSelection(offeredPayments, setOfferedPayments, v)}
                 />
 
                 {/* 9. Contratación */}
                 <MultiSelect
-                    label="9. Tipo de Contratación"
-                    options={['Company Driver', 'Owner-Operator', 'Team', 'Solo']}
+                    label="9. Work Relationship"
+                    options={['Company Driver', 'Owner Operator', 'Team', 'Solo']}
                     selected={reqRelationships}
                     onToggle={(v: string) => toggleSelection(reqRelationships, setReqRelationships, v)}
                 />

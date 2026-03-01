@@ -224,30 +224,30 @@ export default function DriverProfileFormScreen() {
 
                 {/* 6. Tipo Trabajo */}
                 <MultiSelect
-                    label="6. Tipo de Trabajo que busca"
-                    options={['Un viaje', 'Una carga', 'Tiempo completo']} // OTR implied
+                    label="6. Job Type"
+                    options={['One trip', 'One load', 'Full time']} // OTR implied
                     selected={modalities}
                     onToggle={(v: string) => toggleSelection(modalities, setModalities, v)}
                 />
 
                 {/* 7. Camión Propio */}
                 <RadioYesNo
-                    label="7. ¿Tiene Camión Propio?"
+                    label="7. Have Native Truck?"
                     value={hasTruck}
                     onChange={setHasTruck}
                 />
 
                 {/* 8. Cobro */}
                 <MultiSelect
-                    label="8. Cómo desea cobrar"
-                    options={['Por milla', 'Por viaje', 'Por carga', 'Por horas', 'Sueldo']}
+                    label="8. Payment Modality"
+                    options={['Per mile', 'Per trip', 'Per load', 'Hourly', 'Salary']}
                     selected={paymentMethods}
                     onToggle={(v: string) => toggleSelection(paymentMethods, setPaymentMethods, v)}
                 />
 
                 {/* 9. Relación Laboral */}
                 <MultiSelect
-                    label="9. Modalidad de Trabajo"
+                    label="9. Work Relationship"
                     options={['Company Driver', 'Owner Operator', 'Team', 'Solo']}
                     selected={relationships}
                     onToggle={(v: string) => toggleSelection(relationships, setRelationships, v)}
@@ -255,9 +255,9 @@ export default function DriverProfileFormScreen() {
 
                 {/* 10. Disponibilidad */}
                 <View style={styles.section}>
-                    <Text style={styles.label}>10. Disponibilidad</Text>
+                    <Text style={styles.label}>10. Availability</Text>
                     <View style={styles.optionContainer}>
-                        {['Inmediata', '1-2 semanas', '1 mes'].map(opt => (
+                        {['Immediate', '1-2 weeks', '1 month'].map(opt => (
                             <TouchableOpacity
                                 key={opt}
                                 style={[styles.optionButton, availability === opt && styles.optionSelected]}
