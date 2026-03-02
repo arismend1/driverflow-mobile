@@ -10,18 +10,26 @@ type MatchRow = {
     display_name?: string;
 
     // score + status
-    match_score?: number;
+    match_score?: number | string;
     status?: string;
 
     // company side fields
     experience_years?: number | string;
-    license_summ?: string;
-    op_types?: string;
-    pay_methods?: string;
+    license_summ?: any;
+    op_types?: any;
+    pay_methods?: any;
 
     // driver side fields
-    availability?: string;
+    availability?: any;
     company_email?: string;
+};
+
+const fmt = (v: any): string => {
+    if (v === null || v === undefined) return 'N/A';
+    if (Array.isArray(v)) return v.length ? v.join(', ') : 'N/A';
+    if (typeof v === 'object') return Object.keys(v).length ? JSON.stringify(v) : 'N/A';
+    const s = String(v).trim();
+    return s.length ? s : 'N/A';
 };
 
 export default function MatchesScreen() {
@@ -164,11 +172,12 @@ export default function MatchesScreen() {
     };
 
     const renderItem = ({ item }: { item: MatchRow }) => {
+        const score = Number(item.match_score);
         const scoreDisplay =
-            item.match_score !== undefined && item.match_score !== null
-                ? item.match_score > 1
-                    ? Math.round(item.match_score)
-                    : Math.round(item.match_score * 100)
+            !isNaN(score)
+                ? score > 1
+                    ? Math.round(score)
+                    : Math.round(score * 100)
                 : '?';
 
         const matchId = getMatchId(item);
@@ -185,16 +194,16 @@ export default function MatchesScreen() {
                 {user?.type === 'empresa' ? (
                     <>
                         <Text style={styles.detail}>Experiencia: {item.experience_years ?? 'N/A'} años</Text>
-                        <Text style={styles.detail}>Licencias: {item.license_summ || 'N/A'}</Text>
-                        <Text style={styles.detail}>Op. Type: {item.op_types || 'N/A'}</Text>
-                        <Text style={styles.detail}>Pago: {item.pay_methods || 'N/A'}</Text>
+                        <Text style={styles.detail}>Licencias: {fmt(item.license_summ)}</Text>
+                        <Text style={styles.detail}>Op. Type: {fmt(item.op_types)}</Text>
+                        <Text style={styles.detail}>Pago: {fmt(item.pay_methods)}</Text>
                         <Text style={[styles.detail, styles.status]}>Estado: {item.status || 'N/A'}</Text>
                     </>
                 ) : (
                     <>
-                        <Text style={styles.detail}>Operación: {item.op_types || 'N/A'}</Text>
-                        <Text style={styles.detail}>Pago: {item.pay_methods || 'N/A'}</Text>
-                        <Text style={styles.detail}>Disponibilidad: {item.availability || 'N/A'}</Text>
+                        <Text style={styles.detail}>Operación: {fmt(item.op_types)}</Text>
+                        <Text style={styles.detail}>Pago: {fmt(item.pay_methods)}</Text>
+                        <Text style={styles.detail}>Disponibilidad: {fmt(item.availability)}</Text>
                         {item.company_email ? <Text style={styles.detail}>Contacto: {item.company_email}</Text> : null}
                         <Text style={[styles.detail, styles.status]}>Estado: {item.status || 'N/A'}</Text>
                     </>
@@ -307,10 +316,7 @@ export default function MatchesScreen() {
             ) : (
                 <FlatList
                     data={matches}
-                    keyExtractor={(item, idx) => {
-                        const id = getMatchId(item);
-                        return id != null ? String(id) : String(idx);
-                    }}
+                    keyExtractor={(item) => String(item.match_id)}
                     renderItem={renderItem}
                     contentContainerStyle={{ paddingBottom: 20 }}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
