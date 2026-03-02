@@ -204,6 +204,12 @@ export default function HomeScreen() {
                             />
                         </View>
 
+                        <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('Matches')}>
+                            <Text style={styles.cardIcon}>✨</Text>
+                            <Text style={styles.cardTitle}>My Matches</Text>
+                            <Text style={styles.cardDesc}>View companies matching your profile</Text>
+                        </TouchableOpacity>
+
                         <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('AvailableRequests')}>
                             <Text style={styles.cardIcon}>🔍</Text>
                             <Text style={styles.cardTitle}>Manual Job Search</Text>
