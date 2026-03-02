@@ -58,38 +58,43 @@ export default function MatchesScreen() {
         }
     };
 
-    const handleAccept = (item: any) => {
-        const scoreDisplay = item.match_score !== undefined
-            ? (item.match_score > 1 ? item.match_score : Math.round(item.match_score * 100))
-            : '?';
-        const lines = [
-            `Empresa: ${item.display_name}`,
-            item.company_email ? `Contacto: ${item.company_email}` : null,
-            item.op_types ? `Operación: ${item.op_types}` : null,
-            item.pay_methods ? `Pago: ${item.pay_methods}` : null,
-            item.availability ? `Disponibilidad: ${item.availability}` : null,
-            `Score: ${scoreDisplay}%`,
-            `Estado: ${item.status || 'NEW'}`,
-        ].filter(Boolean).join('\n');
-
-        Alert.alert(
-            'Detalle del Match',
-            lines,
-            [
-                { text: 'Cerrar', style: 'cancel' },
-                {
-                    text: 'Contactar empresa', onPress: () => {
-                        console.log('[Matches] User pressed Contact for company_id=', item.company_id);
-                    }
-                },
-            ]
-        );
+    const handleStatusChange = async (matchId: number, newStatus: string) => {
+        try {
+            const activeToken = token ?? await AsyncStorage.getItem('auth_token');
+            const actionMap: Record<string, string> = {
+                VIEWED: 'viewed',
+                CONTACTED: 'contacted',
+                ACCEPTED: 'accept',
+                DECLINED: 'decline',
+            };
+            const action = actionMap[newStatus] || newStatus.toLowerCase();
+            const res = await fetch(`${API_URL}/matches/${matchId}/${action}`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${activeToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            if (res.ok) {
+                if (newStatus === 'DECLINED') {
+                    setMatches(prev => prev.filter(m => m.match_id !== matchId));
+                } else {
+                    setMatches(prev => prev.map(m => m.match_id === matchId ? { ...m, status: newStatus } : m));
+                }
+            } else {
+                Alert.alert('Error', 'No se pudo actualizar el estado del match.');
+            }
+        } catch (e) {
+            console.error('[Matches] Error updating status:', e);
+            Alert.alert('Error', 'Problema de conexión.');
+        }
     };
 
     const renderItem = ({ item }: { item: any }) => {
         const scoreDisplay = item.match_score !== undefined
             ? (item.match_score > 1 ? item.match_score : Math.round(item.match_score * 100))
             : '?';
+
         return (
             <View style={styles.card}>
                 <View style={styles.headerRow}>
@@ -100,9 +105,10 @@ export default function MatchesScreen() {
                 {user?.type === 'empresa' ? (
                     <>
                         <Text style={styles.detail}>Experiencia: {item.experience_years} años</Text>
-                        <Text style={styles.detail}>Licencias: {item.license_summ}</Text>
-                        <Text style={styles.detail}>Op. Type: {item.op_types}</Text>
-                        <Text style={styles.detail}>Pago: {item.pay_methods}</Text>
+                        <Text style={styles.detail}>Licencias: {item.license_summ || 'N/A'}</Text>
+                        <Text style={styles.detail}>Op. Type: {item.op_types || 'N/A'}</Text>
+                        <Text style={styles.detail}>Pago: {item.pay_methods || 'N/A'}</Text>
+                        <Text style={[styles.detail, { fontWeight: 'bold', color: '#007bff' }]}>Estado: {item.status}</Text>
                     </>
                 ) : (
                     <>
@@ -110,12 +116,57 @@ export default function MatchesScreen() {
                         <Text style={styles.detail}>Pago: {item.pay_methods || 'N/A'}</Text>
                         <Text style={styles.detail}>Disponibilidad: {item.availability || 'N/A'}</Text>
                         {item.company_email ? <Text style={styles.detail}>Contacto: {item.company_email}</Text> : null}
+                        <Text style={[styles.detail, { fontWeight: 'bold', color: '#007bff' }]}>Estado: {item.status}</Text>
                     </>
                 )}
 
-                <TouchableOpacity style={styles.button} onPress={() => handleAccept(item)}>
-                    <Text style={styles.buttonText}>{user?.type === 'empresa' ? 'Ver Perfil / Aceptar' : 'Ver Empresa / Contactar'}</Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, flexWrap: 'wrap' }}>
+                    {user?.type === 'empresa' ? (
+                        <>
+                            {item.status === 'NEW' && (
+                                <TouchableOpacity style={[styles.button, { flex: 1, marginHorizontal: 2 }]} onPress={() => handleStatusChange(item.match_id, 'VIEWED')}>
+                                    <Text style={styles.buttonText}>Marcar Visto</Text>
+                                </TouchableOpacity>
+                            )}
+                            {(item.status === 'NEW' || item.status === 'VIEWED' || item.status === 'CONTACTED') && (
+                                <>
+                                    <TouchableOpacity style={[styles.button, { backgroundColor: '#28a745', flex: 1, marginHorizontal: 2 }]} onPress={() => handleStatusChange(item.match_id, 'ACCEPTED')}>
+                                        <Text style={styles.buttonText}>Aceptar</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={[styles.button, { backgroundColor: '#dc3545', flex: 1, marginHorizontal: 2 }]} onPress={() => handleStatusChange(item.match_id, 'DECLINED')}>
+                                        <Text style={styles.buttonText}>Rechazar</Text>
+                                    </TouchableOpacity>
+                                </>
+                            )}
+                            {item.status === 'ACCEPTED' && (
+                                <Text style={{ color: '#28a745', fontWeight: 'bold', padding: 10 }}>Match Aceptado 🎉</Text>
+                            )}
+                        </>
+                    ) : (
+                        <>
+                            {(item.status === 'NEW' || item.status === 'VIEWED') && (
+                                <>
+                                    <TouchableOpacity style={[styles.button, { backgroundColor: '#17a2b8', flex: 1, marginHorizontal: 2 }]} onPress={() => handleStatusChange(item.match_id, 'CONTACTED')}>
+                                        <Text style={styles.buttonText}>Contactar</Text>
+                                    </TouchableOpacity>
+                                </>
+                            )}
+                            {item.status === 'CONTACTED' && (
+                                <>
+                                    <TouchableOpacity style={[styles.button, { backgroundColor: '#28a745', flex: 1, marginHorizontal: 2 }]} onPress={() => handleStatusChange(item.match_id, 'ACCEPTED')}>
+                                        <Text style={styles.buttonText}>Aceptar oferta</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={[styles.button, { backgroundColor: '#dc3545', flex: 1, marginHorizontal: 2 }]} onPress={() => handleStatusChange(item.match_id, 'DECLINED')}>
+                                        <Text style={styles.buttonText}>Rechazar</Text>
+                                    </TouchableOpacity>
+                                </>
+                            )}
+                            {item.status === 'ACCEPTED' && (
+                                <Text style={{ color: '#28a745', fontWeight: 'bold', padding: 10 }}>Oferta Aceptada 🎉</Text>
+                            )}
+                        </>
+                    )}
+                </View>
             </View>
         );
     };
