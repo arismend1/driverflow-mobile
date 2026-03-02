@@ -59,36 +59,66 @@ export default function MatchesScreen() {
     };
 
     const handleAccept = (item: any) => {
-        // Implementation for Accept Flow (Ticket Creation) would go here
-        Alert.alert('Match', `Has seleccionado a ${item.display_name}. La funcionalidad de Ticket + Pago se inicia aquí en próximas fases.`);
+        const scoreDisplay = item.match_score !== undefined
+            ? (item.match_score > 1 ? item.match_score : Math.round(item.match_score * 100))
+            : '?';
+        const lines = [
+            `Empresa: ${item.display_name}`,
+            item.company_email ? `Contacto: ${item.company_email}` : null,
+            item.op_types ? `Operación: ${item.op_types}` : null,
+            item.pay_methods ? `Pago: ${item.pay_methods}` : null,
+            item.availability ? `Disponibilidad: ${item.availability}` : null,
+            `Score: ${scoreDisplay}%`,
+            `Estado: ${item.status || 'NEW'}`,
+        ].filter(Boolean).join('\n');
+
+        Alert.alert(
+            'Detalle del Match',
+            lines,
+            [
+                { text: 'Cerrar', style: 'cancel' },
+                {
+                    text: 'Contactar empresa', onPress: () => {
+                        console.log('[Matches] User pressed Contact for company_id=', item.company_id);
+                    }
+                },
+            ]
+        );
     };
 
-    const renderItem = ({ item }: { item: any }) => (
-        <View style={styles.card}>
-            <View style={styles.headerRow}>
-                <Text style={styles.title}>{item.display_name}</Text>
-                <View style={styles.badge}><Text style={styles.badgeText}>{item.match_score}%</Text></View>
+    const renderItem = ({ item }: { item: any }) => {
+        const scoreDisplay = item.match_score !== undefined
+            ? (item.match_score > 1 ? item.match_score : Math.round(item.match_score * 100))
+            : '?';
+        return (
+            <View style={styles.card}>
+                <View style={styles.headerRow}>
+                    <Text style={styles.title}>{item.display_name}</Text>
+                    <View style={styles.badge}><Text style={styles.badgeText}>{scoreDisplay}%</Text></View>
+                </View>
+
+                {user?.type === 'empresa' ? (
+                    <>
+                        <Text style={styles.detail}>Experiencia: {item.experience_years} años</Text>
+                        <Text style={styles.detail}>Licencias: {item.license_summ}</Text>
+                        <Text style={styles.detail}>Op. Type: {item.op_types}</Text>
+                        <Text style={styles.detail}>Pago: {item.pay_methods}</Text>
+                    </>
+                ) : (
+                    <>
+                        <Text style={styles.detail}>Operación: {item.op_types || 'N/A'}</Text>
+                        <Text style={styles.detail}>Pago: {item.pay_methods || 'N/A'}</Text>
+                        <Text style={styles.detail}>Disponibilidad: {item.availability || 'N/A'}</Text>
+                        {item.company_email ? <Text style={styles.detail}>Contacto: {item.company_email}</Text> : null}
+                    </>
+                )}
+
+                <TouchableOpacity style={styles.button} onPress={() => handleAccept(item)}>
+                    <Text style={styles.buttonText}>{user?.type === 'empresa' ? 'Ver Perfil / Aceptar' : 'Ver Empresa / Contactar'}</Text>
+                </TouchableOpacity>
             </View>
-
-            {user?.type === 'empresa' ? (
-                <>
-                    <Text style={styles.detail}>Experiencia: {item.experience_years} años</Text>
-                    <Text style={styles.detail}>Licencias: {item.license_summ}</Text>
-                </>
-            ) : (
-                <>
-                    {/* UX Requirements: Op Type, Avail, Pay */}
-                    <Text style={styles.detail}>Operation: {item.op_types}</Text>
-                    <Text style={styles.detail}>Pay: {item.pay_methods}</Text>
-                    <Text style={styles.detail}>Availability: {item.availability}</Text>
-                </>
-            )}
-
-            <TouchableOpacity style={styles.button} onPress={() => handleAccept(item)}>
-                <Text style={styles.buttonText}>View Details / Accept</Text>
-            </TouchableOpacity>
-        </View>
-    );
+        );
+    };
 
     if (loading) return <ActivityIndicator style={{ flex: 1 }} size="large" />;
 
