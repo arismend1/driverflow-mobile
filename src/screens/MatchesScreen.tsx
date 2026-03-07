@@ -284,9 +284,8 @@ export default function MatchesScreen() {
                                         </Text>
                                     </View>
                                     <TouchableOpacity
-                                        style={[styles.button, styles.buttonBlue, { opacity: item.driver_share_consent_at ? 1 : 0.6 }]}
+                                        style={[styles.button, styles.buttonBlue]}
                                         onPress={() => handleConfirmShare(matchId)}
-                                        disabled={!item.driver_share_consent_at}
                                     >
                                         <Text style={styles.buttonText}>Pagar y Ver Contacto</Text>
                                     </TouchableOpacity>
