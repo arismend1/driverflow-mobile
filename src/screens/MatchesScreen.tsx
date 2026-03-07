@@ -13,6 +13,12 @@ type MatchRow = {
     match_score?: number | string;
     status?: string;
 
+    // acceptance / consent timestamps
+    driver_step1_accepted_at?: string | null;
+    company_step1_accepted_at?: string | null;
+    driver_share_consent_at?: string | null;
+    company_share_consent_at?: string | null;
+
     // company side fields
     experience_years?: number | string;
     license_summ?: any;
@@ -22,6 +28,7 @@ type MatchRow = {
     // driver side fields
     availability?: any;
     company_email?: string;
+    driver_email?: string;
 };
 
 const fmt = (v: any): string => {
