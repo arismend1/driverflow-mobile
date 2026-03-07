@@ -171,6 +171,35 @@ export default function MatchesScreen() {
         }
     };
 
+    const handleConfirmShare = async (matchId: number) => {
+        try {
+            const activeToken = await getActiveToken();
+            if (!activeToken) return;
+
+            const endpoint = user?.type === 'empresa' ? 'company/confirm-share' : 'driver/confirm-share';
+
+            const res = await fetch(`${API_URL}/matches/${matchId}/${endpoint}`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${activeToken}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                Alert.alert('Éxito', data.status === 'INFO_SHARED' ? '¡Contacto compartido!' : 'Consentimiento registrado.');
+                loadMatches(); // Refresh to get masked info Revealed
+            } else {
+                const err = await res.json();
+                Alert.alert('Error', err.error || 'No se pudo procesar el consentimiento.');
+            }
+        } catch (e) {
+            console.error('[Matches] confirm-share error:', e);
+            Alert.alert('Error', 'Problema de conexión.');
+        }
+    };
+
     const renderItem = ({ item }: { item: MatchRow }) => {
         const score = Number(item.match_score);
         const scoreDisplay =
@@ -181,6 +210,9 @@ export default function MatchesScreen() {
                 : '?';
 
         const matchId = getMatchId(item);
+        const isStep1Accepted = user?.type === 'empresa' ? !!item.company_step1_accepted_at : !!item.driver_step1_accepted_at;
+        const isStep2Accepted = user?.type === 'empresa' ? !!item.company_share_consent_at : !!item.driver_share_consent_at;
+        const isReadyForStep2 = ['PREMATCH_READY', 'SHARE_PENDING_COMPANY', 'SHARE_PENDING_DRIVER'].includes(item.status || '');
 
         return (
             <View style={styles.card}>
@@ -197,6 +229,7 @@ export default function MatchesScreen() {
                         <Text style={styles.detail}>Licencias: {fmt(item.license_summ)}</Text>
                         <Text style={styles.detail}>Op. Type: {fmt(item.op_types)}</Text>
                         <Text style={styles.detail}>Pago: {fmt(item.pay_methods)}</Text>
+                        {item.driver_email ? <Text style={styles.detail}>Driver Email: {item.driver_email}</Text> : null}
                         <Text style={[styles.detail, styles.status]}>Estado: {item.status || 'N/A'}</Text>
                     </>
                 ) : (
@@ -204,7 +237,7 @@ export default function MatchesScreen() {
                         <Text style={styles.detail}>Operación: {fmt(item.op_types)}</Text>
                         <Text style={styles.detail}>Pago: {fmt(item.pay_methods)}</Text>
                         <Text style={styles.detail}>Disponibilidad: {fmt(item.availability)}</Text>
-                        {item.company_email ? <Text style={styles.detail}>Contacto: {item.company_email}</Text> : null}
+                        {item.company_email ? <Text style={styles.detail}>Empresa Email: {item.company_email}</Text> : null}
                         <Text style={[styles.detail, styles.status]}>Estado: {item.status || 'N/A'}</Text>
                     </>
                 )}
@@ -213,26 +246,20 @@ export default function MatchesScreen() {
                 <View style={styles.actionsRow}>
                     {matchId == null ? (
                         <Text style={{ color: '#dc3545' }}>Error: match_id faltante</Text>
+                    ) : item.status === 'INFO_SHARED' ? (
+                        <View style={{ backgroundColor: '#e8f5e9', padding: 8, borderRadius: 5, width: '100%' }}>
+                            <Text style={{ color: '#2e7d32', fontWeight: 'bold' }}>✅ Contacto Compartido</Text>
+                        </View>
                     ) : user?.type === 'empresa' ? (
                         <>
-                            {item.status === 'NEW' && (
-                                <TouchableOpacity
-                                    style={[styles.button, styles.buttonDark]}
-                                    onPress={() => handleStatusChange(matchId, 'VIEWED')}
-                                >
-                                    <Text style={styles.buttonText}>Marcar Visto</Text>
-                                </TouchableOpacity>
-                            )}
-
-                            {(item.status === 'NEW' || item.status === 'VIEWED' || item.status === 'CONTACTED') && (
+                            {!isStep1Accepted && (
                                 <>
                                     <TouchableOpacity
                                         style={[styles.button, styles.buttonGreen]}
                                         onPress={() => handleStatusChange(matchId, 'ACCEPTED')}
                                     >
-                                        <Text style={styles.buttonText}>Aceptar</Text>
+                                        <Text style={styles.buttonText}>Aceptar Match</Text>
                                     </TouchableOpacity>
-
                                     <TouchableOpacity
                                         style={[styles.button, styles.buttonRed]}
                                         onPress={() => handleStatusChange(matchId, 'DECLINED')}
@@ -242,32 +269,44 @@ export default function MatchesScreen() {
                                 </>
                             )}
 
-                            {item.status === 'ACCEPTED' && (
-                                <Text style={{ color: '#28a745', fontWeight: 'bold', paddingVertical: 10 }}>
-                                    Match Aceptado 🎉
-                                </Text>
+                            {isStep1Accepted && !isReadyForStep2 && !isStep2Accepted && (
+                                <Text style={{ color: '#007bff', fontStyle: 'italic', marginTop: 8 }}>Esperando interés del conductor...</Text>
+                            )}
+
+                            {isStep1Accepted && isReadyForStep2 && !isStep2Accepted && (
+                                <>
+                                    <View style={{ width: '100%', marginBottom: 8 }}>
+                                        <Text style={{ fontSize: 13, color: '#444', fontWeight: 'bold' }}>
+                                            ¡El driver también aceptó! ¿Deseas revelar su contacto?
+                                        </Text>
+                                        <Text style={{ fontSize: 12, color: '#666' }}>
+                                            {!item.driver_share_consent_at ? '⏳ Esperando que el driver autorice...' : '✅ El driver autorizó compartir info.'}
+                                        </Text>
+                                    </View>
+                                    <TouchableOpacity
+                                        style={[styles.button, styles.buttonBlue, { opacity: item.driver_share_consent_at ? 1 : 0.6 }]}
+                                        onPress={() => handleConfirmShare(matchId)}
+                                        disabled={!item.driver_share_consent_at}
+                                    >
+                                        <Text style={styles.buttonText}>Pagar y Ver Contacto</Text>
+                                    </TouchableOpacity>
+                                </>
+                            )}
+
+                            {isStep1Accepted && isStep2Accepted && item.status !== 'INFO_SHARED' && (
+                                <Text style={{ color: '#007bff', fontStyle: 'italic', marginTop: 8 }}>Esperando autorización mutua final...</Text>
                             )}
                         </>
                     ) : (
                         <>
-                            {(item.status === 'NEW' || item.status === 'VIEWED') && (
-                                <TouchableOpacity
-                                    style={[styles.button, styles.buttonBlue]}
-                                    onPress={() => handleStatusChange(matchId, 'CONTACTED')}
-                                >
-                                    <Text style={styles.buttonText}>Contactar</Text>
-                                </TouchableOpacity>
-                            )}
-
-                            {item.status === 'CONTACTED' && (
+                            {!isStep1Accepted && (
                                 <>
                                     <TouchableOpacity
                                         style={[styles.button, styles.buttonGreen]}
                                         onPress={() => handleStatusChange(matchId, 'ACCEPTED')}
                                     >
-                                        <Text style={styles.buttonText}>Aceptar oferta</Text>
+                                        <Text style={styles.buttonText}>Aceptar Oferta</Text>
                                     </TouchableOpacity>
-
                                     <TouchableOpacity
                                         style={[styles.button, styles.buttonRed]}
                                         onPress={() => handleStatusChange(matchId, 'DECLINED')}
@@ -277,10 +316,21 @@ export default function MatchesScreen() {
                                 </>
                             )}
 
-                            {item.status === 'ACCEPTED' && (
-                                <Text style={{ color: '#28a745', fontWeight: 'bold', paddingVertical: 10 }}>
-                                    Oferta Aceptada 🎉
-                                </Text>
+                            {isStep1Accepted && !isReadyForStep2 && !isStep2Accepted && (
+                                <Text style={{ color: '#007bff', fontStyle: 'italic', marginTop: 8 }}>Esperando interés de la empresa...</Text>
+                            )}
+
+                            {isStep1Accepted && isReadyForStep2 && !isStep2Accepted && (
+                                <TouchableOpacity
+                                    style={[styles.button, styles.buttonBlue]}
+                                    onPress={() => handleConfirmShare(matchId)}
+                                >
+                                    <Text style={styles.buttonText}>Autorizar intercambio de info</Text>
+                                </TouchableOpacity>
+                            )}
+
+                            {isStep1Accepted && isStep2Accepted && item.status !== 'INFO_SHARED' && (
+                                <Text style={{ color: '#007bff', fontStyle: 'italic', marginTop: 8 }}>Esperando facturación de la empresa...</Text>
                             )}
                         </>
                     )}
