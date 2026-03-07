@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, RefreshControl } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, RefreshControl, Clipboard, Linking } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
 import { API_URL } from '../api/config';
@@ -29,6 +29,8 @@ type MatchRow = {
     availability?: any;
     company_email?: string;
     driver_email?: string;
+    driver_phone?: string;
+    company_phone?: string;
 };
 
 const fmt = (v: any): string => {
@@ -254,8 +256,60 @@ export default function MatchesScreen() {
                     {matchId == null ? (
                         <Text style={{ color: '#dc3545' }}>Error: match_id faltante</Text>
                     ) : item.status === 'INFO_SHARED' ? (
-                        <View style={{ backgroundColor: '#e8f5e9', padding: 8, borderRadius: 5, width: '100%' }}>
-                            <Text style={{ color: '#2e7d32', fontWeight: 'bold' }}>✅ Contacto Compartido</Text>
+                        <View style={{ backgroundColor: '#e8f5e9', padding: 12, borderRadius: 10, width: '100%', borderWidth: 1, borderColor: '#c8e6c9' }}>
+                            <Text style={{ color: '#2e7d32', fontWeight: 'bold', fontSize: 16, marginBottom: 4 }}>✅ Contacto Compartido</Text>
+                            <Text style={{ color: '#444', marginBottom: 12 }}>¡Ya puedes contactar con la contraparte!</Text>
+
+                            {/* Contact Details Display */}
+                            {user?.type === 'empresa' ? (
+                                <>
+                                    <Text style={styles.contactEmail}>{item.driver_email}</Text>
+                                    {item.driver_phone ? <Text style={styles.contactPhone}>{item.driver_phone}</Text> : null}
+                                </>
+                            ) : (
+                                <>
+                                    <Text style={styles.contactEmail}>{item.company_email}</Text>
+                                    {item.company_phone ? <Text style={styles.contactPhone}>{item.company_phone}</Text> : null}
+                                </>
+                            )}
+
+                            {/* Action Buttons */}
+                            <View style={styles.contactActions}>
+                                <TouchableOpacity
+                                    style={[styles.actionBtn, styles.btnEmail]}
+                                    onPress={() => {
+                                        const email = user?.type === 'empresa' ? item.driver_email : item.company_email;
+                                        if (email) Linking.openURL(`mailto:${email}`);
+                                    }}
+                                >
+                                    <Text style={styles.actionBtnText}>Enviar email</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={[styles.actionBtn, styles.btnCopy]}
+                                    onPress={() => {
+                                        const email = user?.type === 'empresa' ? item.driver_email : item.company_email;
+                                        if (email) {
+                                            Clipboard.setString(email);
+                                            Alert.alert('Copiado', 'Email copiado al portapapeles');
+                                        }
+                                    }}
+                                >
+                                    <Text style={styles.actionBtnText}>Copiar</Text>
+                                </TouchableOpacity>
+
+                                {(user?.type === 'empresa' ? item.driver_phone : item.company_phone) ? (
+                                    <TouchableOpacity
+                                        style={[styles.actionBtn, styles.btnCall]}
+                                        onPress={() => {
+                                            const phone = user?.type === 'empresa' ? item.driver_phone : item.company_phone;
+                                            if (phone) Linking.openURL(`tel:${phone}`);
+                                        }
+                                        }>
+                                        <Text style={styles.actionBtnText}>Llamar</Text>
+                                    </TouchableOpacity>
+                                ) : null}
+                            </View>
                         </View>
                     ) : user?.type === 'empresa' ? (
                         <>
@@ -409,4 +463,14 @@ const styles = StyleSheet.create({
     empty: { alignItems: 'center', marginTop: 50, paddingHorizontal: 20 },
     emptyTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 10, textAlign: 'center', color: '#333' },
     emptyText: { fontSize: 16, color: '#666', textAlign: 'center', lineHeight: 22 },
+
+    // Contact Specific Styles
+    contactEmail: { fontSize: 18, fontWeight: 'bold', color: '#333', marginTop: 4, marginBottom: 4 },
+    contactPhone: { fontSize: 16, color: '#555', marginBottom: 8 },
+    contactActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 10 },
+    actionBtn: { paddingVertical: 10, paddingHorizontal: 15, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+    actionBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
+    btnEmail: { backgroundColor: '#007bff' },
+    btnCopy: { backgroundColor: '#6c757d' },
+    btnCall: { backgroundColor: '#28a745' },
 });
