@@ -15,6 +15,7 @@ export default function RegisterScreen() {
     const [contacto, setContacto] = useState('');
     const [password, setPassword] = useState('');
     // Driver extra
+    const [phone, setPhone] = useState('');
     const [licencia, setLicencia] = useState('B'); // Default B
     // Company extra
     const [legalName, setLegalName] = useState('');
@@ -36,7 +37,12 @@ export default function RegisterScreen() {
         };
 
         if (type === 'driver') {
+            if (!phone) {
+                Alert.alert('Error', 'Please enter your phone number');
+                return;
+            }
             payload.tipo_licencia = licencia;
+            payload.phone = phone;
         } else {
             // Company fields
             if (!legalName || !address || !city || !contactPerson) {
@@ -52,7 +58,11 @@ export default function RegisterScreen() {
 
         setLoading(true);
         try {
-            await register(payload);
+            const res = await register(payload);
+
+            if (!res.ok) {
+                throw new Error(res.error || 'Registration failed on server');
+            }
 
             // Auto-login or redirect? Let's redirect to Login for security/simplicity or Auto Login
             Alert.alert('Success', 'Account created! Logging in...');
@@ -107,6 +117,7 @@ export default function RegisterScreen() {
 
             {type === 'driver' ? (
                 <View style={styles.section}>
+                    <TextInput style={styles.input} placeholder="Phone Number" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
                     <Text style={styles.label}>License Type:</Text>
                     <View style={styles.row}>
                         {['A', 'B', 'C'].map(l => (

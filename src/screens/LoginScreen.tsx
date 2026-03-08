@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
+import { resendVerification } from '../api/client';
 
 export default function LoginScreen() {
     const navigation = useNavigation<any>();
@@ -26,6 +27,26 @@ export default function LoginScreen() {
             // Si remember es true, el AuthContext seteará pinGate y el RootNavigator nos llevará a PinScreen.
         } catch (error: any) {
             Alert.alert('Login Failed', error?.message || 'Invalid credentials');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleResend = async () => {
+        if (!email) {
+            Alert.alert('Error', 'Por favor ingresa tu correo para reenviar la confirmación');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const res = await resendVerification(userType, email.trim());
+            if (!res.ok) {
+                throw new Error(res.error || 'Error al reenviar verificación');
+            }
+            Alert.alert('Éxito', 'Te enviamos un nuevo correo de confirmación');
+        } catch (error: any) {
+            Alert.alert('Error', error.message || 'Error al reenviar confirmación');
         } finally {
             setLoading(false);
         }
@@ -86,9 +107,15 @@ export default function LoginScreen() {
                 {loading ? (
                     <ActivityIndicator size="large" color="#007BFF" style={{ marginTop: 20 }} />
                 ) : (
-                    <TouchableOpacity style={styles.button} onPress={handleLogin}>
-                        <Text style={styles.buttonText}>LOGIN</Text>
-                    </TouchableOpacity>
+                    <View>
+                        <TouchableOpacity style={styles.button} onPress={handleLogin}>
+                            <Text style={styles.buttonText}>LOGIN</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.resendButton} onPress={handleResend}>
+                            <Text style={styles.resendText}>Reenviar email de confirmación</Text>
+                        </TouchableOpacity>
+                    </View>
                 )}
 
                 <View style={styles.registerContainer}>
@@ -125,4 +152,6 @@ const styles = StyleSheet.create({
     registerContainer: { flexDirection: 'row', justifyContent: 'center', marginTop: 20 },
     text: { color: '#6c757d' },
     linkText: { color: '#007BFF', fontWeight: 'bold' },
+    resendButton: { alignItems: 'center', marginTop: 15 },
+    resendText: { color: '#007BFF', fontWeight: '500', fontSize: 14 },
 });
