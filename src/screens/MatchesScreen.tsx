@@ -5,7 +5,7 @@ import { AuthContext } from '../context/AuthContext';
 import { API_URL } from '../api/config';
 
 export default function MatchesScreen() {
-    const { user } = useContext(AuthContext);
+    const { userInfo: user } = useContext(AuthContext);
     const [matches, setMatches] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -13,7 +13,8 @@ export default function MatchesScreen() {
     const fetchMatches = async () => {
         try {
             const token = await AsyncStorage.getItem('userToken');
-            const resp = await fetch(`${API_URL}/matches`, {
+            const endpoint = user?.type === 'driver' ? 'matches/opportunities' : 'matches/candidates';
+            const resp = await fetch(`${API_URL}/${endpoint}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             const data = await resp.json();
@@ -287,7 +288,7 @@ export default function MatchesScreen() {
                         <>
                             <Text style={styles.emptyTitle}>Tu perfil está activo ✅</Text>
                             <Text style={styles.emptyText}>
-                                Por ahora no hay ofertas disponibles. Desliza para refrescar.
+                                Por ahora no hay oportunidades disponibles. Desliza para refrescar.
                             </Text>
                         </>
                     ) : (
