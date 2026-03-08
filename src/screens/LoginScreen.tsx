@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { resendVerification } from '../api/client';
@@ -13,6 +13,7 @@ export default function LoginScreen() {
     const [userType, setUserType] = useState<'driver' | 'empresa'>('driver');
     const [remember, setRemember] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
 
     const handleLogin = async () => {
         if (!email || !password) {
@@ -53,7 +54,10 @@ export default function LoginScreen() {
     };
 
     return (
-        <View style={styles.container}>
+        <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.container}
+        >
             <View style={styles.header}>
                 <Text style={styles.title}>DriverFlow</Text>
                 <Text style={styles.subtitle}>Welcome back!</Text>
@@ -84,14 +88,19 @@ export default function LoginScreen() {
                     autoCapitalize="none"
                     keyboardType="email-address"
                 />
-                <TextInput
-                    style={styles.input}
-                    placeholder="Password"
-                    placeholderTextColor="#aaa"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry
-                />
+                <View style={styles.passwordContainer}>
+                    <TextInput
+                        style={styles.passwordInput}
+                        placeholder="Password"
+                        placeholderTextColor="#aaa"
+                        value={password}
+                        onChangeText={setPassword}
+                        secureTextEntry={!showPassword}
+                    />
+                    <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeButton}>
+                        <Text style={styles.eyeText}>{showPassword ? '🙈' : '👁️'}</Text>
+                    </TouchableOpacity>
+                </View>
 
                 <View style={styles.optionsRow}>
                     <TouchableOpacity style={styles.checkboxContainer} onPress={() => setRemember(!remember)}>
@@ -125,7 +134,7 @@ export default function LoginScreen() {
                     </TouchableOpacity>
                 </View>
             </View>
-        </View>
+        </KeyboardAvoidingView>
     );
 }
 
@@ -147,6 +156,10 @@ const styles = StyleSheet.create({
     forgotText: { color: '#007BFF', fontWeight: '500', fontSize: 14 },
     form: { backgroundColor: '#fff', padding: 20, borderRadius: 15, shadowColor: '#000', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 5 },
     input: { backgroundColor: '#f1f3f5', borderRadius: 8, padding: 15, marginBottom: 15, fontSize: 16, color: '#333' },
+    passwordContainer: { flexDirection: 'row', backgroundColor: '#f1f3f5', borderRadius: 8, marginBottom: 15, alignItems: 'center' },
+    passwordInput: { flex: 1, padding: 15, fontSize: 16, color: '#333' },
+    eyeButton: { padding: 15 },
+    eyeText: { fontSize: 18 },
     button: { backgroundColor: '#007BFF', paddingVertical: 15, borderRadius: 8, alignItems: 'center', marginTop: 10, shadowColor: '#007BFF', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 5 },
     buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold', letterSpacing: 1 },
     registerContainer: { flexDirection: 'row', justifyContent: 'center', marginTop: 20 },
