@@ -5,14 +5,13 @@ import { AuthContext } from '../context/AuthContext';
 import { API_URL } from '../api/config';
 
 export default function MatchesScreen() {
-    const { userInfo: user } = useContext(AuthContext);
+    const { userInfo: user, token } = useContext(AuthContext);
     const [matches, setMatches] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
     const fetchMatches = async () => {
         try {
-            const token = await AsyncStorage.getItem('userToken');
             const endpoint = user?.type === 'driver' ? 'matches/opportunities' : 'matches/candidates';
             const resp = await fetch(`${API_URL}/${endpoint}`, {
                 headers: { Authorization: `Bearer ${token}` }
@@ -39,7 +38,6 @@ export default function MatchesScreen() {
 
     const handleStatusChange = async (matchId, newStatus) => {
         try {
-            const token = await AsyncStorage.getItem('userToken');
             const resp = await fetch(`${API_URL}/matches/${matchId}`, {
                 method: 'POST',
                 headers: {
@@ -75,7 +73,6 @@ export default function MatchesScreen() {
                     text: 'Autorizar',
                     onPress: async () => {
                         try {
-                            const token = await AsyncStorage.getItem('userToken');
                             const endpoint = user?.type === 'driver' ? 'driver/confirm-share' : 'company/confirm-share';
                             const resp = await fetch(`${API_URL}/matches/${matchId}/${endpoint}`, {
                                 method: 'POST',
