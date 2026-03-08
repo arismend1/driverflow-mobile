@@ -14,6 +14,7 @@ export default function RegisterScreen() {
     const [nombre, setNombre] = useState('');
     const [contacto, setContacto] = useState('');
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     // Driver extra
     const [phone, setPhone] = useState('');
     const [licencia, setLicencia] = useState('B'); // Default B
@@ -24,8 +25,13 @@ export default function RegisterScreen() {
     const [contactPerson, setContactPerson] = useState('');
 
     const handleRegister = async () => {
-        if (!nombre || !contacto || !password) {
+        if (!nombre || !contacto || !password || !confirmPassword) {
             Alert.alert('Error', 'Please fill all required fields');
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            Alert.alert('Error', 'Passwords do not match');
             return;
         }
 
@@ -112,6 +118,13 @@ export default function RegisterScreen() {
                 placeholder="Password"
                 value={password}
                 onChangeText={setPassword}
+                secureTextEntry
+            />
+            <TextInput
+                style={styles.input}
+                placeholder="Confirm Password"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
                 secureTextEntry
             />
 
