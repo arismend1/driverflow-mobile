@@ -204,6 +204,12 @@ export default function MatchesScreen() {
                         <>
                             {item.status === 'NEW' && !item.company_step1_accepted_at && (
                                 <>
+                                    {item.driver_step1_accepted_at && (
+                                        <View style={{ backgroundColor: '#fff3cd', borderColor: '#ffeeba', borderWidth: 1, padding: 10, borderRadius: 8, marginBottom: 10 }}>
+                                            <Text style={{ fontWeight: 'bold', fontSize: 16, color: '#856404' }}>Conductor interesado en tu empresa</Text>
+                                            <Text style={{ color: '#856404', marginTop: 4 }}>Este conductor ya aceptó el match. Si aceptas, avanzarán al siguiente paso.</Text>
+                                        </View>
+                                    )}
                                     <TouchableOpacity
                                         style={[styles.button, styles.buttonGreen]}
                                         onPress={() => handleStatusChange(matchId, 'ACCEPTED')}
@@ -252,6 +258,12 @@ export default function MatchesScreen() {
                         <>
                             {item.status === 'NEW' && !item.driver_step1_accepted_at && (
                                 <>
+                                    {item.company_step1_accepted_at && (
+                                        <View style={{ backgroundColor: '#fff3cd', borderColor: '#ffeeba', borderWidth: 1, padding: 10, borderRadius: 8, marginBottom: 10 }}>
+                                            <Text style={{ fontWeight: 'bold', fontSize: 16, color: '#856404' }}>Empresa interesada en ti</Text>
+                                            <Text style={{ color: '#856404', marginTop: 4 }}>Esta empresa ya aceptó tu perfil. Si aceptas, avanzarán al siguiente paso.</Text>
+                                        </View>
+                                    )}
                                     <TouchableOpacity
                                         style={[styles.button, styles.buttonGreen]}
                                         onPress={() => handleStatusChange(matchId, 'ACCEPTED')}
