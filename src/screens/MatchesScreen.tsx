@@ -38,23 +38,39 @@ export default function MatchesScreen() {
 
     const handleStatusChange = async (matchId, newStatus) => {
         try {
-            const resp = await fetch(`${API_URL}/matches/${matchId}`, {
+            let endpointSuffix = '';
+            if (newStatus === 'ACCEPTED') {
+                endpointSuffix = '/accept';
+            } else if (newStatus === 'DECLINED') {
+                Alert.alert('Error', 'La acción de rechazar aún no está soportada por el servidor.');
+                return;
+            } else {
+                Alert.alert('Error', 'Acción desconocida');
+                return;
+            }
+
+            const resp = await fetch(`${API_URL}/matches/${matchId}${endpointSuffix}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify({ status: newStatus })
+                }
             });
 
             if (resp.ok) {
                 fetchMatches();
             } else {
-                const err = await resp.json();
-                Alert.alert('Error', err.error || 'No se pudo actualizar el estado');
+                let errStr = 'Error desconocido';
+                try {
+                    const err = await resp.json();
+                    errStr = err.error || 'No se pudo actualizar el estado';
+                } catch (jsonErr) {
+                    errStr = `Error HTTP ${resp.status}`;
+                }
+                Alert.alert('Error del Servidor', errStr);
             }
         } catch (e) {
-            Alert.alert('Error', 'Fallo de red');
+            Alert.alert('Fallo de red', `Detalle: ${e.message}`);
         }
     };
 
