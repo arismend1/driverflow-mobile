@@ -202,7 +202,7 @@ export default function MatchesScreen() {
                         </View>
                     ) : user?.type === 'empresa' ? (
                         <>
-                            {!isStep1Accepted && (
+                            {item.status === 'NEW' && !item.company_step1_accepted_at && (
                                 <>
                                     <TouchableOpacity
                                         style={[styles.button, styles.buttonGreen]}
@@ -219,14 +219,18 @@ export default function MatchesScreen() {
                                 </>
                             )}
 
-                            {isStep1Accepted && !isReadyForStep2 && !isStep2Accepted && (
-                                <Text style={styles.waitingText}>Esperando interés del conductor...</Text>
+                            {item.company_step1_accepted_at && !item.driver_step1_accepted_at && (
+                                <View style={{ width: '100%', alignItems: 'center', marginBottom: 10 }}>
+                                    <Text style={{ fontWeight: 'bold', fontSize: 16, color: '#0056b3' }}>Esperando al otro usuario</Text>
+                                    <Text style={{ textAlign: 'center', color: '#666', marginTop: 4 }}>Ya aceptaste este match. Estamos esperando que la otra parte confirme.</Text>
+                                </View>
                             )}
 
-                            {isStep1Accepted && isReadyForStep2 && !isStep2Accepted && (
+                            {isReadyForStep2 && !isStep2Accepted && (
                                 <View style={{ width: '100%' }}>
                                     <View style={{ marginBottom: 8 }}>
-                                        <Text style={styles.consentPrompt}>¡El driver también aceptó!</Text>
+                                        <Text style={styles.consentPrompt}>Ambos aceptaron el match</Text>
+                                        <Text style={styles.consentSub}>Ahora pueden decidir si compartir información de contacto.</Text>
                                         <Text style={styles.consentSub}>
                                             {!item.driver_share_consent_at ? '⏳ Esperando que el driver autorice...' : '✅ El driver autorizó compartir info.'}
                                         </Text>
@@ -240,13 +244,13 @@ export default function MatchesScreen() {
                                 </View>
                             )}
 
-                            {isStep1Accepted && isStep2Accepted && item.status !== 'INFO_SHARED' && (
+                            {isStep2Accepted && item.status !== 'INFO_SHARED' && (
                                 <Text style={styles.waitingText}>Esperando autorización mutua final...</Text>
                             )}
                         </>
                     ) : (
                         <>
-                            {!isStep1Accepted && (
+                            {item.status === 'NEW' && !item.driver_step1_accepted_at && (
                                 <>
                                     <TouchableOpacity
                                         style={[styles.button, styles.buttonGreen]}
@@ -263,13 +267,19 @@ export default function MatchesScreen() {
                                 </>
                             )}
 
-                            {isStep1Accepted && !isReadyForStep2 && !isStep2Accepted && (
-                                <Text style={styles.waitingText}>Esperando interés de la empresa...</Text>
+                            {item.driver_step1_accepted_at && !item.company_step1_accepted_at && (
+                                <View style={{ width: '100%', alignItems: 'center', marginBottom: 10 }}>
+                                    <Text style={{ fontWeight: 'bold', fontSize: 16, color: '#0056b3' }}>Esperando al otro usuario</Text>
+                                    <Text style={{ textAlign: 'center', color: '#666', marginTop: 4 }}>Ya aceptaste este match. Estamos esperando que la otra parte confirme.</Text>
+                                </View>
                             )}
 
-                            {isStep1Accepted && isReadyForStep2 && !isStep2Accepted && (
+                            {isReadyForStep2 && !isStep2Accepted && (
                                 <View style={{ width: '100%' }}>
-                                    <Text style={[styles.consentPrompt, { marginBottom: 8 }]}>Legal: Autorizar intercambio de datos</Text>
+                                    <View style={{ marginBottom: 8 }}>
+                                        <Text style={styles.consentPrompt}>Ambos aceptaron el match</Text>
+                                        <Text style={styles.consentSub}>Ahora pueden decidir si compartir información de contacto.</Text>
+                                    </View>
                                     <TouchableOpacity
                                         style={[styles.button, styles.buttonBlue]}
                                         onPress={() => handleConfirmShare(matchId)}
@@ -279,7 +289,7 @@ export default function MatchesScreen() {
                                 </View>
                             )}
 
-                            {isStep1Accepted && isStep2Accepted && item.status !== 'INFO_SHARED' && (
+                            {isStep2Accepted && item.status !== 'INFO_SHARED' && (
                                 <Text style={styles.waitingText}>Esperando facturación de la empresa...</Text>
                             )}
                         </>
