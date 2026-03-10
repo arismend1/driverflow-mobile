@@ -99,7 +99,7 @@ export default function MatchesScreen() {
                                 fetchMatches();
                             } else {
                                 const err = await resp.json();
-                                Alert.alert('Error', err.error || 'No se pudo procesar el consentimiento');
+                                Alert.alert(err.error || 'Error', err.message || 'No se pudo procesar el consentimiento');
                             }
                         } catch (e) {
                             Alert.alert('Error', 'Fallo de red');
