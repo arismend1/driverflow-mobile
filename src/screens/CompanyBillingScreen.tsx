@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, ActivityIndicator, StyleSheet, Alert, TouchableOpacity, Modal, TextInput, Linking } from 'react-native';
-import { getBillingSummary, getBillingTickets, createCheckoutSession, createInvoiceCheckoutSession, BillingSummary } from '../api/client';
+import { getBillingSummary, getBillingTickets, getTickets, createCheckoutSession, createInvoiceCheckoutSession, BillingSummary } from '../api/client';
 
 import { useAuth } from '../context/AuthContext';
 
@@ -14,7 +14,7 @@ export const CompanyBillingScreen = () => {
     const [summary, setSummary] = useState<BillingSummary | null>(null);
     const [tickets, setTickets] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'pending' | 'paid' | 'all'>('pending');
+    const [activeTab, setActiveTab] = useState<'pending' | 'paid' | 'all' | 'tickets'>('pending');
 
     useEffect(() => {
         if (!token) {
@@ -31,8 +31,12 @@ export const CompanyBillingScreen = () => {
             // Fetch directly below
             setSummary(await getBillingSummary(token));
 
-            const statusFilter = activeTab === 'all' ? undefined : activeTab;
-            setTickets(await getBillingTickets(token, statusFilter));
+            if (activeTab === 'tickets') {
+                setTickets(await getTickets(token));
+            } else {
+                const statusFilter = activeTab === 'all' ? undefined : activeTab;
+                setTickets(await getBillingTickets(token, statusFilter));
+            }
 
         } catch (error: any) {
             Alert.alert('Error', error.message || 'Error loading billing data');
@@ -108,6 +112,22 @@ export const CompanyBillingScreen = () => {
     };
 
     const renderItem = ({ item }: { item: any }) => {
+        if (activeTab === 'tickets') {
+            return (
+                <View style={styles.card}>
+                    <View style={styles.cardHeader}>
+                        <Text style={styles.title}>Ticket #{item.id}</Text>
+                        <Text style={[styles.statusBadge, { backgroundColor: '#e2e3e5' }]}>
+                            {item.status ? item.status.toUpperCase() : 'N/A'}
+                        </Text>
+                    </View>
+                    <Text>Conductor: {item.driver_name || 'Desconocido'}</Text>
+                    <Text>Generado: {new Date(item.created_at).toLocaleDateString()}</Text>
+                    <Text style={styles.amount}>$150.00 <Text style={{ fontSize: 12, fontWeight: 'normal' }}>(A Facturar)</Text></Text>
+                </View>
+            );
+        }
+
         const amount = item.amount_cents || 0;
         const status = item.billing_status;
         const canPayByStatus = ['pending', 'failed', 'retrying', 'suspended'].includes(status);
@@ -159,7 +179,7 @@ export const CompanyBillingScreen = () => {
             {renderHeader()}
 
             <View style={styles.tabs}>
-                {['pending', 'paid', 'all'].map((t: any) => (
+                {['pending', 'paid', 'all', 'tickets'].map((t: any) => (
                     <TouchableOpacity
                         key={t}
                         style={[styles.tab, activeTab === t && styles.activeTab]}
