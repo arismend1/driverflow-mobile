@@ -361,25 +361,25 @@ export const createInvoiceCheckoutSession = async (token: string, invoiceId: num
 // Helper to map error codes to user-friendly messages
 export const mapErrorToMessage = (error?: string): string => {
     switch (error) {
-        case 'PASSWORDS_DO_NOT_MATCH': return 'Las contraseñas no coinciden.';
-        case 'USER_ALREADY_EXISTS': return 'Ese usuario ya existe.';
-        case 'USER_NOT_FOUND': return 'Usuario no encontrado.';
-        case 'INVALID_CREDENTIALS': return 'Credenciales inválidas (contraseña incorrecta).';
-        case 'TOKEN_INVALID_OR_EXPIRED': return 'El enlace ha expirado o no es válido.';
-        case 'MISSING_FIELDS': return 'Faltan datos obligatorios.';
-        case 'NON_JSON_RESPONSE': return 'Error del servidor (respuesta inválida).';
-        case 'NETWORK_ERROR': return 'No hay conexión. Intenta de nuevo.';
-        case 'CONTACT_REQUIRED': return 'El contacto es obligatorio.';
-        case 'PASSWORD_REQUIRED': return 'La contraseña es obligatoria.';
-        case 'EMAIL_NOT_VERIFIED': return 'Correo no verificado. Revisa tu bandeja de entrada.';
-        case 'EMAIL_REQUIRED_FOR_VERIFICATION': return 'Se requiere un email válido para la verificación.';
-        case 'ALREADY_VERIFIED': return 'Tu cuenta ya está verificada. Por favor inicia sesión.';
-        case 'NOT_FOUND': return 'Elemento no encontrado.';
-        case 'COMPANY_BLOCKED': return 'Tu empresa tiene restricciones operativas.';
-        case 'DRIVER_OFFLINE': return 'Debes estar conectado (ON) para aplicar.';
-        case 'NO_APPLICANT': return 'No hay chofer aplicado para confirmar.';
-        case 'NOT_PENDING': return 'Esta solicitud ya no está disponible.';
-        default: return error || 'Ocurrió un error inesperado.';
+        case 'PASSWORDS_DO_NOT_MATCH': return 'Passwords do not match.';
+        case 'USER_ALREADY_EXISTS': return 'That user already exists.';
+        case 'USER_NOT_FOUND': return 'User not found.';
+        case 'INVALID_CREDENTIALS': return 'Invalid credentials (incorrect password).';
+        case 'TOKEN_INVALID_OR_EXPIRED': return 'The link has expired or is invalid.';
+        case 'MISSING_FIELDS': return 'Missing required fields.';
+        case 'NON_JSON_RESPONSE': return 'Server error (invalid response).';
+        case 'NETWORK_ERROR': return 'No connection. Try again.';
+        case 'CONTACT_REQUIRED': return 'Contact is required.';
+        case 'PASSWORD_REQUIRED': return 'Password is required.';
+        case 'EMAIL_NOT_VERIFIED': return 'Email not verified. Check your inbox.';
+        case 'EMAIL_REQUIRED_FOR_VERIFICATION': return 'A valid email is required for verification.';
+        case 'ALREADY_VERIFIED': return 'Your account is already verified. Please log in.';
+        case 'NOT_FOUND': return 'Element not found.';
+        case 'COMPANY_BLOCKED': return 'Your company has operational restrictions.';
+        case 'DRIVER_OFFLINE': return 'You must be online (ON) to apply.';
+        case 'NO_APPLICANT': return 'No applied driver to confirm.';
+        case 'NOT_PENDING': return 'This request is no longer available.';
+        default: return error || 'An unexpected error occurred.';
     }
 };
 

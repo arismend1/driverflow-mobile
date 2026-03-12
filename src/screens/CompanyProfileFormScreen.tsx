@@ -63,7 +63,7 @@ const RadioYesNo = ({ label, value, onChange }: any) => {
                     style={[styles.radioButton, value === true && styles.radioSelected]}
                     onPress={() => onChange(true)}
                 >
-                    <Text style={[styles.radioText, value === true && styles.radioTextSelected]}>Sí</Text>
+                    <Text style={[styles.radioText, value === true && styles.radioTextSelected]}>Yes</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={[styles.radioButton, value === false && styles.radioSelected]}
@@ -98,7 +98,7 @@ export default function CompanyProfileFormScreen() {
     const [reqTruck, setReqTruck] = useState(false);
     const [offeredPayments, setOfferedPayments] = useState<string[]>([]);
     const [reqRelationships, setReqRelationships] = useState<string[]>([]);
-    const [availability, setAvailability] = useState('Inmediata');
+    const [availability, setAvailability] = useState('Immediate');
 
     useEffect(() => {
         loadReqs();
@@ -124,11 +124,11 @@ export default function CompanyProfileFormScreen() {
             setReqTruck(!!data.req_truck);
             setOfferedPayments(Array.isArray(data.offered_payment_methods) ? data.offered_payment_methods : (data.offered_payment_methods ? JSON.parse(data.offered_payment_methods) : []));
             setReqRelationships(Array.isArray(data.req_relationships) ? data.req_relationships : (data.req_relationships ? JSON.parse(data.req_relationships) : []));
-            setAvailability(data.availability || 'Inmediata');
+            setAvailability(data.availability || 'Immediate');
 
         } catch (e: any) {
             console.error(e);
-            Alert.alert('Error', 'Error al cargar perfil: ' + e.message);
+            Alert.alert('Error', 'Error loading profile: ' + e.message);
         } finally {
             setLoading(false);
         }
@@ -141,9 +141,9 @@ export default function CompanyProfileFormScreen() {
             let finalExp = 0;
             if (expYearsExact) {
                 finalExp = parseInt(expYearsExact);
-            } else if (expOption === '1–2 años') {
+            } else if (expOption === '1–2 years') {
                 finalExp = 1;
-            } else if (expOption === '2–5 años') {
+            } else if (expOption === '2–5 years') {
                 finalExp = 2;
             }
 
@@ -165,13 +165,13 @@ export default function CompanyProfileFormScreen() {
             const res = await request('/api/companies/requirements', 'PUT', apiPayload, token || undefined);
 
             if (res.ok) {
-                Alert.alert('Perfil Guardado', 'Perfil de empresa guardado ✅');
+                Alert.alert('Profile Saved', 'Company profile saved ✅');
                 navigation.goBack();
             } else {
                 Alert.alert('Error', mapErrorToMessage(res.error) + (res.raw ? `\n${res.raw}` : ''));
             }
         } catch (e: any) {
-            Alert.alert('Error', 'Error de conexión: ' + e.message);
+            Alert.alert('Error', 'Connection error: ' + e.message);
         } finally {
             setSaving(false);
         }
@@ -193,12 +193,12 @@ export default function CompanyProfileFormScreen() {
             style={{ flex: 1 }}
         >
             <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 60 }}>
-                <Text style={styles.header}>Requisitos de Vacante</Text>
+                <Text style={styles.header}>Job Requirements</Text>
 
                 {/* 1. Licencia (Checkbox - Implied by RadioYesNo or just Check) */}
                 {/* Specs: "Checkbox: CDL (obligatorio)" -> Suggests always checked or toggle */}
                 <View style={styles.row}>
-                    <Text style={styles.label}>1. Licencia Requerida (CDL)</Text>
+                    <Text style={styles.label}>1. CDL Required</Text>
                     <TouchableOpacity onPress={() => setReqCdl(!reqCdl)}>
                         <Text style={{ fontSize: 24 }}>{reqCdl ? '☑️' : '⬜'}</Text>
                     </TouchableOpacity>
@@ -206,7 +206,7 @@ export default function CompanyProfileFormScreen() {
 
                 {/* 2. Tipo de Licencia */}
                 <MultiSelect
-                    label="2. Tipo de Licencia"
+                    label="2. License Type"
                     options={['A', 'B', 'C']}
                     selected={reqLicenseTypes}
                     onToggle={(v: string) => toggleSelection(reqLicenseTypes, setReqLicenseTypes, v)}
@@ -214,7 +214,7 @@ export default function CompanyProfileFormScreen() {
 
                 {/* 3. Endorsements */}
                 <MultiSelect
-                    label="3. Endorsements Requeridos"
+                    label="3. Required Endorsements"
                     options={['T', 'N', 'H', 'X', 'P', 'S']}
                     selected={reqEndorsements}
                     onToggle={(v: string) => toggleSelection(reqEndorsements, setReqEndorsements, v)}
@@ -222,7 +222,7 @@ export default function CompanyProfileFormScreen() {
 
                 {/* 4. Operación */}
                 <MultiSelect
-                    label="4. Tipo de Operación"
+                    label="4. Operation Type"
                     options={['Local', 'Regional', 'OTR']}
                     selected={reqOpsTypes}
                     onToggle={(v: string) => toggleSelection(reqOpsTypes, setReqOpsTypes, v)}
@@ -230,9 +230,9 @@ export default function CompanyProfileFormScreen() {
 
                 {/* 5. Experiencia */}
                 <View style={styles.section}>
-                    <Text style={styles.label}>5. Experiencia Requerida</Text>
+                    <Text style={styles.label}>5. Required Experience</Text>
                     <View style={styles.optionContainer}>
-                        {['Practicante', '1–2 años', '2–5 años'].map(opt => (
+                        {['Trainee', '1–2 years', '2–5 years'].map(opt => (
                             <TouchableOpacity
                                 key={opt}
                                 style={[styles.optionButton, expOption === opt && styles.optionSelected]}
@@ -242,7 +242,7 @@ export default function CompanyProfileFormScreen() {
                             </TouchableOpacity>
                         ))}
                     </View>
-                    <Text style={[styles.label, { marginTop: 10, fontSize: 14 }]}>Opcional: Años Exactos</Text>
+                    <Text style={[styles.label, { marginTop: 10, fontSize: 14 }]}>Optional: Exact Years</Text>
                     <TextInput
                         style={styles.input}
                         keyboardType="numeric"
@@ -285,15 +285,15 @@ export default function CompanyProfileFormScreen() {
 
                 {/* 10. Disponibilidad */}
                 <SingleSelect
-                    label="10. Disponibilidad del Trabajo"
-                    options={['Inmediata', 'En 1–2 semanas', 'En 1 mes']}
+                    label="10. Job Availability"
+                    options={['Immediate', 'In 1–2 weeks', 'In 1 month']}
                     selected={availability}
                     onSelect={setAvailability}
                 />
 
                 {/* Save Button */}
                 <TouchableOpacity style={styles.saveButton} onPress={saveReqs} disabled={saving}>
-                    <Text style={styles.saveButtonText}>{saving ? 'Guardando...' : 'Guardar Perfil'}</Text>
+                    <Text style={styles.saveButtonText}>{saving ? 'Saving...' : 'Save Profile'}</Text>
                 </TouchableOpacity>
 
             </ScrollView>

@@ -120,20 +120,20 @@ export default function PinScreen() {
     };
 
     const getTitle = () => {
-        if (step === 'enter') return 'Ingresa tu PIN';
-        if (step === 'create') return 'Crea tu PIN de acceso';
-        return 'Confirma tu PIN';
+        if (step === 'enter') return 'Enter your PIN';
+        if (step === 'create') return 'Create your access PIN';
+        return 'Confirm your PIN';
     };
 
     const showSubtitle = step === 'enter' && userInfo?.name;
-    const showError = isError && (step === 'enter' ? 'PIN incorrecto. Intenta de nuevo.' : 'Los PIN no coinciden.');
+    const showError = isError && (step === 'enter' ? 'Incorrect PIN. Try again.' : 'PINs do not match.');
 
     return (
         <View style={styles.container}>
             <View style={styles.header}>
                 <Text style={styles.title}>{getTitle()}</Text>
 
-                {showSubtitle ? <Text style={styles.subtitle}>Hola, {userInfo!.name}</Text> : null}
+                {showSubtitle ? <Text style={styles.subtitle}>Hello, {userInfo!.name}</Text> : null}
 
                 {!!showError ? <Text style={styles.errorText}>{showError}</Text> : null}
 
@@ -151,7 +151,7 @@ export default function PinScreen() {
                 ))}
 
                 <TouchableOpacity style={styles.numKey} onPress={() => setPin('')}>
-                    <Text style={styles.actionText}>Limpiar</Text>
+                    <Text style={styles.actionText}>Clear</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.numKey} onPress={() => handleKeyPress('0')}>
@@ -171,7 +171,7 @@ export default function PinScreen() {
                     navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
                 }}
             >
-                <Text style={styles.switchAccountText}>Cambiar cuenta</Text>
+                <Text style={styles.switchAccountText}>Switch account</Text>
             </TouchableOpacity>
         </View>
     );

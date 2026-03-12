@@ -47,15 +47,14 @@ export const CompanyBillingScreen = () => {
 
     const payTicket = async (item: any) => {
         if (!token) {
-            Alert.alert('Error', 'Sesión no válida');
+            Alert.alert('Error', 'Invalid session');
             return;
         }
         try {
             setLoading(true);
             // console.log("[BILLING] invoiceId", item.id);
-            // Alerta informativa si es pago anticipado
             if (item.billing_status === 'pending') {
-                console.log("[BILLING] Iniciando pago anticipado para invoice:", item.id);
+                console.log("[BILLING] Starting prepay for invoice:", item.id);
             }
 
             const data = await createInvoiceCheckoutSession(token, item.id);
@@ -63,16 +62,15 @@ export const CompanyBillingScreen = () => {
             const url = data?.url || data?.checkout_url;
 
             if (!url) {
-                Alert.alert("Error", "No se encontró URL de pago");
+                Alert.alert("Error", "Payment URL not found");
                 return;
             }
 
             await Linking.openURL(url);
 
-            // Recargar datos tras un momento
             setTimeout(loadData, 3000);
         } catch (error: any) {
-            Alert.alert('Error', error.message || 'Error al iniciar pago');
+            Alert.alert('Error', error.message || 'Error starting payment');
         } finally {
             setLoading(false);
         }
@@ -84,10 +82,10 @@ export const CompanyBillingScreen = () => {
             if (supported) {
                 await Linking.openURL(url);
             } else {
-                Alert.alert('Error', 'No se puede abrir el enlace del recibo.');
+                Alert.alert('Error', 'Cannot open receipt link.');
             }
         } catch (error: any) {
-            Alert.alert('Error', 'No se pudo abrir el recibo');
+            Alert.alert('Error', 'Could not open receipt');
         }
     };
 
@@ -121,9 +119,9 @@ export const CompanyBillingScreen = () => {
                             {item.status ? item.status.toUpperCase() : 'N/A'}
                         </Text>
                     </View>
-                    <Text>Conductor: {item.driver_name || 'Desconocido'}</Text>
-                    <Text>Generado: {new Date(item.created_at).toLocaleDateString()}</Text>
-                    <Text style={styles.amount}>$150.00 <Text style={{ fontSize: 12, fontWeight: 'normal' }}>(A Facturar)</Text></Text>
+                    <Text>Driver: {item.driver_name || 'Unknown'}</Text>
+                    <Text>Generated: {new Date(item.created_at).toLocaleDateString()}</Text>
+                    <Text style={styles.amount}>$150.00 <Text style={{ fontSize: 12, fontWeight: 'normal' }}>(To Be Billed)</Text></Text>
                 </View>
             );
         }
@@ -142,13 +140,13 @@ export const CompanyBillingScreen = () => {
                         {status.toUpperCase()}
                     </Text>
                 </View>
-                <Text>Periodo: {item.request_id}</Text>
-                <Text>Generada: {new Date(item.created_at).toLocaleDateString()}</Text>
+                <Text>Period: {item.request_id}</Text>
+                <Text>Generated: {new Date(item.created_at).toLocaleDateString()}</Text>
                 <Text style={styles.amount}>{formatCurrency(item.amount_cents, item.currency)}</Text>
 
                 {amount <= 0 && (
                     <Text style={{ color: '#888', fontStyle: 'italic', marginTop: 4 }}>
-                        Sin cargos esta semana
+                        No charges this week
                     </Text>
                 )}
 
@@ -158,7 +156,7 @@ export const CompanyBillingScreen = () => {
                             style={[styles.btn, styles.btnPayOnline, isPrepay && { backgroundColor: '#007bff' }]}
                             onPress={() => payTicket(item)}
                         >
-                            <Text style={styles.btnText}>{isPrepay ? 'PAGAR ANTICIPADO' : 'PAGAR AHORA'}</Text>
+                            <Text style={styles.btnText}>{isPrepay ? 'PREPAY' : 'PAY NOW'}</Text>
                         </TouchableOpacity>
                     </View>
                 )}
@@ -166,7 +164,7 @@ export const CompanyBillingScreen = () => {
                 {status === 'paid' && item.receipt_url && (
                     <View style={styles.actionsRow}>
                         <TouchableOpacity style={[styles.btn, styles.btnPayOnline]} onPress={() => openReceipt(item.receipt_url)}>
-                            <Text style={styles.btnText}>VER RECIBO (STRIPE)</Text>
+                            <Text style={styles.btnText}>VIEW RECEIPT (STRIPE)</Text>
                         </TouchableOpacity>
                     </View>
                 )}

@@ -18,8 +18,8 @@ export default function ForgotPasswordScreen() {
         try {
             await recoverPassword(email);
             Alert.alert(
-                'Solicitud Enviada',
-                'Si el correo está registrado, recibirás instrucciones y una contraseña temporal en breve.',
+                'Request Sent',
+                'If the email is registered, you will receive instructions and a temporary password shortly.',
                 [{ text: 'OK', onPress: () => navigation.goBack() }]
             );
         } catch (error: any) {
@@ -32,14 +32,14 @@ export default function ForgotPasswordScreen() {
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.title}>Recuperar Contraseña</Text>
-                <Text style={styles.subtitle}>Ingresa tu correo para recibir una contraseña temporal.</Text>
+                <Text style={styles.title}>Recover Password</Text>
+                <Text style={styles.subtitle}>Enter your email to receive a temporary password.</Text>
             </View>
 
             <View style={styles.form}>
                 <TextInput
                     style={styles.input}
-                    placeholder="Tu Correo Electrónico"
+                    placeholder="Your Email Address"
                     placeholderTextColor="#aaa"
                     value={email}
                     onChangeText={setEmail}
@@ -51,12 +51,12 @@ export default function ForgotPasswordScreen() {
                     <ActivityIndicator size="large" color="#007BFF" style={{ marginTop: 20 }} />
                 ) : (
                     <TouchableOpacity style={styles.button} onPress={handleRecover}>
-                        <Text style={styles.buttonText}>ENVIAR</Text>
+                        <Text style={styles.buttonText}>SEND</Text>
                     </TouchableOpacity>
                 )}
 
                 <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-                    <Text style={styles.backText}>Volver al Login</Text>
+                    <Text style={styles.backText}>Back to Login</Text>
                 </TouchableOpacity>
             </View>
         </View>

@@ -27,18 +27,18 @@ export default function VerifyEmailScreen() {
         setLoading(false);
 
         if (res.ok) {
-            Alert.alert('¡Verificado!', 'Tu correo ha sido confirmado.', [
-                { text: 'Ir a Login', onPress: () => navigation.navigate('Login') }
+            Alert.alert('Verified!', 'Your email has been confirmed.', [
+                { text: 'Go to Login', onPress: () => navigation.navigate('Login') }
             ]);
         } else {
             const msg = mapErrorToMessage(res.error);
-            Alert.alert('Error de Verificación', msg);
+            Alert.alert('Verification Error', msg);
         }
     };
 
     const handleResend = async () => {
         if (!email || !type) {
-            Alert.alert('Error', 'No tenemos tu email o tipo de cuenta para reenviar.');
+            Alert.alert('Error', 'We do not have your email or account type to resend.');
             return;
         }
         setLoading(true);
@@ -46,7 +46,7 @@ export default function VerifyEmailScreen() {
         setLoading(false);
 
         if (res.ok) {
-            Alert.alert('Enviado', 'Si la cuenta existe, recibirás un nuevo correo.');
+            Alert.alert('Sent', 'If the account exists, you will receive a new email.');
         } else {
             Alert.alert('Error', mapErrorToMessage(res.error));
         }
@@ -54,20 +54,20 @@ export default function VerifyEmailScreen() {
 
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>Verifica tu Correo</Text>
+            <Text style={styles.title}>Verify your Email</Text>
             <Text style={styles.subtitle}>
-                Hemos enviado un enlace de confirmación a {email || 'tu correo'}.
+                We have sent a confirmation link to {email || 'your email'}.
             </Text>
 
             <TouchableOpacity style={styles.resendButton} onPress={handleResend} disabled={loading}>
-                <Text style={styles.resendText}>Reenviar Correo</Text>
+                <Text style={styles.resendText}>Resend Email</Text>
             </TouchableOpacity>
 
-            <Text style={styles.orText}>- O ingresa el token manual -</Text>
+            <Text style={styles.orText}>- Or enter token manually -</Text>
 
             <TextInput
                 style={styles.input}
-                placeholder="Pegar Token de Verificación"
+                placeholder="Paste Verification Token"
                 value={token}
                 onChangeText={setToken}
             />
@@ -76,12 +76,12 @@ export default function VerifyEmailScreen() {
                 <ActivityIndicator size="large" color="#007BFF" />
             ) : (
                 <TouchableOpacity style={styles.button} onPress={() => handleVerify(token)}>
-                    <Text style={styles.buttonText}>VERIFICAR AHORA</Text>
+                    <Text style={styles.buttonText}>VERIFY NOW</Text>
                 </TouchableOpacity>
             )}
 
             <TouchableOpacity style={styles.backButton} onPress={() => navigation.navigate('Login')}>
-                <Text style={styles.backText}>Volver a Login</Text>
+                <Text style={styles.backText}>Back to Login</Text>
             </TouchableOpacity>
         </View>
     );

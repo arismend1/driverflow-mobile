@@ -35,7 +35,7 @@ export const AvailableRequestsScreen = () => {
     const handleApply = async (id: number) => {
         const res = await applyToRequest(id, token || '');
         if (res.ok) {
-            Alert.alert('Aplicado', 'Has aplicado exitosamente. Espera confirmación.');
+            Alert.alert('Applied', 'You have successfully applied. Wait for confirmation.');
             loadParams(); // Refresh
         } else {
             Alert.alert('Error', mapErrorToMessage(res.error));
@@ -45,27 +45,27 @@ export const AvailableRequestsScreen = () => {
     const renderItem = ({ item }: { item: RequestItem }) => (
         <View style={styles.card}>
             <Text style={styles.title}>{item.company_name}</Text>
-            <Text>Ubicación: {item.ubicacion}</Text>
-            <Text>Tiempo: {item.tiempo_estimado} min</Text>
-            <Text style={{ marginTop: 5, fontWeight: 'bold' }}>Licencia: {item.licencia_req}</Text>
+            <Text>Location: {item.ubicacion}</Text>
+            <Text>Time: {item.tiempo_estimado} min</Text>
+            <Text style={{ marginTop: 5, fontWeight: 'bold' }}>License: {item.licencia_req}</Text>
             <View style={{ marginTop: 10 }}>
-                <Button title="Aceptar Solicitud" onPress={() => handleApply(item.id)} />
+                <Button title="Accept Request" onPress={() => handleApply(item.id)} />
             </View>
         </View>
     );
 
     return (
         <View style={styles.container}>
-            <Text style={styles.header}>Solicitudes Disponibles</Text>
+            <Text style={styles.header}>Available Requests</Text>
             {loading ? <ActivityIndicator /> : (
                 <FlatList
                     data={requests}
                     keyExtractor={i => i.id.toString()}
                     renderItem={renderItem}
-                    ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 20 }}>No hay solicitudes para tu perfil.</Text>}
+                    ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 20 }}>No requests available for your profile.</Text>}
                 />
             )}
-            <Button title="Actualizar" onPress={loadParams} color="gray" />
+            <Button title="Refresh" onPress={loadParams} color="gray" />
         </View>
     );
 };

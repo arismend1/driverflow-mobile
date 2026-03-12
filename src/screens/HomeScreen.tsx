@@ -61,25 +61,18 @@ export default function HomeScreen() {
         return (
             <ScrollView style={styles.container} contentContainerStyle={styles.content}>
                 <View style={styles.header}>
-                    <Text style={styles.greeting}>Cargando sesión…</Text>
-                    <Text style={styles.subtitle}>Espera un momento</Text>
+                    <Text style={styles.greeting}>Loading session…</Text>
+                    <Text style={styles.subtitle}>Please wait a moment</Text>
                 </View>
 
-                <View style={styles.networkBox}>
-                    <View style={styles.networkStatus}>
-                        <View style={[styles.dot, connected === null ? styles.dotGrey : connected ? styles.dotGreen : styles.dotRed]} />
-                        <Text style={styles.networkText}>
-                            Servidor: {connected === null ? 'Conectando…' : connected ? 'En línea' : 'Desconectado'}
-                        </Text>
-                    </View>
-                </View>
+
 
                 <Text style={{ color: '#6c757d', marginBottom: 16 }}>
-                    Si esto no avanza, tu sesión quedó incompleta. Cierra sesión e inicia de nuevo.
+                    If this is stuck, your session is incomplete. Log out and log in again.
                 </Text>
 
                 <TouchableOpacity style={styles.logoutButton} onPress={() => logout()}>
-                    <Text style={styles.logoutText}>Cerrar Sesión</Text>
+                    <Text style={styles.logoutText}>Log Out</Text>
                 </TouchableOpacity>
             </ScrollView>
         );
@@ -135,39 +128,29 @@ export default function HomeScreen() {
     return (
         <ScrollView style={styles.container} contentContainerStyle={styles.content}>
 
-            <View style={styles.header}>
-                <Text style={styles.greeting}>Hello, {userInfo.name || 'User'}</Text>
-                <Text style={styles.subtitle}>{isCompany ? 'Company' : 'Driver'} Dashboard</Text>
-            </View>
-
-            <View style={styles.networkBox}>
-                <View style={styles.networkStatus}>
-                    <View style={[styles.dot, connected === null ? styles.dotGrey : connected ? styles.dotGreen : styles.dotRed]} />
-                    <Text style={styles.networkText}>
-                        Server: {connected === null ? 'Connecting...' : connected ? 'Online' : 'Offline'}
+            <View style={[styles.header, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
+                <View>
+                    <Text style={styles.greeting}>Hello, {userInfo.name || 'User'}</Text>
+                    <Text style={styles.subtitle}>{isCompany ? 'Company' : 'Driver'} Dashboard</Text>
+                </View>
+                <View style={{ alignItems: 'center' }}>
+                    <Text style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>
+                        {isCompany ? 'Search' : 'Available'}
                     </Text>
+                    <TouchableOpacity
+                        style={{ backgroundColor: searchStatus === 'ON' ? '#4CAF50' : '#ccc', paddingVertical: 6, paddingHorizontal: 16, borderRadius: 16 }}
+                        onPress={() => toggleSearchStatus(searchStatus !== 'ON')}
+                    >
+                        <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 12 }}>
+                            {searchStatus === 'ON' ? 'ON' : 'OFF'}
+                        </Text>
+                    </TouchableOpacity>
                 </View>
             </View>
 
             <View style={styles.menuGrid}>
                 {isCompany ? (
                     <>
-                        <View style={[styles.card, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: searchStatus === 'ON' ? '#e8f5e9' : '#fff' }]}>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.cardIcon}>📡</Text>
-                                <Text style={styles.cardTitle}>Searching for Drivers</Text>
-                                <Text style={styles.cardDesc}>
-                                    {searchStatus === 'ON' ? 'The system is automatically looking for drivers.' : 'Idle. Turn on to look for profiles.'}
-                                </Text>
-                            </View>
-                            <Switch
-                                value={searchStatus === 'ON'}
-                                onValueChange={toggleSearchStatus}
-                                trackColor={{ false: '#767577', true: '#4CAF50' }}
-                                thumbColor={searchStatus === 'ON' ? '#ffffff' : '#f4f3f4'}
-                            />
-                        </View>
-
                         <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('Matches')}>
                             <Text style={styles.cardIcon}>🔍</Text>
                             <Text style={styles.cardTitle}>Matches Found</Text>
@@ -188,38 +171,10 @@ export default function HomeScreen() {
                     </>
                 ) : (
                     <>
-                        <View style={[styles.card, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: searchStatus === 'ON' ? '#e8f5e9' : '#fff' }]}>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.cardIcon}>📡</Text>
-                                <Text style={styles.cardTitle}>Searching for Jobs</Text>
-                                <Text style={styles.cardDesc}>
-                                    {searchStatus === 'ON' ? 'Active. System is looking for matches.' : 'Hired/Idle. Turn on to find work.'}
-                                </Text>
-                            </View>
-                            <Switch
-                                value={searchStatus === 'ON'}
-                                onValueChange={toggleSearchStatus}
-                                trackColor={{ false: '#767577', true: '#4CAF50' }}
-                                thumbColor={searchStatus === 'ON' ? '#ffffff' : '#f4f3f4'}
-                            />
-                        </View>
-
                         <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('Matches')}>
                             <Text style={styles.cardIcon}>✨</Text>
                             <Text style={styles.cardTitle}>My Matches</Text>
                             <Text style={styles.cardDesc}>View companies matching your profile</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('AvailableRequests')}>
-                            <Text style={styles.cardIcon}>🔍</Text>
-                            <Text style={styles.cardTitle}>Manual Job Search</Text>
-                            <Text style={styles.cardDesc}>Find open requests from companies</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('DriverTickets')}>
-                            <Text style={styles.cardIcon}>🎟️</Text>
-                            <Text style={styles.cardTitle}>Accepted Offers</Text>
-                            <Text style={styles.cardDesc}>Companies interested in your profile</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('DriverProfileForm')}>
@@ -229,17 +184,9 @@ export default function HomeScreen() {
                         </TouchableOpacity>
                     </>
                 )}
-
-                <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('Notifications')}>
-                    <Text style={styles.cardIcon}>🔔</Text>
-                    <Text style={styles.cardTitle}>Notifications</Text>
-                    <Text style={styles.cardDesc}>Alerts and recent notifications</Text>
-                </TouchableOpacity>
             </View>
 
-            <TouchableOpacity style={styles.logoutButton} onPress={() => logout()}>
-                <Text style={styles.logoutText}>Log Out</Text>
-            </TouchableOpacity>
+
         </ScrollView>
     );
 }

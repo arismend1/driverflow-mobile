@@ -35,7 +35,7 @@ export default function LoginScreen() {
 
     const handleResend = async () => {
         if (!email) {
-            Alert.alert('Error', 'Por favor ingresa tu correo para reenviar la confirmación');
+            Alert.alert('Error', 'Please enter your email to resend confirmation');
             return;
         }
 
@@ -43,11 +43,11 @@ export default function LoginScreen() {
         try {
             const res = await resendVerification(userType, email.trim());
             if (!res.ok) {
-                throw new Error(res.error || 'Error al reenviar verificación');
+                throw new Error(res.error || 'Failed to resend verification');
             }
-            Alert.alert('Éxito', 'Te enviamos un nuevo correo de confirmación');
+            Alert.alert('Success', 'We sent you a new confirmation email');
         } catch (error: any) {
-            Alert.alert('Error', error.message || 'Error al reenviar confirmación');
+            Alert.alert('Error', error.message || 'Failed to resend confirmation');
         } finally {
             setLoading(false);
         }
@@ -122,7 +122,7 @@ export default function LoginScreen() {
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.resendButton} onPress={handleResend}>
-                            <Text style={styles.resendText}>Reenviar email de confirmación</Text>
+                            <Text style={styles.resendText}>Resend confirmation email</Text>
                         </TouchableOpacity>
                     </View>
                 )}

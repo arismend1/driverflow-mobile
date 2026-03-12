@@ -26,19 +26,19 @@ export const DiagnosticScreen = () => {
 
     const copyToClipboard = () => {
         const report = `
-=== DIAGNOSTICO DRIVERFLOW ===
-Fecha: ${new Date().toISOString()}
+=== DRIVERFLOW DIAGNOSTIC ===
+Date: ${new Date().toISOString()}
 BaseURL: ${DiagnosticsState.baseUrl}
-Estado API: ${health}
+API Status: ${health}
 
-Último Request ID: ${DiagnosticsState.lastRequestId}
+Last Request ID: ${DiagnosticsState.lastRequestId}
 
-Último Error:
-${DiagnosticsState.lastError ? JSON.stringify(DiagnosticsState.lastError, null, 2) : 'Ninguno'}
+Last Error:
+${DiagnosticsState.lastError ? JSON.stringify(DiagnosticsState.lastError, null, 2) : 'None'}
 ==============================
         `;
         Clipboard.setString(report);
-        Alert.alert('Copiado', 'Diagnóstico copiado al portapapeles.');
+        Alert.alert('Copied', 'Diagnostic copied to clipboard.');
     };
 
     const pingEndpoint = async (ep: string) => {
@@ -56,10 +56,10 @@ ${DiagnosticsState.lastError ? JSON.stringify(DiagnosticsState.lastError, null, 
 
     return (
         <ScrollView style={styles.container}>
-            <Text style={styles.header}>Diagnóstico de Sistema</Text>
+            <Text style={styles.header}>System Diagnostic</Text>
 
             <View style={styles.card}>
-                <Text style={styles.label}>Estado API</Text>
+                <Text style={styles.label}>API Status</Text>
                 <Text style={[styles.value, { color: health?.includes('ONLINE') ? 'green' : 'red' }]}>{health || '...'}</Text>
                 <Button title="Refresh Health" onPress={refreshHealth} disabled={loading} />
 
@@ -70,27 +70,27 @@ ${DiagnosticsState.lastError ? JSON.stringify(DiagnosticsState.lastError, null, 
             </View>
 
             <View style={styles.card}>
-                <Text style={styles.label}>Configuración</Text>
+                <Text style={styles.label}>Configuration</Text>
                 <Text style={styles.mono}>URL: {DiagnosticsState.baseUrl}</Text>
             </View>
 
             <View style={styles.card}>
-                <Text style={styles.label}>Última Actividad</Text>
+                <Text style={styles.label}>Last Activity</Text>
                 <Text style={styles.labelSmall}>Request-ID (Trace):</Text>
                 <Text style={[styles.mono, { fontWeight: 'bold' }]}>{DiagnosticsState.lastRequestId}</Text>
             </View>
 
             <View style={styles.card}>
-                <Text style={styles.label}>Último Error Registrado</Text>
+                <Text style={styles.label}>Last Logged Error</Text>
                 {DiagnosticsState.lastError ? (
                     <Text style={styles.errorText}>{JSON.stringify(DiagnosticsState.lastError, null, 2)}</Text>
                 ) : (
-                    <Text style={{ color: 'gray', fontStyle: 'italic' }}>Sin errores recientes.</Text>
+                    <Text style={{ color: 'gray', fontStyle: 'italic' }}>No recent errors.</Text>
                 )}
             </View>
 
             <View style={{ marginTop: 20 }}>
-                <Button title="Copiar Reporte" onPress={copyToClipboard} color="#666" />
+                <Button title="Copy Report" onPress={copyToClipboard} color="#666" />
             </View>
         </ScrollView>
     );

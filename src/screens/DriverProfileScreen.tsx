@@ -101,13 +101,13 @@ export default function DriverProfileScreen() {
             });
 
             if (res.ok) {
-                Alert.alert('Éxito', 'Perfil actualizado correctamente.');
+                Alert.alert('Success', 'Profile updated successfully.');
                 // Optional: Go back or stay
             } else {
-                Alert.alert('Error', 'No se pudo guardar el perfil.');
+                Alert.alert('Error', 'Could not save profile.');
             }
         } catch (e) {
-            Alert.alert('Error', 'Error de conexión.');
+            Alert.alert('Error', 'Connection error.');
         } finally {
             setSaving(false);
         }
@@ -125,25 +125,25 @@ export default function DriverProfileScreen() {
 
     return (
         <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
-            <Text style={styles.header}>Perfil Profesional</Text>
+            <Text style={styles.header}>Professional Profile</Text>
 
             {/* UX Requirement: Active Status Feedback */}
             {user && (
                 <View style={styles.statusBanner}>
-                    <Text style={styles.statusTitle}>✅ Tu perfil está activo</Text>
-                    <Text style={styles.statusSubtitle}>Buscamos empresas compatibles con tus requisitos.</Text>
+                    <Text style={styles.statusTitle}>✅ Your profile is active</Text>
+                    <Text style={styles.statusSubtitle}>We are looking for companies that match your requirements.</Text>
                 </View>
             )}
 
             <View style={styles.row}>
-                <Text style={styles.label}>1. ¿Tienes Licencia CDL?</Text>
+                <Text style={styles.label}>1. Do you have a CDL?</Text>
                 <Switch value={hasCdl} onValueChange={setHasCdl} />
             </View>
 
             {hasCdl && (
                 <>
                     <MultiSelect
-                        label="2. Tipo de Licencia"
+                        label="2. License Type"
                         options={['A', 'B', 'C']}
                         selected={licenseTypes}
                         onToggle={(v: string) => toggleSelection(licenseTypes, setLicenseTypes, v)}
@@ -159,14 +159,14 @@ export default function DriverProfileScreen() {
             )}
 
             <MultiSelect
-                label="4. Tipo de Operación Buscada"
+                label="4. Desired Operation Type"
                 options={['Local', 'Regional', 'OTR']}
                 selected={opsTypes}
                 onToggle={(v: string) => toggleSelection(opsTypes, setOpsTypes, v)}
             />
 
             <View style={styles.section}>
-                <Text style={styles.label}>5. Experiencia (Años)</Text>
+                <Text style={styles.label}>5. Experience (Years)</Text>
                 <TextInput
                     style={styles.input}
                     value={expYears}
@@ -177,33 +177,33 @@ export default function DriverProfileScreen() {
             </View>
 
             <MultiSelect
-                label="6. Preferencia de Trabajo"
+                label="6. Job Preference"
                 options={['One Trip', 'One Load', 'Full Time']}
                 selected={preferences}
                 onToggle={(v: string) => toggleSelection(preferences, setPreferences, v)}
             />
 
             <View style={styles.row}>
-                <Text style={styles.label}>7. ¿Tienes Camión Propio?</Text>
+                <Text style={styles.label}>7. Do you have a Truck?</Text>
                 <Switch value={hasTruck} onValueChange={setHasTruck} />
             </View>
 
             <MultiSelect
-                label="8. Forma de Pago Aceptada"
+                label="8. Accepted Payment Method"
                 options={['Mile', 'Trip', 'Load', 'Hour', 'Salary']}
                 selected={paymentMethods}
                 onToggle={(v: string) => toggleSelection(paymentMethods, setPaymentMethods, v)}
             />
 
             <MultiSelect
-                label="9. Relación Laboral"
+                label="9. Work Relationship"
                 options={['Company Driver', 'Owner Operator', 'Team', 'Solo']}
                 selected={relationships}
                 onToggle={(v: string) => toggleSelection(relationships, setRelationships, v)}
             />
 
             <TouchableOpacity style={styles.saveButton} onPress={saveProfile} disabled={saving}>
-                <Text style={styles.saveButtonText}>{saving ? 'Guardando...' : 'Guardar Perfil'}</Text>
+                <Text style={styles.saveButtonText}>{saving ? 'Saving...' : 'Save Profile'}</Text>
             </TouchableOpacity>
 
         </ScrollView>

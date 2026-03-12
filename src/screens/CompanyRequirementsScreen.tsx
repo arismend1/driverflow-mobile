@@ -102,12 +102,12 @@ export default function CompanyRequirementsScreen() {
             });
 
             if (res.ok) {
-                Alert.alert('Éxito', 'Requisitos actualizados.');
+                Alert.alert('Success', 'Requirements updated.');
             } else {
-                Alert.alert('Error', 'No se pudo guardar.');
+                Alert.alert('Error', 'Could not save.');
             }
         } catch (e) {
-            Alert.alert('Error', 'Error de conexión.');
+            Alert.alert('Error', 'Connection error.');
         } finally {
             setSaving(false);
         }
@@ -125,25 +125,25 @@ export default function CompanyRequirementsScreen() {
 
     return (
         <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
-            <Text style={styles.header}>Requisitos de Contratación</Text>
-            <Text style={{ marginBottom: 20, color: '#666' }}>Define qué buscas en un conductor.</Text>
+            <Text style={styles.header}>Hiring Requirements</Text>
+            <Text style={{ marginBottom: 20, color: '#666' }}>Define what you are looking for in a driver.</Text>
 
             <View style={styles.row}>
-                <Text style={styles.label}>1. ¿Requiere Licencia CDL?</Text>
+                <Text style={styles.label}>1. CDL Required?</Text>
                 <Switch value={reqCdl} onValueChange={setReqCdl} />
             </View>
 
             {reqCdl && (
                 <>
                     <MultiSelect
-                        label="2. Tipos de Licencia Aceptados"
+                        label="2. Accepted License Types"
                         options={['A', 'B', 'C']}
                         selected={reqLicenseTypes}
                         onToggle={(v: string) => toggleSelection(reqLicenseTypes, setReqLicenseTypes, v)}
                     />
 
                     <MultiSelect
-                        label="3. Endorsements Requeridos"
+                        label="3. Required Endorsements"
                         options={['T', 'N', 'H', 'X', 'P', 'S']}
                         selected={reqEndorsements}
                         onToggle={(v: string) => toggleSelection(reqEndorsements, setReqEndorsements, v)}
@@ -152,14 +152,14 @@ export default function CompanyRequirementsScreen() {
             )}
 
             <MultiSelect
-                label="4. Tipo de Operación"
+                label="4. Operation Type"
                 options={['Local', 'Regional', 'OTR']}
                 selected={reqOpsTypes}
                 onToggle={(v: string) => toggleSelection(reqOpsTypes, setReqOpsTypes, v)}
             />
 
             <View style={styles.section}>
-                <Text style={styles.label}>5. Años Mínimos de Experiencia</Text>
+                <Text style={styles.label}>5. Minimum Years of Experience</Text>
                 <TextInput
                     style={styles.input}
                     value={expYears}
@@ -211,7 +211,7 @@ export default function CompanyRequirementsScreen() {
             </View>
 
             <TouchableOpacity style={styles.saveButton} onPress={saveReqs} disabled={saving}>
-                <Text style={styles.saveButtonText}>{saving ? 'Guardando...' : 'Guardar Requisitos'}</Text>
+                <Text style={styles.saveButtonText}>{saving ? 'Saving...' : 'Save Requirements'}</Text>
             </TouchableOpacity>
 
         </ScrollView>

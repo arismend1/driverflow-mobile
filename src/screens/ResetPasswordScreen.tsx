@@ -20,20 +20,20 @@ export default function ResetPasswordScreen() {
 
     const handleReset = async () => {
         if (!token) {
-            Alert.alert('Link Inválido', 'El enlace de recuperación es inválido o no contiene un token.');
+            Alert.alert('Invalid Link', 'The recovery link is invalid or missing a token.');
             return;
         }
         if (!newPassword || !confirmPassword) {
-            Alert.alert('Error', 'Todos los campos son requeridos.');
+            Alert.alert('Error', 'All fields are required.');
             return;
         }
         if (newPassword.length < 8) {
-            Alert.alert('Seguridad', 'La contraseña debe tener al menos 8 caracteres.');
+            Alert.alert('Security', 'Password must be at least 8 characters long.');
             return;
         }
 
         if (newPassword !== confirmPassword) {
-            Alert.alert('Error', 'Las contraseñas no coinciden.');
+            Alert.alert('Error', 'Passwords do not match.');
             return;
         }
 
@@ -45,7 +45,7 @@ export default function ResetPasswordScreen() {
         });
 
         if (res.ok) {
-            Alert.alert('Éxito', 'Contraseña actualizada. Inicia sesión.', [
+            Alert.alert('Success', 'Password updated. Please log in.', [
                 { text: 'OK', onPress: () => navigation.navigate('Login') }
             ]);
         } else {
@@ -58,7 +58,7 @@ export default function ResetPasswordScreen() {
     return (
         <View style={styles.container}>
             <Text style={styles.title}>Reset Password</Text>
-            <Text style={styles.subtitle}>Ingresa tu nueva contraseña</Text>
+            <Text style={styles.subtitle}>Enter your new password</Text>
 
             <View style={styles.form}>
                 <TextInput
@@ -70,14 +70,14 @@ export default function ResetPasswordScreen() {
                 />
                 <TextInput
                     style={styles.input}
-                    placeholder="Nueva Contraseña"
+                    placeholder="New Password"
                     value={newPassword}
                     onChangeText={setNewPassword}
                     secureTextEntry
                 />
                 <TextInput
                     style={styles.input}
-                    placeholder="Confirmar Contraseña"
+                    placeholder="Confirm Password"
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
                     secureTextEntry
@@ -87,12 +87,12 @@ export default function ResetPasswordScreen() {
                     <ActivityIndicator size="large" color="#007BFF" />
                 ) : (
                     <TouchableOpacity style={styles.button} onPress={handleReset}>
-                        <Text style={styles.buttonText}>ESTABLECER CONTRASEÑA</Text>
+                        <Text style={styles.buttonText}>SET PASSWORD</Text>
                     </TouchableOpacity>
                 )}
 
                 <TouchableOpacity style={styles.backButton} onPress={() => navigation.navigate('Login')}>
-                    <Text style={styles.backText}>Cancelar</Text>
+                    <Text style={styles.backText}>Cancel</Text>
                 </TouchableOpacity>
             </View>
         </View>

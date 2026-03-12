@@ -1,0 +1,170 @@
+Initialized native services in: C:\Users\dj23\.gradle\native
+Initialized jansi services in: C:\Users\dj23\.gradle\native
+Found daemon DaemonInfo{pid=7600, address=[9da4e61a-acee-4ef0-b1f3-4bd63a53f561 port:49301, addresses:[/127.0.0.1]], state=Idle, lastBusy=1772470883296, context=DefaultDaemonContext[uid=c7aebc81-9665-4770-afa3-66f26247f039,javaHome=C:\Users\dj23\.antigravity\extensions\redhat.java-1.53.0-win32-x64\jre\21.0.10-win32-x86_64,javaVersion=21,javaVendor=Eclipse Adoptium,daemonRegistryDir=C:\Users\dj23\.gradle\daemon,pid=7600,idleTimeout=10800000,priority=NORMAL,applyInstrumentationAgent=true,nativeServicesMode=ENABLED,daemonOpts=-XX:MaxMetaspaceSize=512m,-Xmx2048m,-Dfile.encoding=UTF-8,-Duser.country=DO,-Duser.language=es,-Duser.variant]} however its context does not match the desired criteria.
+JVM is incompatible.
+Wanted: DaemonRequestContext{jvmCriteria=C:\Program Files\Eclipse Adoptium\jdk-17.0.17.10-hotspot (no JDK specified, using current Java home), daemonOpts=[-XX:MaxMetaspaceSize=512m, -Xmx2048m, -Dfile.encoding=windows-1252, -Duser.country=DO, -Duser.language=es, -Duser.variant], applyInstrumentationAgent=true, nativeServicesMode=ENABLED, priority=NORMAL}
+Actual: DefaultDaemonContext[uid=c7aebc81-9665-4770-afa3-66f26247f039,javaHome=C:\Users\dj23\.antigravity\extensions\redhat.java-1.53.0-win32-x64\jre\21.0.10-win32-x86_64,javaVersion=21,javaVendor=Eclipse Adoptium,daemonRegistryDir=C:\Users\dj23\.gradle\daemon,pid=7600,idleTimeout=10800000,priority=NORMAL,applyInstrumentationAgent=true,nativeServicesMode=ENABLED,daemonOpts=-XX:MaxMetaspaceSize=512m,-Xmx2048m,-Dfile.encoding=UTF-8,-Duser.country=DO,-Duser.language=es,-Duser.variant]
+
+  Looking for a different daemon...
+Removing 0 daemon stop events from registry
+Previous Daemon (6440) stopped at Mon Mar 02 11:50:06 EST 2026 stop command received
+Previous Daemon (15512) stopped at Mon Mar 02 11:50:06 EST 2026 stop command received
+Previous Daemon (9552) stopped at Mon Mar 02 11:03:43 EST 2026 other compatible daemons were started and after being idle for 0 minutes and not recently used
+Previous Daemon (292) stopped at Mon Mar 02 11:03:10 EST 2026 by user or operating system
+Previous Daemon (29532) stopped at Mon Mar 02 11:08:18 EST 2026 by user or operating system
+Previous Daemon (24564) stopped at Mon Mar 02 11:08:42 EST 2026 by user or operating system
+Previous Daemon (23148) stopped at Mon Mar 02 11:09:57 EST 2026 by user or operating system
+Previous Daemon (20648) stopped at Mon Mar 02 11:10:27 EST 2026 by user or operating system
+Previous Daemon (5136) stopped at Mon Mar 02 11:20:19 EST 2026 by user or operating system
+Previous Daemon (23940) stopped at Mon Mar 02 11:38:38 EST 2026 by user or operating system
+Previous Daemon (14152) stopped at Mon Mar 02 11:39:34 EST 2026 by user or operating system
+Previous Daemon (30408) stopped at Mon Mar 02 11:50:06 EST 2026 by user or operating system
+Previous Daemon (19116) stopped at Mon Mar 02 11:50:06 EST 2026 by user or operating system
+Starting a Gradle Daemon, 1 busy and 1 incompatible and 13 stopped Daemons could not be reused, use --status for details
+Starting process 'Gradle build daemon'. Working directory: C:\Users\dj23\.gradle\daemon\9.0.0 Command: C:\Program Files\Eclipse Adoptium\jdk-17.0.17.10-hotspot\bin\java.exe --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.invoke=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.prefs/java.util.prefs=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.prefs/java.util.prefs=ALL-UNNAMED --add-opens=java.base/java.nio.charset=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED --add-opens=java.xml/javax.xml.namespace=ALL-UNNAMED -XX:MaxMetaspaceSize=512m -Xmx2048m -Dfile.encoding=windows-1252 -Duser.country=DO -Duser.language=es -Duser.variant -cp C:\Users\dj23\.gradle\wrapper\dists\gradle-9.0.0-bin\d6wjpkvcgsg3oed0qlfss3wgl\gradle-9.0.0\lib\gradle-daemon-main-9.0.0.jar -javaagent:C:\Users\dj23\.gradle\wrapper\dists\gradle-9.0.0-bin\d6wjpkvcgsg3oed0qlfss3wgl\gradle-9.0.0\lib\agents\gradle-instrumentation-agent-9.0.0.jar org.gradle.launcher.daemon.bootstrap.GradleDaemon 9.0.0
+Successfully started process 'Gradle build daemon'
+An attempt to start the daemon took 2.715 secs.
+The client will now receive all logging from the daemon (pid: 5792). The daemon log file: C:\Users\dj23\.gradle\daemon\9.0.0\daemon-5792.out.log
+Starting build in new daemon [memory: 2 GiB]
+Using 8 worker leases.
+Received JVM installation metadata from 'C:\Program Files\Eclipse Adoptium\jdk-17.0.17.10-hotspot': {JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-17.0.17.10-hotspot, JAVA_VERSION=17.0.17, JAVA_VENDOR=Eclipse Adoptium, RUNTIME_NAME=OpenJDK Runtime Environment, RUNTIME_VERSION=17.0.17+10, VM_NAME=OpenJDK 64-Bit Server VM, VM_VERSION=17.0.17+10, VM_VENDOR=Eclipse Adoptium, OS_ARCH=amd64}
+Watching the file system is configured to be enabled if available
+Now considering [C:\Users\dj23\Desktop\DriverFlow\mobile\android] as hierarchies to watch
+File system watching is active
+Starting Build
+Now considering [C:\Users\dj23\Desktop\DriverFlow\mobile\node_modules\@react-native\gradle-plugin, C:\Users\dj23\Desktop\DriverFlow\mobile\android] as hierarchies to watch
+Resolved plugin [id: 'org.gradle.toolchains.foojay-resolver-convention', version: '0.5.0']
+
+> Configure project :gradle-plugin
+Evaluating project ':gradle-plugin' using build file 'C:\Users\dj23\Desktop\DriverFlow\mobile\node_modules\@react-native\gradle-plugin\build.gradle.kts'.
+Resolved plugin [id: 'org.jetbrains.kotlin.jvm', version: '2.1.20', apply: false]
+Resolved plugin [id: 'com.ncorti.ktfmt.gradle', version: '0.22.0']
+
+> Configure project :gradle-plugin:react-native-gradle-plugin
+Evaluating project ':gradle-plugin:react-native-gradle-plugin' using build file 'C:\Users\dj23\Desktop\DriverFlow\mobile\node_modules\@react-native\gradle-plugin\react-native-gradle-plugin\build.gradle.kts'.
+Resolved plugin [id: 'org.jetbrains.kotlin.jvm', version: '2.1.20']
+Resolved plugin [id: 'com.ncorti.ktfmt.gradle', version: '0.22.0']
+Resolved plugin [id: 'java-gradle-plugin']
+Build 04d94f7b-b260-4bad-84f5-14178fe5c18d is started
+Using Kotlin Gradle Plugin gradle85 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+
+> Configure project :gradle-plugin:settings-plugin
+Evaluating project ':gradle-plugin:settings-plugin' using build file 'C:\Users\dj23\Desktop\DriverFlow\mobile\node_modules\@react-native\gradle-plugin\settings-plugin\build.gradle.kts'.
+Resolved plugin [id: 'org.jetbrains.kotlin.jvm', version: '2.1.20']
+Resolved plugin [id: 'com.ncorti.ktfmt.gradle', version: '0.22.0']
+Resolved plugin [id: 'java-gradle-plugin']
+Using Kotlin Gradle Plugin gradle85 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+
+> Configure project :gradle-plugin:shared
+Evaluating project ':gradle-plugin:shared' using build file 'C:\Users\dj23\Desktop\DriverFlow\mobile\node_modules\@react-native\gradle-plugin\shared\build.gradle.kts'.
+Resolved plugin [id: 'org.jetbrains.kotlin.jvm', version: '2.1.20']
+Resolved plugin [id: 'com.ncorti.ktfmt.gradle', version: '0.22.0']
+Using Kotlin Gradle Plugin gradle85 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+
+> Configure project :gradle-plugin:shared-testutil
+Evaluating project ':gradle-plugin:shared-testutil' using build file 'C:\Users\dj23\Desktop\DriverFlow\mobile\node_modules\@react-native\gradle-plugin\shared-testutil\build.gradle.kts'.
+Resolved plugin [id: 'org.jetbrains.kotlin.jvm', version: '2.1.20']
+Resolved plugin [id: 'com.ncorti.ktfmt.gradle', version: '0.22.0']
+Using Kotlin Gradle Plugin gradle85 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Resolved plugin [id: 'com.facebook.react.settings']
+Resolve mutations for :gradle-plugin:settings-plugin:checkKotlinGradlePluginConfigurationErrors (Thread[Execution worker Thread 3,5,main]) started.
+:gradle-plugin:settings-plugin:checkKotlinGradlePluginConfigurationErrors (Thread[included builds,5,main]) started.
+
+> Task :gradle-plugin:settings-plugin:checkKotlinGradlePluginConfigurationErrors SKIPPED
+Skipping task ':gradle-plugin:settings-plugin:checkKotlinGradlePluginConfigurationErrors' as task onlyIf 'errorDiagnostics are present' is false.
+Resolve mutations for :gradle-plugin:shared:checkKotlinGradlePluginConfigurationErrors (Thread[included builds,5,main]) started.
+:gradle-plugin:shared:checkKotlinGradlePluginConfigurationErrors (Thread[included builds,5,main]) started.
+
+> Task :gradle-plugin:shared:checkKotlinGradlePluginConfigurationErrors SKIPPED
+Skipping task ':gradle-plugin:shared:checkKotlinGradlePluginConfigurationErrors' as task onlyIf 'errorDiagnostics are present' is false.
+Resolve mutations for :gradle-plugin:shared:compileKotlin (Thread[included builds,5,main]) started.
+:gradle-plugin:shared:compileKotlin (Thread[included builds,5,main]) started.
+
+> Task :gradle-plugin:shared:compileKotlin UP-TO-DATE
+Caching disabled for task ':gradle-plugin:shared:compileKotlin' because:
+  Build cache is disabled
+Skipping task ':gradle-plugin:shared:compileKotlin' as it is up-to-date.
+Resolve mutations for :gradle-plugin:shared:compileJava (Thread[included builds,5,main]) started.
+:gradle-plugin:shared:compileJava (Thread[included builds,5,main]) started.
+
+> Task :gradle-plugin:shared:compileJava NO-SOURCE
+Skipping task ':gradle-plugin:shared:compileJava' as it has no source files and no previous output files.
+Resolve mutations for :gradle-plugin:shared:processResources (Thread[included builds,5,main]) started.
+:gradle-plugin:shared:processResources (Thread[included builds,5,main]) started.
+
+> Task :gradle-plugin:shared:processResources NO-SOURCE
+Skipping task ':gradle-plugin:shared:processResources' as it has no source files and no previous output files.
+Resolve mutations for :gradle-plugin:shared:classes (Thread[Execution worker Thread 3,5,main]) started.
+:gradle-plugin:shared:classes (Thread[Execution worker Thread 3,5,main]) started.
+
+> Task :gradle-plugin:shared:classes UP-TO-DATE
+Skipping task ':gradle-plugin:shared:classes' as it has no actions.
+Resolve mutations for :gradle-plugin:shared:jar (Thread[Execution worker Thread 5,5,main]) started.
+:gradle-plugin:shared:jar (Thread[Execution worker Thread 3,5,main]) started.
+
+> Task :gradle-plugin:shared:jar
+Caching disabled for task ':gradle-plugin:shared:jar' because:
+  Build cache is disabled
+  Not worth caching
+Task ':gradle-plugin:shared:jar' is not up-to-date because:
+  Value of input property 'rootSpec$1.filteringCharset' has changed for task ':gradle-plugin:shared:jar'
+  Value of input property 'rootSpec$2$1.filteringCharset' has changed for task ':gradle-plugin:shared:jar'
+  Value of input property 'rootSpec$2.filteringCharset' has changed for task ':gradle-plugin:shared:jar'
+file or directory 'C:\Users\dj23\Desktop\DriverFlow\mobile\node_modules\@react-native\gradle-plugin\shared\build\classes\java\main', not found
+file or directory 'C:\Users\dj23\Desktop\DriverFlow\mobile\node_modules\@react-native\gradle-plugin\shared\build\resources\main', not found
+work action resolve shared.jar (project :gradle-plugin:shared) (Thread[Execution worker Thread 3,5,main]) started.
+Resolve mutations for :gradle-plugin:settings-plugin:compileKotlin (Thread[Execution worker Thread 3,5,main]) started.
+:gradle-plugin:settings-plugin:compileKotlin (Thread[Execution worker Thread 3,5,main]) started.
+
+> Task :gradle-plugin:settings-plugin:compileKotlin UP-TO-DATE
+Caching disabled for task ':gradle-plugin:settings-plugin:compileKotlin' because:
+  Build cache is disabled
+Skipping task ':gradle-plugin:settings-plugin:compileKotlin' as it is up-to-date.
+Resolve mutations for :gradle-plugin:settings-plugin:compileJava (Thread[Execution worker Thread 3,5,main]) started.
+:gradle-plugin:settings-plugin:compileJava (Thread[Execution worker Thread 3,5,main]) started.
+
+> Task :gradle-plugin:settings-plugin:compileJava NO-SOURCE
+Skipping task ':gradle-plugin:settings-plugin:compileJava' as it has no source files and no previous output files.
+Resolve mutations for :gradle-plugin:settings-plugin:pluginDescriptors (Thread[Execution worker Thread 3,5,main]) started.
+:gradle-plugin:settings-plugin:pluginDescriptors (Thread[Execution worker Thread 3,5,main]) started.
+
+> Task :gradle-plugin:settings-plugin:pluginDescriptors UP-TO-DATE
+Caching disabled for task ':gradle-plugin:settings-plugin:pluginDescriptors' because:
+  Build cache is disabled
+  Not worth caching
+Skipping task ':gradle-plugin:settings-plugin:pluginDescriptors' as it is up-to-date.
+Resolve mutations for :gradle-plugin:settings-plugin:processResources (Thread[Execution worker Thread 3,5,main]) started.
+:gradle-plugin:settings-plugin:processResources (Thread[Execution worker Thread 3,5,main]) started.
+
+> Task :gradle-plugin:settings-plugin:processResources FAILED
+Caching disabled for task ':gradle-plugin:settings-plugin:processResources' because:
+  Build cache is disabled
+  Not worth caching
+Task ':gradle-plugin:settings-plugin:processResources' is not up-to-date because:
+  Value of input property 'rootSpec$1.filteringCharset' has changed for task ':gradle-plugin:settings-plugin:processResources'
+  Value of input property 'rootSpec$2.filteringCharset' has changed for task ':gradle-plugin:settings-plugin:processResources'
+Build 04d94f7b-b260-4bad-84f5-14178fe5c18d is closed
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':gradle-plugin:settings-plugin:processResources'.
+> Failed to clean up stale outputs
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --debug option to get more log output.
+> Run with --scan to generate a Build Scan (Powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 16s
+5 actionable tasks: 2 executed, 3 up-to-date
+Watched directory hierarchies: [C:\Users\dj23\Desktop\DriverFlow\mobile\node_modules\@react-native\gradle-plugin]
