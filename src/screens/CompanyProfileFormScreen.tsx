@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TextInput, TouchableOpacity, Alert, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, ScrollView, TextInput, TouchableOpacity, Alert, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { request, mapErrorToMessage } from '../api/client';
+import { launchImageLibrary } from 'react-native-image-picker';
 import { useNavigation } from '@react-navigation/native';
 
 
@@ -79,7 +80,7 @@ const RadioYesNo = ({ label, value, onChange }: any) => {
 // --- MAIN SCREEN ---
 
 export default function CompanyProfileFormScreen() {
-    const { token } = useAuth();
+    const { token, suppressPinLock, resumePinLock } = useAuth();
     const navigation = useNavigation();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -99,6 +100,13 @@ export default function CompanyProfileFormScreen() {
     const [offeredPayments, setOfferedPayments] = useState<string[]>([]);
     const [reqRelationships, setReqRelationships] = useState<string[]>([]);
     const [availability, setAvailability] = useState('Immediate');
+    const [payPerMileMin, setPayPerMileMin] = useState('');
+    const [payPerMileMax, setPayPerMileMax] = useState('');
+    const [companyLogo, setCompanyLogo] = useState<string | null>(null);
+    const [companyBio, setCompanyBio] = useState('');
+    const [requiresTravelInterview, setRequiresTravelInterview] = useState(false);
+    const [homeTime, setHomeTime] = useState('Flexible');
+    const [offeredFreightTypes, setOfferedFreightTypes] = useState('');
 
     useEffect(() => {
         loadReqs();
@@ -125,6 +133,13 @@ export default function CompanyProfileFormScreen() {
             setOfferedPayments(Array.isArray(data.offered_payment_methods) ? data.offered_payment_methods : (data.offered_payment_methods ? JSON.parse(data.offered_payment_methods) : []));
             setReqRelationships(Array.isArray(data.req_relationships) ? data.req_relationships : (data.req_relationships ? JSON.parse(data.req_relationships) : []));
             setAvailability(data.availability || 'Immediate');
+            setPayPerMileMin(data.pay_per_mile_min ? String(data.pay_per_mile_min) : '');
+            setPayPerMileMax(data.pay_per_mile_max ? String(data.pay_per_mile_max) : '');
+            setCompanyLogo(data.company_logo || null);
+            setCompanyBio(data.company_bio || '');
+            setRequiresTravelInterview(!!data.requires_travel_interview);
+            setHomeTime(data.home_time || 'Flexible');
+            setOfferedFreightTypes(data.offered_freight_types || '');
 
         } catch (e: any) {
             console.error(e);
@@ -157,7 +172,14 @@ export default function CompanyProfileFormScreen() {
                 offered_payment_methods: offeredPayments,
                 req_relationships: reqRelationships,
                 availability: availability,
-                req_experience_years: finalExp
+                req_experience_years: finalExp,
+                pay_per_mile_min: payPerMileMin ? parseFloat(payPerMileMin) : null,
+                pay_per_mile_max: payPerMileMax ? parseFloat(payPerMileMax) : null,
+                company_logo: companyLogo,
+                company_bio: companyBio,
+                requires_travel_interview: requiresTravelInterview,
+                home_time: homeTime,
+                offered_freight_types: offeredFreightTypes
             };
 
             // console.log("[COMPANY_PROFILE] payload", JSON.stringify(apiPayload));
@@ -202,6 +224,101 @@ export default function CompanyProfileFormScreen() {
                     <TouchableOpacity onPress={() => setReqCdl(!reqCdl)}>
                         <Text style={{ fontSize: 24 }}>{reqCdl ? '☑️' : '⬜'}</Text>
                     </TouchableOpacity>
+                </View>
+
+                {/* --- PUBLIC PROFILE SECTION --- */}
+                <View style={[styles.section, { backgroundColor: '#f0f4f8', padding: 15, borderRadius: 10 }]}>
+                    <Text style={[styles.header, { fontSize: 20, marginBottom: 10 }]}>Public Profile (Driver View)</Text>
+                    <Text style={{ fontSize: 13, color: '#666', marginBottom: 15 }}>These fields will be shown to drivers to attract their interest.</Text>
+
+                    {/* Logo Picker */}
+                    <Text style={styles.label}>Company Logo</Text>
+                    <TouchableOpacity
+                        style={styles.logoPicker}
+                        onPress={async () => {
+                            suppressPinLock();
+                            const result = await launchImageLibrary({
+                                mediaType: 'photo',
+                                includeBase64: true,
+                                maxWidth: 500,
+                                maxHeight: 500,
+                                quality: 0.7,
+                            });
+                            resumePinLock();
+                            if (result.assets && result.assets[0].base64) {
+                                setCompanyLogo(`data:image/jpeg;base64,${result.assets[0].base64}`);
+                            }
+                        }}
+                    >
+                        {companyLogo ? (
+                            <Image source={{ uri: companyLogo }} style={styles.logoImage} />
+                        ) : (
+                            <Text style={styles.logoPlaceholder}>Tap to upload logo</Text>
+                        )}
+                    </TouchableOpacity>
+
+                    {/* Bio */}
+                    <Text style={[styles.label, { marginTop: 15 }]}>Short Description / Motto</Text>
+                    <TextInput
+                        style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+                        multiline
+                        placeholder="e.g. We treat our drivers like family. High safety standards."
+                        value={companyBio}
+                        onChangeText={setCompanyBio}
+                    />
+
+                    {/* Pay range */}
+                    <Text style={[styles.label, { marginTop: 15 }]}>💰 Pay Range per Mile (USD)</Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                        <View style={{ width: '48%' }}>
+                            <Text style={{ fontSize: 12, color: '#666' }}>Min</Text>
+                            <TextInput
+                                style={styles.input}
+                                keyboardType="numeric"
+                                placeholder="0.65"
+                                value={payPerMileMin}
+                                onChangeText={setPayPerMileMin}
+                            />
+                        </View>
+                        <View style={{ width: '48%' }}>
+                            <Text style={{ fontSize: 12, color: '#666' }}>Max</Text>
+                            <TextInput
+                                style={styles.input}
+                                keyboardType="numeric"
+                                placeholder="0.85"
+                                value={payPerMileMax}
+                                onChangeText={setPayPerMileMax}
+                            />
+                        </View>
+                    </View>
+
+                    {/* Freight Type */}
+                    <Text style={[styles.label, { marginTop: 15 }]}>📦 Offered Freight Types</Text>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="e.g. Refrigerated, Dry Van, Hazmat"
+                        value={offeredFreightTypes}
+                        onChangeText={setOfferedFreightTypes}
+                    />
+
+                    {/* Home Time */}
+                    <View style={{ marginTop: 15 }}>
+                        <SingleSelect
+                            label="🏠 Home Time Offered"
+                            options={['Weekly', 'Bi-weekly', 'Monthly', 'Flexible']}
+                            selected={homeTime}
+                            onSelect={setHomeTime}
+                        />
+                    </View>
+
+                    {/* Travel for interview */}
+                    <View style={{ marginTop: 20 }}>
+                        <RadioYesNo
+                            label="Requires in-person interview (requires travel for driver)?"
+                            value={requiresTravelInterview}
+                            onChange={setRequiresTravelInterview}
+                        />
+                    </View>
                 </View>
 
                 {/* 2. Tipo de Licencia */}
@@ -297,7 +414,7 @@ export default function CompanyProfileFormScreen() {
                 </TouchableOpacity>
 
             </ScrollView>
-        </KeyboardAvoidingView>
+        </KeyboardAvoidingView >
     );
 }
 
@@ -334,5 +451,29 @@ const styles = StyleSheet.create({
         backgroundColor: '#000', paddingVertical: 18, borderRadius: 8, alignItems: 'center', marginTop: 10, marginBottom: 40,
         shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 5, elevation: 6
     },
-    saveButtonText: { color: '#fff', fontSize: 18, fontWeight: 'bold' }
+    saveButtonText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+
+    logoPicker: {
+        width: 120,
+        height: 120,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#cbd5e0',
+        borderStyle: 'dashed',
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#fff',
+        overflow: 'hidden'
+    },
+    logoImage: {
+        width: '100%',
+        height: '100%',
+        resizeMode: 'cover'
+    },
+    logoPlaceholder: {
+        textAlign: 'center',
+        padding: 10,
+        color: '#718096',
+        fontSize: 12
+    }
 });

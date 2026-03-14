@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TextInput, TouchableOpacity, Alert, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, Image } from 'react-native';
+import { View, Text, ScrollView, TextInput, TouchableOpacity, Alert, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, Image, PermissionsAndroid } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import { getDriverProfile, updateDriverProfile, mapErrorToMessage } from '../api/client';
-import { launchImageLibrary } from 'react-native-image-picker';
+import { launchImageLibrary, launchCamera, ImagePickerResponse } from 'react-native-image-picker';
 
 // --- REUSABLE COMPONENTS ---
 function MultiSelect({ label, options, selected = [], onToggle }: any) {
@@ -48,7 +48,7 @@ function RadioYesNo({ label, value, onChange }: any) {
 }
 
 export default function DriverProfileFormScreen() {
-    const { token, userInfo } = useAuth();
+    const { token, userInfo, suppressPinLock, resumePinLock } = useAuth();
     const navigation = useNavigation();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -72,6 +72,7 @@ export default function DriverProfileFormScreen() {
     const [state, setState] = useState('');
     const [preferredRegion, setPreferredRegion] = useState('');
     const [willingToRelocate, setWillingToRelocate] = useState(false);
+    const [willingTravelInterview, setWillingTravelInterview] = useState(false);
 
     // Experience
     const [weeklyMiles, setWeeklyMiles] = useState('');
@@ -124,6 +125,7 @@ export default function DriverProfileFormScreen() {
                     setState(data.state || '');
                     setPreferredRegion(data.preferred_region || '');
                     setWillingToRelocate(!!data.willing_to_relocate);
+                    setWillingTravelInterview(!!data.willing_travel_interview);
                     setWeeklyMiles(data.weekly_miles ? String(data.weekly_miles) : '');
                     setLongestOtr(data.longest_otr || '');
                     setTrailerExperience(data.trailer_experience || []);
@@ -185,14 +187,24 @@ export default function DriverProfileFormScreen() {
                 preferred_freight: preferredFreight || null,
                 preferred_region: preferredRegion || null,
                 willing_to_relocate: willingToRelocate,
+                willing_travel_interview: willingTravelInterview,
                 driver_bio: driverBio || null,
             };
 
             // Only include photos if consent is given
             if (photoConsent) {
-                if (profilePhoto) payload.profile_photo_base64 = profilePhoto;
-                if (licenseFront) payload.license_front_base64 = licenseFront;
-                if (licenseBack) payload.license_back_base64 = licenseBack;
+                if (profilePhoto) {
+                    payload.profile_photo_base64 = profilePhoto;
+                    console.log(`[SAVE_PROFILE] profile_photo length: ${profilePhoto.length} chars`);
+                }
+                if (licenseFront) {
+                    payload.license_front_base64 = licenseFront;
+                    console.log(`[SAVE_PROFILE] license_front length: ${licenseFront.length} chars`);
+                }
+                if (licenseBack) {
+                    payload.license_back_base64 = licenseBack;
+                    console.log(`[SAVE_PROFILE] license_back length: ${licenseBack.length} chars`);
+                }
                 payload.photo_consent_at = photoConsentAt || new Date().toISOString();
             }
 
@@ -231,45 +243,107 @@ export default function DriverProfileFormScreen() {
         }
     };
 
-    const pickImage = (setter: (base64: string) => void) => {
-        console.log("[PHOTO_PICKER] Button pressed");
-        try {
-            console.log("[PHOTO_PICKER] About to open image picker (launchImageLibrary)...");
-            if (typeof launchImageLibrary !== 'function') {
-                console.error("[PHOTO_PICKER] FATAL: launchImageLibrary is not a function. Check imports and native linking.");
-                Alert.alert('Error', 'Image picker not initialized correctly.');
-                return;
-            }
+    const isSafeImage = (uri: any) => {
+        if (typeof uri !== 'string') return false;
+        return uri.startsWith('data:image') || uri.startsWith('file://') || uri.startsWith('http');
+    };
 
-            launchImageLibrary(
+    const requestCameraPermission = async () => {
+        if (Platform.OS !== 'android') return true;
+        try {
+            const granted = await PermissionsAndroid.request(
+                PermissionsAndroid.PERMISSIONS.CAMERA,
                 {
-                    mediaType: 'photo',
-                    quality: 0.5,
-                    includeBase64: true,
-                    maxWidth: 800,
-                    maxHeight: 800
-                },
-                (response) => {
-                    console.log("[PHOTO_PICKER] Response received", { didCancel: response.didCancel, errorCode: response.errorCode });
-                    if (response.didCancel) return;
-                    if (response.errorCode) {
-                        console.error("[PHOTO_PICKER] Error Code:", response.errorCode, response.errorMessage);
-                        Alert.alert('Error', response.errorMessage || 'Could not load image');
-                        return;
-                    }
-                    const asset = response.assets?.[0];
-                    if (asset?.base64) {
-                        console.log("[PHOTO_PICKER] Image selected successfully");
-                        setter(`data:${asset.type || 'image/jpeg'};base64,${asset.base64}`);
-                    } else {
-                        console.warn("[PHOTO_PICKER] No base64 found in asset");
-                    }
+                    title: "Camera Permission",
+                    message: "DriverFlow needs access to your camera to take profile and CDL photos.",
+                    buttonNeutral: "Ask Me Later",
+                    buttonNegative: "Cancel",
+                    buttonPositive: "OK"
                 }
             );
-        } catch (err: any) {
-            console.error("[PHOTO_PICKER] CRASH in pickImage handler:", err);
-            Alert.alert('Fatal Error', 'Image picker crashed: ' + err.message);
+            return granted === PermissionsAndroid.RESULTS.GRANTED;
+        } catch (err) {
+            console.warn("[CAMERA_PERMISSION] Error:", err);
+            return false;
         }
+    };
+
+    const handleImageResponse = (response: ImagePickerResponse, setter: (base64: string) => void, source: string) => {
+        console.log(`[PHOTO_PICKER] ${source} Response:`, { didCancel: response.didCancel, errorCode: response.errorCode });
+
+        // Always resume PIN lock when callback returns
+        resumePinLock();
+
+        if (response.didCancel) return;
+
+        if (response.errorCode) {
+            console.error(`[PHOTO_PICKER] ${source} Error:`, response.errorCode, response.errorMessage);
+            Alert.alert('Error', response.errorMessage || `Could not acquire image from ${source}`);
+            return;
+        }
+
+        const asset = response.assets?.[0];
+        if (asset?.base64) {
+            const uri = `data:${asset.type || 'image/jpeg'};base64,${asset.base64}`;
+            console.log(`[PHOTO_PICKER] ${source} Success. URI Length:`, uri.length, "Prefix:", uri.substring(0, 30));
+            setter(uri);
+        } else {
+            console.warn(`[PHOTO_PICKER] ${source} -> No base64 found in asset`);
+            Alert.alert('Error', 'Image data missing. Please try again.');
+        }
+    };
+
+    const pickImage = (setter: (base64: string) => void) => {
+        Alert.alert(
+            "Select Photo Source",
+            "How would you like to provide the photo?",
+            [
+                {
+                    text: "📸 Take Photo",
+                    onPress: async () => {
+                        console.log("[PHOTO_PICKER] Source selected: CAMERA");
+                        const hasPermission = await requestCameraPermission();
+                        if (!hasPermission) {
+                            Alert.alert("Permission Denied", "Camera permission is required to take photos.");
+                            return;
+                        }
+                        suppressPinLock();
+                        launchCamera(
+                            {
+                                mediaType: 'photo',
+                                quality: 0.3,
+                                includeBase64: true,
+                                maxWidth: 600,
+                                maxHeight: 600,
+                                saveToPhotos: false
+                            },
+                            (res) => handleImageResponse(res, setter, 'CAMERA')
+                        );
+                    }
+                },
+                {
+                    text: "🖼️ Choose from Gallery",
+                    onPress: () => {
+                        console.log("[PHOTO_PICKER] Source selected: GALLERY");
+                        suppressPinLock();
+                        launchImageLibrary(
+                            {
+                                mediaType: 'photo',
+                                quality: 0.3,
+                                includeBase64: true,
+                                maxWidth: 600,
+                                maxHeight: 600
+                            },
+                            (res) => handleImageResponse(res, setter, 'GALLERY')
+                        );
+                    }
+                },
+                {
+                    text: "Cancel",
+                    style: "cancel"
+                }
+            ]
+        );
     };
 
     if (loading) return <ActivityIndicator style={{ flex: 1 }} size="large" />;
@@ -359,8 +433,8 @@ export default function DriverProfileFormScreen() {
                 {/* Profile Photo */}
                 <View style={styles.section}>
                     <Text style={styles.label}>11. Profile Photo</Text>
-                    {profilePhoto ? (
-                        <Image source={{ uri: profilePhoto }} style={styles.photoPreview} />
+                    {isSafeImage(profilePhoto) ? (
+                        <Image source={{ uri: profilePhoto! }} style={styles.photoPreview} />
                     ) : (
                         <View style={styles.photoPlaceholder}>
                             <Text style={{ color: '#999', fontSize: 14 }}>No photo uploaded</Text>
@@ -392,8 +466,8 @@ export default function DriverProfileFormScreen() {
                     {photoConsent && (
                         <View style={{ marginTop: 12 }}>
                             <Text style={styles.sublabel}>License Front</Text>
-                            {licenseFront ? (
-                                <Image source={{ uri: licenseFront }} style={styles.licensePreview} />
+                            {isSafeImage(licenseFront) ? (
+                                <Image source={{ uri: licenseFront! }} style={styles.licensePreview} />
                             ) : (
                                 <View style={styles.licensePlaceholder}>
                                     <Text style={{ color: '#999' }}>No front photo</Text>
@@ -404,8 +478,8 @@ export default function DriverProfileFormScreen() {
                             </TouchableOpacity>
 
                             <Text style={[styles.sublabel, { marginTop: 15 }]}>License Back</Text>
-                            {licenseBack ? (
-                                <Image source={{ uri: licenseBack }} style={styles.licensePreview} />
+                            {isSafeImage(licenseBack) ? (
+                                <Image source={{ uri: licenseBack! }} style={styles.licensePreview} />
                             ) : (
                                 <View style={styles.licensePlaceholder}>
                                     <Text style={{ color: '#999' }}>No back photo</Text>
@@ -449,6 +523,13 @@ export default function DriverProfileFormScreen() {
 
                 {/* 16. Willing to Relocate */}
                 <RadioYesNo label="16. Willing to Relocate?" value={willingToRelocate} onChange={setWillingToRelocate} />
+
+                {/* 16b. Travel for Interview */}
+                <RadioYesNo
+                    label="16b. Are you willing to travel to another state for an in-person interview?"
+                    value={willingTravelInterview}
+                    onChange={setWillingTravelInterview}
+                />
 
                 {/* ========== SECTION: EXPERIENCE ========== */}
                 <View style={styles.divider} />

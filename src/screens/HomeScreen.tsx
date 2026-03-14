@@ -148,6 +148,29 @@ export default function HomeScreen() {
                 </View>
             </View>
 
+            {/* Hired Banner for Drivers */}
+            {!isCompany && searchStatus === 'OFF' && (
+                <View style={{ backgroundColor: '#d4edda', borderColor: '#c3e6cb', borderWidth: 1, padding: 15, borderRadius: 10, marginBottom: 16 }}>
+                    <Text style={{ fontWeight: 'bold', fontSize: 16, color: '#155724', marginBottom: 4 }}>🎉 You are currently hired!</Text>
+                    <Text style={{ color: '#155724', fontSize: 14 }}>Your profile is not receiving new matches.</Text>
+                    <TouchableOpacity
+                        style={{ backgroundColor: '#28a745', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, marginTop: 12, alignItems: 'center' }}
+                        onPress={() => {
+                            Alert.alert(
+                                'Return to Job Search',
+                                'This will make your profile visible to companies again and you will start receiving new matches.',
+                                [
+                                    { text: 'Cancel', style: 'cancel' },
+                                    { text: 'Yes, Resume Search', onPress: () => toggleSearchStatus(true) }
+                                ]
+                            );
+                        }}
+                    >
+                        <Text style={{ color: '#fff', fontWeight: 'bold' }}>Return to Job Search</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
+
             <View style={styles.menuGrid}>
                 {isCompany ? (
                     <>

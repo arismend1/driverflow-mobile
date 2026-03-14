@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { login as apiLogin, register as apiRegister } from '../api/client';
@@ -35,6 +35,8 @@ interface AuthContextType {
     appLocked: boolean;
     lockApp: () => void;
     unlockApp: () => void;
+    suppressPinLock: () => void;
+    resumePinLock: () => void;
     clearSavedCredentials: () => Promise<void>;
     updateUserSearchStatus: (status: string) => Promise<void>;
 }
@@ -57,6 +59,8 @@ export const AuthContext = createContext<AuthContextType>({
     appLocked: false,
     lockApp: () => { },
     unlockApp: () => { },
+    suppressPinLock: () => { },
+    resumePinLock: () => { },
     clearSavedCredentials: async () => { },
     updateUserSearchStatus: async () => { },
 });
@@ -84,6 +88,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const [pinGate, setPinGate] = useState<'enter' | 'create' | null>(null);
     const [pinReady, setPinReady] = useState(false);
     const [appLocked, setAppLocked] = useState(false);
+    const suppressLockRef = useRef(false);
+    const suppressTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
         const bootstrap = async () => {
@@ -137,9 +143,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     useEffect(() => {
         const subscription = AppState.addEventListener('change', nextAppState => {
-            if ((nextAppState === 'background' || nextAppState === 'inactive') && pinReady) {
-                // console.log("[AUTH] App backgrounded, locking...");
+            if ((nextAppState === 'background' || nextAppState === 'inactive') && pinReady && !suppressLockRef.current) {
+                console.log("[AUTH] App backgrounded, locking...");
                 setAppLocked(true);
+            } else if ((nextAppState === 'background' || nextAppState === 'inactive') && suppressLockRef.current) {
+                console.log("[AUTH] App backgrounded but PIN lock SUPPRESSED (camera/gallery active)");
             }
         });
 
@@ -150,6 +158,27 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     const lockApp = () => setAppLocked(true);
     const unlockApp = () => setAppLocked(false);
+
+    const suppressPinLock = () => {
+        console.log("[AUTH] PIN lock SUPPRESSED for trusted flow");
+        suppressLockRef.current = true;
+        // Safety timeout: auto-resume after 60 seconds
+        if (suppressTimeoutRef.current) clearTimeout(suppressTimeoutRef.current);
+        suppressTimeoutRef.current = setTimeout(() => {
+            console.warn("[AUTH] PIN lock suppression TIMEOUT — auto-resuming");
+            suppressLockRef.current = false;
+            suppressTimeoutRef.current = null;
+        }, 60000);
+    };
+
+    const resumePinLock = () => {
+        console.log("[AUTH] PIN lock RESUMED");
+        suppressLockRef.current = false;
+        if (suppressTimeoutRef.current) {
+            clearTimeout(suppressTimeoutRef.current);
+            suppressTimeoutRef.current = null;
+        }
+    };
 
     const login = async (
         contacto: string,
@@ -357,6 +386,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         appLocked,
         lockApp,
         unlockApp,
+        suppressPinLock,
+        resumePinLock,
         clearSavedCredentials,
         updateUserSearchStatus,
     };
