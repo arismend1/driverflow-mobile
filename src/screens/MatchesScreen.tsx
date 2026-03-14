@@ -455,11 +455,15 @@ export default function MatchesScreen() {
         const isStep2Accepted = (user?.type === 'empresa' && item.company_share_consent_at) || (user?.type === 'driver' && item.driver_share_consent_at);
 
         // Anonymization logic
-        const isAnonymized = user?.type === 'empresa' && item.status === 'NEW';
+        const isAnonymized = item.status !== 'INFO_SHARED' && item.status !== 'HIRED';
         const driverId = item.driver_id || item.id;
         const shortId = typeof driverId === 'string' ? driverId.slice(-4).toUpperCase() : String(driverId);
 
-        const displayName = isAnonymized ? `Driver #${shortId}` : (user?.type === 'empresa' ? (item.driver_name || item.display_name || 'Driver Candidate') : 'Verified Company');
+        const displayName = isAnonymized 
+            ? (user?.type === 'empresa' ? `Driver #${shortId}` : 'Verified Company') 
+            : (user?.type === 'empresa' 
+                ? (item.driver_name || item.display_name || 'Driver Candidate') 
+                : (item.company_name || item.display_name || 'Verified Company'));
         const displayLocation = isAnonymized ? (user?.type === 'driver' ? "Logistics View" : "Location Hidden") : (item.ubicacion || [item.driver_city, item.driver_state].filter(Boolean).join(', ') || 'Available');
 
         return (
@@ -621,7 +625,7 @@ export default function MatchesScreen() {
                             </>
                         ) : (
                             <>
-                                {renderCompanyHero(item, item.status === 'NEW')}
+                                {renderCompanyHero(item, isAnonymized)}
 
                                 {item.status === 'NEW' && !item.driver_step1_accepted_at && (
                                     <View style={styles.actionsRow}>
