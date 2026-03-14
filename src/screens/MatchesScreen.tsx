@@ -538,6 +538,7 @@ export default function MatchesScreen() {
                                 </View>
 
                                 {user?.type === 'empresa' && renderProfessionalProfile(item, false)}
+                                {user?.type === 'driver' && renderCompanyHero(item, false)}
 
                                 {(() => {
                                     const consentDate = item.driver_share_consent_at ? new Date(item.driver_share_consent_at) : null;
