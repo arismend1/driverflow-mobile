@@ -451,16 +451,18 @@ export default function MatchesScreen() {
     const renderItem = ({ item }: { item: any }) => {
         const matchId = item.match_id || item.id;
         const isExpanded = expandedCardId === matchId;
-        const isReadyForStep2 = (user?.type === 'empresa' && item.driver_step1_accepted_at) || (user?.type === 'driver' && item.company_step1_accepted_at);
-        const isStep2Accepted = (user?.type === 'empresa' && item.company_share_consent_at) || (user?.type === 'driver' && item.driver_share_consent_at);
+        const myAcceptDate = user?.type === 'empresa' ? item.company_step1_accepted_at : item.driver_step1_accepted_at;
+        const otherAcceptDate = user?.type === 'empresa' ? item.driver_step1_accepted_at : item.company_step1_accepted_at;
+        const myConsentDate = user?.type === 'empresa' ? item.company_share_consent_at : item.driver_share_consent_at;
 
-        // Anonymization logic
         const isAnonymized = item.status !== 'INFO_SHARED' && item.status !== 'HIRED';
         const driverId = item.driver_id || item.id;
-        const shortId = typeof driverId === 'string' ? driverId.slice(-4).toUpperCase() : String(driverId);
+        const companyId = item.company_id || item.id;
+        const driverShortId = typeof driverId === 'string' ? driverId.slice(-4).toUpperCase() : String(driverId);
+        const companyShortId = typeof companyId === 'string' ? companyId.slice(-4).toUpperCase() : String(companyId);
 
         const displayName = isAnonymized 
-            ? (user?.type === 'empresa' ? `Driver #${shortId}` : 'Verified Company') 
+            ? (user?.type === 'empresa' ? `Driver #${driverShortId}` : `Company #${companyShortId}`) 
             : (user?.type === 'empresa' 
                 ? (item.driver_name || item.display_name || 'Driver Candidate') 
                 : (item.company_name || item.display_name || 'Verified Company'));
@@ -502,7 +504,12 @@ export default function MatchesScreen() {
                     {!isExpanded && (
                         <View style={styles.collapsedBrief}>
                             <Text style={styles.briefText}>
-                                Status: {item.status} {user?.type === 'empresa' ? `• Experience: ${item.experience_years || 0} yrs` : ''}
+                                Stage: {
+                                    item.status === 'HIRED' ? 'Driver Hired' :
+                                    item.status === 'INFO_SHARED' ? 'Exclusive Evaluation' :
+                                    (myAcceptDate && otherAcceptDate) ? 'Confirm Exchange' :
+                                    myAcceptDate ? 'Waiting for response' : 'New Opportunity'
+                                }
                             </Text>
                         </View>
                     )}
@@ -510,10 +517,13 @@ export default function MatchesScreen() {
 
                 {isExpanded && (
                     <View style={styles.cardExpandedContent}>
-                        {item.status === 'INFO_SHARED' ? (
+                        {/* 1. SHARED / HIRED PERSISTENT PROFILE */}
+                        {item.status === 'INFO_SHARED' || item.status === 'HIRED' ? (
                             <View style={styles.sharedInfoBlock}>
-                                <Text style={styles.sharedTitle}>✅ Contact Shared</Text>
-                                <Text style={styles.sharedText}>You can now contact the other party!</Text>
+                                <Text style={styles.sharedTitle}>{item.status === 'HIRED' ? '🎉 Driver Hired!' : '✅ Contact Shared'}</Text>
+                                <Text style={styles.sharedText}>
+                                    {item.status === 'HIRED' ? 'This driver has been successfully hired.' : 'You can now contact the other party!'}
+                                </Text>
 
                                 {user?.type === 'empresa' ? (
                                     <>
@@ -522,8 +532,9 @@ export default function MatchesScreen() {
                                     </>
                                 ) : (
                                     <>
-                                        <Text style={styles.contactEmail}>{item.company_email}</Text>
-                                        {item.company_phone ? <Text style={styles.contactPhone}>{item.company_phone}</Text> : null}
+                                        {item.contact_person ? <Text style={styles.contactEmail}>👤 {item.contact_person}</Text> : null}
+                                        <Text style={styles.contactEmail}>📧 {item.company_email}</Text>
+                                        {item.contact_phone ? <Text style={styles.contactPhone}>📞 {item.contact_phone}</Text> : null}
                                     </>
                                 )}
 
@@ -534,8 +545,8 @@ export default function MatchesScreen() {
                                     <TouchableOpacity style={[styles.actionBtn, styles.btnCopy]} onPress={() => { const email = user?.type === 'empresa' ? item.driver_email : item.company_email; if (email) { Clipboard.setString(email); Alert.alert('Copied'); } }}>
                                         <Text style={styles.actionBtnText}>Copy</Text>
                                     </TouchableOpacity>
-                                    {(user?.type === 'empresa' ? item.driver_phone : item.company_phone) ? (
-                                        <TouchableOpacity style={[styles.actionBtn, styles.btnCall]} onPress={() => { const phone = user?.type === 'empresa' ? item.driver_phone : item.company_phone; if (phone) Linking.openURL(`tel:${phone}`); }}>
+                                    {(user?.type === 'empresa' ? item.driver_phone : item.contact_phone) ? (
+                                        <TouchableOpacity style={[styles.actionBtn, styles.btnCall]} onPress={() => { const phone = user?.type === 'empresa' ? item.driver_phone : item.contact_phone; if (phone) Linking.openURL(`tel:${phone}`); }}>
                                             <Text style={styles.actionBtnText}>Call</Text>
                                         </TouchableOpacity>
                                     ) : null}
@@ -544,7 +555,7 @@ export default function MatchesScreen() {
                                 {user?.type === 'empresa' && renderProfessionalProfile(item, false)}
                                 {user?.type === 'driver' && renderCompanyHero(item, false)}
 
-                                {(() => {
+                                {item.status === 'INFO_SHARED' && (() => {
                                     const consentDate = item.driver_share_consent_at ? new Date(item.driver_share_consent_at) : null;
                                     if (!consentDate) return null;
                                     const extensionHours = item.exclusivity_extension_hours || 0;
@@ -553,23 +564,20 @@ export default function MatchesScreen() {
                                     const isExpired = now > expirationDate;
                                     const isMaxExtension = extensionHours >= 432;
 
-                                    if (item.status === 'HIRED') {
-                                        return (
-                                            <View style={{ marginTop: 15, padding: 12, backgroundColor: '#d4edda', borderRadius: 8, borderWidth: 1, borderColor: '#c3e6cb' }}>
-                                                <Text style={{ fontWeight: 'bold', fontSize: 16, color: '#155724' }}>🎉 Driver Hired!</Text>
-                                                <Text style={{ color: '#155724', marginTop: 4 }}>This driver has been successfully hired.</Text>
-                                            </View>
-                                        );
-                                    }
-
                                     const myRes = user?.type === 'empresa' ? item.resolution_company : item.resolution_driver;
                                     if (myRes) return <Text style={{ marginTop: 15, color: '#666', fontStyle: 'italic', textAlign: 'center' }}>Marked as: {myRes}</Text>;
 
-                                    if (isExpired) {
+                                    const showResolutionButtons = isExpired || user?.type === 'empresa';
+
+                                    if (showResolutionButtons) {
                                         return (
-                                            <View style={{ marginTop: 20, padding: 15, backgroundColor: '#fff3cd', borderRadius: 8, borderWidth: 1, borderColor: '#ffeeba' }}>
-                                                <Text style={{ fontWeight: 'bold', color: '#856404', marginBottom: 5 }}>Timer Expired</Text>
-                                                <Text style={{ color: '#856404', marginBottom: 15 }}>Was the driver hired?</Text>
+                                            <View style={{ marginTop: 20, padding: 15, backgroundColor: isExpired ? '#fff3cd' : '#f8f9fa', borderRadius: 8, borderWidth: 1, borderColor: isExpired ? '#ffeeba' : '#dee2e6' }}>
+                                                <Text style={{ fontWeight: 'bold', color: isExpired ? '#856404' : '#333', marginBottom: 5 }}>
+                                                    {isExpired ? 'Timer Expired' : 'Match Resolution'}
+                                                </Text>
+                                                <Text style={{ color: isExpired ? '#856404' : '#666', marginBottom: 15 }}>
+                                                    {isExpired ? 'Was the driver hired?' : 'Decide the outcome of this match:'}
+                                                </Text>
                                                 <View style={{ gap: 10 }}>
                                                     <TouchableOpacity style={[styles.button, styles.buttonGreen]} onPress={() => handleResolveMatch(matchId, 'HIRED')}>
                                                         <Text style={styles.buttonText}>Yes (Hired)</Text>
@@ -583,6 +591,11 @@ export default function MatchesScreen() {
                                                         <Text style={styles.buttonText}>No (Closed)</Text>
                                                     </TouchableOpacity>
                                                 </View>
+                                                {!isExpired && (
+                                                    <Text style={{ marginTop: 15, color: '#0056b3', fontSize: 12, textAlign: 'center' }}>
+                                                        Exclusivity ends: {expirationDate.toLocaleDateString()}
+                                                    </Text>
+                                                )}
                                             </View>
                                         );
                                     }
@@ -594,59 +607,61 @@ export default function MatchesScreen() {
                                     );
                                 })()}
                             </View>
-                        ) : user?.type === 'empresa' ? (
-                            <>
-                                {isAnonymized ? renderProfessionalProfile(item, true) : (
-                                    <>
-                                        <Text style={styles.detail}>Location: {item.ubicacion || 'TBD'}</Text>
-                                        <Text style={styles.detail}>Status: {item.status}</Text>
-                                    </>
-                                )}
-
-                                {item.status === 'NEW' && !item.company_step1_accepted_at && (
-                                    <View style={styles.actionsRow}>
-                                        <TouchableOpacity style={[styles.button, styles.buttonGreen, { flex: 1 }]} onPress={() => handleStatusChange(matchId, 'ACCEPTED')}>
-                                            <Text style={styles.buttonText}>Accept</Text>
-                                        </TouchableOpacity>
-                                        <TouchableOpacity style={[styles.button, styles.buttonRed, { flex: 1 }]} onPress={() => handleStatusChange(matchId, 'DECLINED')}>
-                                            <Text style={styles.buttonText}>Decline</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                )}
-
-                                {isReadyForStep2 && !isStep2Accepted && (
-                                    <View style={{ marginTop: 15 }}>
-                                        <Text style={styles.consentPrompt}>Both Interest Confirmed</Text>
-                                        <TouchableOpacity style={[styles.button, styles.buttonBlue]} onPress={() => handleConfirmShare(matchId)}>
-                                            <Text style={styles.buttonText}>Pay & View Contact</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                )}
-                            </>
                         ) : (
-                            <>
-                                {renderCompanyHero(item, isAnonymized)}
+                            /* 2. PROGRESSIVE ACTION AREA */
+                            <View>
+                                {user?.type === 'empresa' ? renderProfessionalProfile(item, true) : renderCompanyHero(item, true)}
 
-                                {item.status === 'NEW' && !item.driver_step1_accepted_at && (
-                                    <View style={styles.actionsRow}>
-                                        <TouchableOpacity style={[styles.button, styles.buttonGreen, { flex: 1 }]} onPress={() => handleStatusChange(matchId, 'ACCEPTED')}>
-                                            <Text style={styles.buttonText}>Accept</Text>
-                                        </TouchableOpacity>
-                                        <TouchableOpacity style={[styles.button, styles.buttonRed, { flex: 1 }]} onPress={() => handleStatusChange(matchId, 'DECLINED')}>
-                                            <Text style={styles.buttonText}>Decline</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                )}
-
-                                {isReadyForStep2 && !isStep2Accepted && (
+                                {/* STAGE 1: Accept/Decline */}
+                                {!myAcceptDate ? (
                                     <View style={{ marginTop: 15 }}>
-                                        <Text style={styles.consentPrompt}>Both Interest Confirmed</Text>
+                                        <Text style={[styles.consentPrompt, { textAlign: 'center', marginBottom: 5 }]}>
+                                            {otherAcceptDate ? 'Mutual Interest! They liked your profile.' : 'New Opportunity Detected'}
+                                        </Text>
+                                        <View style={styles.actionsRow}>
+                                            <TouchableOpacity style={[styles.button, styles.buttonGreen, { flex: 1 }]} onPress={() => handleStatusChange(matchId, 'ACCEPTED')}>
+                                                <Text style={styles.buttonText}>Accept Interest</Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity style={[styles.button, styles.buttonRed, { flex: 1 }]} onPress={() => handleStatusChange(matchId, 'DECLINED')}>
+                                                <Text style={styles.buttonText}>Decline</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                ) : /* STAGE 2: Waiting for other side */
+                                !otherAcceptDate ? (
+                                    <View style={{ marginTop: 20, alignItems: 'center', padding: 15, backgroundColor: '#f0f7ff', borderRadius: 8 }}>
+                                        <Text style={{ fontSize: 24, marginBottom: 5 }}>⏳</Text>
+                                        <Text style={{ fontWeight: 'bold', color: '#0056b3' }}>Waiting for response...</Text>
+                                        <Text style={{ color: '#666', textAlign: 'center', marginTop: 4, fontSize: 13 }}>
+                                            The other party has been notified of your interest.
+                                        </Text>
+                                    </View>
+                                ) : /* STAGE 3: Final Consent / Pay */
+                                !myConsentDate ? (
+                                    <View style={{ marginTop: 20, padding: 15, backgroundColor: '#eef2ff', borderRadius: 10, borderWidth: 1, borderColor: '#c7d2fe' }}>
+                                        <Text style={[styles.consentPrompt, { color: '#4338ca' }]}>🤝 Mutual Interest Confirmed!</Text>
+                                        <Text style={{ color: '#666', fontSize: 13, marginTop: 4, marginBottom: 15 }}>
+                                            {user?.type === 'empresa' 
+                                                ? 'Review the detailed profile and pay to unlock full contact information.' 
+                                                : 'Authorize sharing your contact details with the company to proceed.'}
+                                        </Text>
                                         <TouchableOpacity style={[styles.button, styles.buttonBlue]} onPress={() => handleConfirmShare(matchId)}>
-                                            <Text style={styles.buttonText}>Confirm Consent</Text>
+                                            <Text style={styles.buttonText}>
+                                                {user?.type === 'empresa' ? '💰 Pay & View Contact' : '✅ Confirm Consent'}
+                                            </Text>
                                         </TouchableOpacity>
                                     </View>
+                                ) : (
+                                    /* STAGE 4: Waiting for other consent (SHARE_PENDING) */
+                                    <View style={{ marginTop: 20, alignItems: 'center', padding: 15, backgroundColor: '#fff7ed', borderRadius: 8 }}>
+                                        <Text style={{ fontSize: 24, marginBottom: 5 }}>🔓</Text>
+                                        <Text style={{ fontWeight: 'bold', color: '#9a3412' }}>Final Authorization Pending...</Text>
+                                        <Text style={{ color: '#666', textAlign: 'center', marginTop: 4, fontSize: 13 }}>
+                                            You have authorized the exchange. Waiting for the other party to confirm.
+                                        </Text>
+                                    </View>
                                 )}
-                            </>
+                            </View>
                         )}
                     </View>
                 )}
