@@ -126,8 +126,14 @@ export const CompanyBillingScreen = () => {
             );
         }
 
-        const amount = item.amount_cents || 0;
-        const status = item.billing_status;
+        const amount = Number(item?.total_cents || 0);
+        const status = String(item?.status || item?.billing_status || 'pending');
+        const period = item?.billing_week || 'N/A';
+        const rawDate = item?.issue_date || item?.created_at;
+        const generated = rawDate && !isNaN(new Date(rawDate).getTime())
+            ? new Date(rawDate).toLocaleDateString()
+            : 'N/A';
+        
         const canPayByStatus = ['pending', 'failed', 'retrying', 'suspended'].includes(status);
         const canPayByAmount = amount > 0;
         const isPrepay = status === 'pending';
@@ -140,9 +146,9 @@ export const CompanyBillingScreen = () => {
                         {status.toUpperCase()}
                     </Text>
                 </View>
-                <Text>Period: {item.request_id}</Text>
-                <Text>Generated: {new Date(item.created_at).toLocaleDateString()}</Text>
-                <Text style={styles.amount}>{formatCurrency(item.amount_cents, item.currency)}</Text>
+                <Text>Period: {period}</Text>
+                <Text>Generated: {generated}</Text>
+                <Text style={styles.amount}>{formatCurrency(amount, item?.currency || 'USD')}</Text>
 
                 {amount <= 0 && (
                     <Text style={{ color: '#888', fontStyle: 'italic', marginTop: 4 }}>
