@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { login as apiLogin, register as apiRegister } from '../api/client';
+import messaging from '@react-native-firebase/messaging';
+import { login as apiLogin, register as apiRegister, request } from '../api/client';
 
 interface UserInfo {
     id: number;
@@ -179,6 +180,18 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             suppressTimeoutRef.current = null;
         }
     };
+    
+    const registerPushToken = async (token: string) => {
+        try {
+            const fcmToken = await messaging().getToken();
+            if (fcmToken) {
+                console.log("[PUSH] Registering token...");
+                await request('/api/push/register', 'POST', { token: fcmToken, platform: 'android' }, token);
+            }
+        } catch (e) {
+            console.warn("[PUSH] Failed to register token (non-fatal):", e);
+        }
+    };
 
     const login = async (
         contacto: string,
@@ -209,6 +222,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             // SOLO DESPUÉS: SETEAR ESTADO
             setUserToken(token);
             setUserInfo(info);
+
+            // --- HOOK: Push Notification Registration ---
+            registerPushToken(token).catch(() => {});
 
             if (remember) {
                 await AsyncStorage.setItem(STORAGE_KEYS.savedEmail, contacto);
@@ -306,6 +322,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             setUserInfo(info);
             console.log(`[PIN] verifyPinAndLogin: re-login SUCCESS`);
 
+            // --- HOOK: Push Notification Registration ---
+            registerPushToken(token).catch(() => {});
+            
             return true;
         } catch (error: any) {
             console.error("[AUTH] verifyPinAndLogin failed", error?.message || error);
