@@ -15,7 +15,11 @@ export default function LegalAcceptanceScreen() {
 
         setLoading(true);
         try {
-            const res = await request('/api/legal/accept', 'POST', {}, restrictedToken);
+            const res = await request('/api/legal/accept', 'POST', {
+                accept_terms: true,
+                accept_privacy: true
+            }, restrictedToken);
+
             if (!res.ok) {
                 throw new Error(res.error || 'Failed to communicate with server');
             }

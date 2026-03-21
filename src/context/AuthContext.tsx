@@ -117,10 +117,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const [restrictedToken, setRestrictedToken] = useState<string | null>(null);
     const suppressLockRef = useRef(false);
     const suppressTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const needsLegalAcceptRef = useRef(false);
+
+    useEffect(() => {
+        needsLegalAcceptRef.current = needsLegalAccept;
+    }, [needsLegalAccept]);
 
     // --- GLOBAL LEGAL INTERCEPTOR ---
     useEffect(() => {
         setLegalAcceptanceInterceptor((restrictedJwt) => {
+            if (needsLegalAcceptRef.current) return;
             console.log("[AUTH GLOBAL] 403 Legal Intercepted. Raising gate.");
             setNeedsLegalAccept(true);
             setRestrictedToken(restrictedJwt);

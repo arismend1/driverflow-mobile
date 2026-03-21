@@ -95,9 +95,10 @@ export const request = async <T = any>(
             const message = data?.error || data?.message || 'HTTP_ERROR';
 
             // GLOBAL LEGAL INTERCEPTOR CHECK
-            if (status === 403 && data?.requires_legal_acceptance === true && data?.token) {
+            if (status === 403 && data?.requires_legal_acceptance === true) {
                 if (onRequiresLegalAcceptance) {
-                    onRequiresLegalAcceptance(data.token);
+                    const fallbackToken = data.token || token;
+                    if (fallbackToken) onRequiresLegalAcceptance(fallbackToken);
                 }
             }
 
