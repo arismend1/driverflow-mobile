@@ -1,7 +1,13 @@
+/**
+ * ⚠️ STABLE VERSION - DO NOT MODIFY
+ * Push notifications system is fully functional.
+ * Any modification must be explicitly approved.
+ */
 import React, { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import messaging from '@react-native-firebase/messaging';
+import notifee, { AndroidImportance } from '@notifee/react-native';
 import { login as apiLogin, register as apiRegister, request } from '../api/client';
 
 interface UserInfo {
@@ -40,6 +46,11 @@ interface AuthContextType {
     resumePinLock: () => void;
     clearSavedCredentials: () => Promise<void>;
     updateUserSearchStatus: (status: string) => Promise<void>;
+    
+    // Phase 2 Legal Flow
+    needsLegalAccept: boolean;
+    restrictedToken: string | null;
+    completeLegalAcceptance: (unlockedToken: string) => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType>({
@@ -64,6 +75,9 @@ export const AuthContext = createContext<AuthContextType>({
     resumePinLock: () => { },
     clearSavedCredentials: async () => { },
     updateUserSearchStatus: async () => { },
+    needsLegalAccept: false,
+    restrictedToken: null,
+    completeLegalAcceptance: async () => { },
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -81,6 +95,16 @@ const STORAGE_KEYS = {
     savedType: 'saved_type',
 };
 
+const getSafeMessaging = () => {
+    try {
+        // This check prevents "No Firebase App '[DEFAULT]' has been created" crash
+        return messaging();
+    } catch (e) {
+        console.warn("[PUSH] Firebase Messaging failed to initialize (Normal if native config is missing):", (e as any).message);
+        return null;
+    }
+};
+
 export const AuthProvider = ({ children }: AuthProviderProps) => {
     const [userToken, setUserToken] = useState<string | null>(null);
     const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
@@ -89,6 +113,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const [pinGate, setPinGate] = useState<'enter' | 'create' | null>(null);
     const [pinReady, setPinReady] = useState(false);
     const [appLocked, setAppLocked] = useState(false);
+    const [needsLegalAccept, setNeedsLegalAccept] = useState(false);
+    const [restrictedToken, setRestrictedToken] = useState<string | null>(null);
     const suppressLockRef = useRef(false);
     const suppressTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -122,7 +148,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 const token = await AsyncStorage.getItem(STORAGE_KEYS.token);
                 const userInfoRaw = await AsyncStorage.getItem(STORAGE_KEYS.userInfo);
 
-                if (token) setUserToken(token);
+                if (token) {
+                    setUserToken(token);
+                    // --- HOOK: Push Notification Registration (Bootstrap) ---
+                    console.log("[PUSH] Bootstrap: Session found, calling registerPushToken...");
+                    registerPushToken(token).catch((err) => {
+                        console.error("[PUSH] Bootstrap: Error in call chain:", err);
+                    });
+                }
 
                 if (userInfoRaw) {
                     try {
@@ -183,15 +216,136 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     
     const registerPushToken = async (token: string) => {
         try {
-            const fcmToken = await messaging().getToken();
+            console.log("[PUSH] START");
+            
+            const messenger = getSafeMessaging();
+            if (!messenger) {
+                console.warn("[PUSH] skipping registration: Firebase not ready");
+                return;
+            }
+
+            // 1. Device registration (official recommendation)
+            await messenger.registerDeviceForRemoteMessages();
+            
+            // 2. Request permission (non-blocking)
+            await messenger.requestPermission().catch((err) => {
+                console.warn("[PUSH] ERROR (Permission):", err);
+            });
+            
+            // 3. Get token
+            const fcmToken = await messenger.getToken();
+            console.log("[PUSH] TOKEN:", fcmToken);
+
             if (fcmToken) {
-                console.log("[PUSH] Registering token...");
-                await request('/api/push/register', 'POST', { token: fcmToken, platform: 'android' }, token);
+                console.log("[PUSH] Sending POST /api/push/register...");
+                const res = await request('/api/push/register', 'POST', { token: fcmToken, platform: 'android' }, token);
+                
+                if (res.status === 403 && res.data?.requires_legal_acceptance) {
+                    console.log("[AUTH] Boot token restricted. Triggering Legal Acceptance lock.");
+                    setNeedsLegalAccept(true);
+                    setRestrictedToken(token);
+                }
+                
+                console.log("[PUSH] RESPONSE:", res.ok ? "OK" : "FAIL", "Status:", res.status, "Error:", res.error);
+            } else {
+                console.warn("[PUSH] ERROR: fcmToken is null");
             }
         } catch (e) {
-            console.warn("[PUSH] Failed to register token (non-fatal):", e);
+            console.warn("[PUSH] ERROR (Fatal):", e);
         }
     };
+
+    // --- REFRESH TOKEN LISTENER ---
+    useEffect(() => {
+        const messenger = getSafeMessaging();
+        if (!messenger) return;
+
+        const unsubscribe = messenger.onTokenRefresh(async fcmToken => {
+            console.log("[PUSH] TOKEN REFRESH:", fcmToken);
+            if (userToken) {
+                try {
+                    const res = await request('/api/push/register', 'POST', { token: fcmToken, platform: 'android' }, userToken);
+                    console.log("[PUSH] REFRESH RESPONSE:", res.ok ? "OK" : "FAIL");
+                } catch (e) {
+                    console.error("[PUSH] REFRESH ERROR:", e);
+                }
+            }
+        });
+        return unsubscribe;
+    }, [userToken]);
+    
+    // --- FOREGROUND HANDLER ---
+    useEffect(() => {
+        console.log('[PUSH] FOREGROUND effect mounted');
+        const messenger = getSafeMessaging();
+        if (!messenger) return;
+
+        const unsubscribe = messenger.onMessage(async remoteMessage => {
+            console.log('[PUSH] FOREGROUND callback fired');
+            console.log('[PUSH] FOREGROUND:', remoteMessage);
+
+            try {
+                // Create a channel (required for Android)
+                const channelId = await notifee.createChannel({
+                    id: 'default',
+                    name: 'Default Channel',
+                    importance: AndroidImportance.HIGH,
+                });
+
+                // Display a notification
+                await notifee.displayNotification({
+                    title: remoteMessage?.notification?.title || 'Notificación',
+                    body: remoteMessage?.notification?.body || '',
+                    android: {
+                        channelId,
+                        smallIcon: 'ic_launcher', // standard icon
+                        pressAction: {
+                            id: 'default',
+                        },
+                    },
+                });
+                console.log('[PUSH] LOCAL DISPLAY success');
+            } catch (err) {
+                console.error('[PUSH] LOCAL DISPLAY error:', err);
+            }
+        });
+
+        return unsubscribe;
+    }, []);
+
+    // --- BACKGROUND OPEN HANDLER ---
+    useEffect(() => {
+        const messenger = getSafeMessaging();
+        if (!messenger) return;
+
+        const unsubscribe = messenger.onNotificationOpenedApp(remoteMessage => {
+            console.log('[PUSH] OPENED FROM BACKGROUND:', remoteMessage);
+        });
+
+        return unsubscribe;
+    }, []);
+
+    // --- QUIT STATE HANDLER ---
+    useEffect(() => {
+        console.log('[PUSH] QUIT effect mounted');
+        const messenger = getSafeMessaging();
+        if (!messenger) return;
+
+        console.log('[PUSH] QUIT checked');
+        messenger
+            .getInitialNotification()
+            .then(remoteMessage => {
+                if (remoteMessage) {
+                    console.log('[PUSH] QUIT message found');
+                    console.log('[PUSH] OPENED FROM QUIT:', remoteMessage);
+                } else {
+                    console.log('[PUSH] QUIT no message');
+                }
+            })
+            .catch(err => {
+                console.warn('[PUSH] QUIT check failed:', err);
+            });
+    }, []);
 
     const login = async (
         contacto: string,
@@ -202,6 +356,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setIsLoading(true);
         try {
             const res = await apiLogin(contacto, password, type);
+            
+            if (res.status === 403 && res.data?.requires_legal_acceptance) {
+                setNeedsLegalAccept(true);
+                setRestrictedToken(res.data.token);
+                return;
+            }
+
             if (!res.ok) throw new Error(res.error || 'Login failed');
 
             const { token, id, name, type: serverType, search_status } = res.data as any;
@@ -224,7 +385,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             setUserInfo(info);
 
             // --- HOOK: Push Notification Registration ---
-            registerPushToken(token).catch(() => {});
+            setTimeout(() => {
+                registerPushToken(token).catch(() => {});
+            }, 1000);
 
             if (remember) {
                 await AsyncStorage.setItem(STORAGE_KEYS.savedEmail, contacto);
@@ -303,6 +466,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             // Full re-login with saved credentials
             console.log(`[PIN] verifyPinAndLogin: attempting re-login for ${type}`);
             const res = await apiLogin(email, password, type);
+            
+            if (res.status === 403 && res.data?.requires_legal_acceptance) {
+                setNeedsLegalAccept(true);
+                setRestrictedToken(res.data.token);
+                return false;
+            }
+
             console.log(`[PIN] verifyPinAndLogin: apiLogin ok=${res.ok}`);
             if (!res.ok) return false;
 
@@ -323,7 +493,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             console.log(`[PIN] verifyPinAndLogin: re-login SUCCESS`);
 
             // --- HOOK: Push Notification Registration ---
-            registerPushToken(token).catch(() => {});
+            setTimeout(() => {
+                registerPushToken(token).catch(() => {});
+            }, 1000);
             
             return true;
         } catch (error: any) {
@@ -350,6 +522,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         try {
             setUserToken(null);
             setUserInfo(null);
+            setNeedsLegalAccept(false);
+            setRestrictedToken(null);
 
             await AsyncStorage.removeItem(STORAGE_KEYS.token);
             await AsyncStorage.removeItem(STORAGE_KEYS.userInfo);
@@ -409,6 +583,18 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         resumePinLock,
         clearSavedCredentials,
         updateUserSearchStatus,
+        needsLegalAccept,
+        restrictedToken,
+        completeLegalAcceptance: async (unlockedToken: string) => {
+            await AsyncStorage.setItem('auth_token', unlockedToken);
+            setUserToken(unlockedToken);
+            setNeedsLegalAccept(false);
+            setRestrictedToken(null);
+            
+            setTimeout(() => {
+                registerPushToken(unlockedToken).catch(() => {});
+            }, 1000);
+        }
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

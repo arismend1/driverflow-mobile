@@ -6,7 +6,9 @@ import { useAuth } from '../context/AuthContext';
 import LoginScreen from '../screens/LoginScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import PinScreen from '../screens/PinScreen';
+import PinLockOverlay from '../components/PinLockOverlay';
 import HomeScreen from '../screens/HomeScreen';
+import LegalAcceptanceScreen from '../screens/LegalAcceptanceScreen';
 
 import RegisterScreen from '../screens/RegisterScreen';
 import VerifyEmailScreen from '../screens/VerifyEmailScreen';
@@ -25,7 +27,7 @@ export type RootStackParamList = Record<string, any>;
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function RootNavigator() {
-    const { isLoading, token, pinGate, pinReady, appLocked } = useAuth();
+    const { isLoading, token, pinGate, pinReady, appLocked, needsLegalAccept } = useAuth();
 
     if (isLoading) {
         return (
@@ -40,7 +42,9 @@ export default function RootNavigator() {
     return (
         <View style={{ flex: 1 }}>
             <Stack.Navigator screenOptions={{ headerShown: true }}>
-                {!isAuthed ? (
+                {needsLegalAccept ? (
+                    <Stack.Screen name="LegalAcceptance" component={LegalAcceptanceScreen} options={{ headerShown: false }} />
+                ) : !isAuthed ? (
                     <>
                         {pinReady ? (
                             <>
@@ -90,7 +94,7 @@ export default function RootNavigator() {
             </Stack.Navigator>
 
             <Modal visible={appLocked === true} animationType="fade" transparent={false}>
-                <PinScreen />
+                <PinLockOverlay />
             </Modal>
         </View>
     );
