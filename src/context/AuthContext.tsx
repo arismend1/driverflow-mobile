@@ -470,7 +470,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             console.log(`[PIN] verifyPinAndLogin: ok=${res.ok}, status=${res.status}`);
 
             if (res.status === 403 && res.data?.requires_legal_acceptance) {
-                console.log(`[PIN] Legal block detected. Allowing unlock to proceed to Legal Screen.`);
+                console.log(`[PIN] Legal block detected. Triggering Legal Screen via verifyPinAndLogin.`);
+                setNeedsLegalAccept(true);
+                setRestrictedToken(res.data.token || null);
                 return true;
             }
 
