@@ -18,6 +18,14 @@ export const DiagnosticsState = {
     baseUrl: API_URL
 };
 
+// --- GLOBAL LEGAL INTERCEPTOR ---
+export type LegalAcceptanceInterceptor = (token: string) => void;
+let onRequiresLegalAcceptance: LegalAcceptanceInterceptor | null = null;
+
+export const setLegalAcceptanceInterceptor = (interceptor: LegalAcceptanceInterceptor) => {
+    onRequiresLegalAcceptance = interceptor;
+};
+
 // --- CORE REQUEST HELPER ---
 export const request = async <T = any>(
     endpoint: string,
@@ -85,6 +93,13 @@ export const request = async <T = any>(
         // 1) HTTP-level error (non-2xx)
         if (!response.ok) {
             const message = data?.error || data?.message || 'HTTP_ERROR';
+
+            // GLOBAL LEGAL INTERCEPTOR CHECK
+            if (status === 403 && data?.requires_legal_acceptance === true && data?.token) {
+                if (onRequiresLegalAcceptance) {
+                    onRequiresLegalAcceptance(data.token);
+                }
+            }
 
             DiagnosticsState.lastError = {
                 status,

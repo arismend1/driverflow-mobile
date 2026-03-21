@@ -8,7 +8,7 @@ import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import messaging from '@react-native-firebase/messaging';
 import notifee, { AndroidImportance } from '@notifee/react-native';
-import { login as apiLogin, register as apiRegister, request } from '../api/client';
+import { login as apiLogin, register as apiRegister, request, setLegalAcceptanceInterceptor } from '../api/client';
 
 interface UserInfo {
     id: number;
@@ -117,6 +117,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const [restrictedToken, setRestrictedToken] = useState<string | null>(null);
     const suppressLockRef = useRef(false);
     const suppressTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // --- GLOBAL LEGAL INTERCEPTOR ---
+    useEffect(() => {
+        setLegalAcceptanceInterceptor((restrictedJwt) => {
+            console.log("[AUTH GLOBAL] 403 Legal Intercepted. Raising gate.");
+            setNeedsLegalAccept(true);
+            setRestrictedToken(restrictedJwt);
+        });
+    }, []);
 
     useEffect(() => {
         const bootstrap = async () => {
@@ -239,13 +248,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             if (fcmToken) {
                 console.log("[PUSH] Sending POST /api/push/register...");
                 const res = await request('/api/push/register', 'POST', { token: fcmToken, platform: 'android' }, token);
-                
-                if (res.status === 403 && res.data?.requires_legal_acceptance) {
-                    console.log("[AUTH] Boot token restricted. Triggering Legal Acceptance lock.");
-                    setNeedsLegalAccept(true);
-                    setRestrictedToken(token);
-                }
-                
                 console.log("[PUSH] RESPONSE:", res.ok ? "OK" : "FAIL", "Status:", res.status, "Error:", res.error);
             } else {
                 console.warn("[PUSH] ERROR: fcmToken is null");
@@ -356,13 +358,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setIsLoading(true);
         try {
             const res = await apiLogin(contacto, password, type);
-            
-            if (res.status === 403 && res.data?.requires_legal_acceptance) {
-                setNeedsLegalAccept(true);
-                setRestrictedToken(res.data.token);
-                return;
-            }
-
             if (!res.ok) throw new Error(res.error || 'Login failed');
 
             const { token, id, name, type: serverType, search_status } = res.data as any;
@@ -466,13 +461,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             // Full re-login with saved credentials
             console.log(`[PIN] verifyPinAndLogin: attempting re-login for ${type}`);
             const res = await apiLogin(email, password, type);
-            
-            if (res.status === 403 && res.data?.requires_legal_acceptance) {
-                setNeedsLegalAccept(true);
-                setRestrictedToken(res.data.token);
-                return false;
-            }
-
             console.log(`[PIN] verifyPinAndLogin: apiLogin ok=${res.ok}`);
             if (!res.ok) return false;
 
