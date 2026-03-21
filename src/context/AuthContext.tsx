@@ -467,7 +467,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             // Full re-login with saved credentials
             console.log(`[PIN] verifyPinAndLogin: attempting re-login for ${type}`);
             const res = await apiLogin(email, password, type);
-            console.log(`[PIN] verifyPinAndLogin: apiLogin ok=${res.ok}`);
+            console.log(`[PIN] verifyPinAndLogin: ok=${res.ok}, status=${res.status}`);
+
+            if (res.status === 403 && res.data?.requires_legal_acceptance) {
+                console.log(`[PIN] Legal block detected. Allowing unlock to proceed to Legal Screen.`);
+                return true;
+            }
+
             if (!res.ok) return false;
 
             const { token, id, name, type: serverType } = res.data as any;
