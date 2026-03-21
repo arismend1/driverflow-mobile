@@ -93,6 +93,7 @@ const STORAGE_KEYS = {
     savedEmail: 'saved_email',
     savedPassword: 'saved_password',
     savedType: 'saved_type',
+    restrictedToken: 'restricted_token',
 };
 
 const getSafeMessaging = () => {
@@ -125,11 +126,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     // --- GLOBAL LEGAL INTERCEPTOR ---
     useEffect(() => {
-        setLegalAcceptanceInterceptor((restrictedJwt) => {
+        setLegalAcceptanceInterceptor(async (restrictedJwt) => {
             if (needsLegalAcceptRef.current) return;
             console.log("[AUTH GLOBAL] 403 Legal Intercepted. Raising gate.");
             setNeedsLegalAccept(true);
             setRestrictedToken(restrictedJwt);
+            if (restrictedJwt) await AsyncStorage.setItem(STORAGE_KEYS.restrictedToken, restrictedJwt);
         });
     }, []);
 
@@ -162,6 +164,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 // 2) Restaurar sesión (TOKEN + USERINFO)
                 const token = await AsyncStorage.getItem(STORAGE_KEYS.token);
                 const userInfoRaw = await AsyncStorage.getItem(STORAGE_KEYS.userInfo);
+                const restricted = await AsyncStorage.getItem(STORAGE_KEYS.restrictedToken);
+
+                if (restricted) {
+                    setRestrictedToken(restricted);
+                    setNeedsLegalAccept(true);
+                    return;
+                }
 
                 if (token) {
                     setUserToken(token);
@@ -469,7 +478,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
             if (res.data?.requires_legal_acceptance) {
                 setNeedsLegalAccept(true);
-                setRestrictedToken(res.data.token || null);
+                const rt = res.data.token || null;
+                setRestrictedToken(rt);
+                if (rt) await AsyncStorage.setItem(STORAGE_KEYS.restrictedToken, rt);
                 return true;
             }
 
@@ -525,6 +536,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             setRestrictedToken(null);
 
             await AsyncStorage.removeItem(STORAGE_KEYS.token);
+            await AsyncStorage.removeItem(STORAGE_KEYS.restrictedToken);
             await AsyncStorage.removeItem(STORAGE_KEYS.userInfo);
 
             // Nota: NO borramos saved_pin aquí para permitir PIN login.
@@ -585,7 +597,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         needsLegalAccept,
         restrictedToken,
         completeLegalAcceptance: async (unlockedToken: string) => {
-            await AsyncStorage.setItem('auth_token', unlockedToken);
+            await AsyncStorage.setItem(STORAGE_KEYS.token, unlockedToken);
+            await AsyncStorage.removeItem(STORAGE_KEYS.restrictedToken);
             setUserToken(unlockedToken);
             setNeedsLegalAccept(false);
             setRestrictedToken(null);
