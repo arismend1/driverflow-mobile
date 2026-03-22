@@ -59,16 +59,15 @@ export const request = async <T = any>(
         // Always read text first (prevents crash if backend returns HTML or plain text)
         const text = await response.text();
 
-        if (!response.ok) {
-            console.error(`[REQUEST] failure ${status} on ${endpoint}:`, text);
-        }
-
         let data: any = {};
         if (text) {
             try {
                 data = JSON.parse(text);
             } catch {
                 // Non-JSON response (HTML error page, proxy page, etc.)
+                if (!response.ok) {
+                    console.error(`[REQUEST] failure ${status} on ${endpoint}:`, text);
+                }
                 console.warn("[REQ] NON_JSON_RESPONSE on", endpoint);
                 const snippet = text.replace(/\n|\r/g, ' ').trim().slice(0, 200);
 
@@ -93,9 +92,17 @@ export const request = async <T = any>(
         // 1) HTTP-level error (non-2xx)
         if (!response.ok) {
             const message = data?.error || data?.message || 'HTTP_ERROR';
+            const isLegalGate = status === 403 && data?.requires_legal_acceptance === true;
+
+            if (isLegalGate) {
+                // Silence RedBox for legal gate (it's an expected flow, not a system failure)
+                console.log(`[REQUEST] legal gate ${status} on ${endpoint}`);
+            } else {
+                console.error(`[REQUEST] failure ${status} on ${endpoint}:`, text);
+            }
 
             // GLOBAL LEGAL INTERCEPTOR CHECK
-            if (status === 403 && data?.requires_legal_acceptance === true) {
+            if (isLegalGate) {
                 if (onRequiresLegalAcceptance) {
                     const fallbackToken = data.token || token;
                     if (fallbackToken) onRequiresLegalAcceptance(fallbackToken);

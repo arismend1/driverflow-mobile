@@ -438,16 +438,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setIsLoading(true);
         try {
             const savedPin = await AsyncStorage.getItem(STORAGE_KEYS.savedPin);
-            console.log(`[PIN] verifyPinAndLogin: savedPin null?=${savedPin === null} | savedPin length=${savedPin?.length ?? 0} | enteredPin length=${enteredPin.length}`);
 
             if (savedPin === null) {
                 // FAIL-OPEN: no PIN saved — treat as unlock, redirect handled by navigator
-                console.log(`[PIN] verifyPinAndLogin: no savedPin found — fail-open`);
+
                 return false;
             }
 
             const pinMatch = savedPin === enteredPin;
-            console.log(`[PIN] verifyPinAndLogin: pinMatch=${pinMatch}`);
 
             if (!pinMatch) return false;
 
@@ -456,13 +454,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             const password = await AsyncStorage.getItem(STORAGE_KEYS.savedPassword);
             const type = (await AsyncStorage.getItem(STORAGE_KEYS.savedType)) as 'driver' | 'empresa' | null;
 
-            console.log(`[PIN] verifyPinAndLogin: email=${email ? 'EXISTS' : 'NULL'} | password=${password ? 'EXISTS' : 'NULL'} | type=${type}`);
 
             if (!email || !password || !type) {
                 // UNLOCK-ONLY: PIN matched but no stored credentials.
                 // User is already logged in (userToken exists from the session).
                 // Just unlock — do NOT return false.
-                console.log(`[PIN] verifyPinAndLogin: no saved credentials → UNLOCK-ONLY mode`);
+
                 return true;
             }
 
@@ -477,7 +474,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 return true;
             }
 
-            if (!res.ok) return false;
+            if (!res.ok) {
+
+                return false;
+            }
 
             const { token, id, name, type: serverType } = res.data as any;
             if (!token) throw new Error("NO_TOKEN_FROM_SERVER");
@@ -525,8 +525,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         try {
             setUserToken(null);
             setUserInfo(null);
+            setNeedsLegalAccept(false);
+            setRestrictedToken(null);
 
             await AsyncStorage.removeItem(STORAGE_KEYS.token);
+            await AsyncStorage.removeItem(STORAGE_KEYS.restrictedToken);
             await AsyncStorage.removeItem(STORAGE_KEYS.userInfo);
 
             // Nota: NO borramos saved_pin aquí para permitir PIN login.
