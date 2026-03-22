@@ -174,6 +174,15 @@ export default function HomeScreen() {
             <View style={styles.menuGrid}>
                 {isCompany ? (
                     <>
+                        {/* Temporarily disabled for V1 */}
+                        {false && (
+                            <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('CreateRequest')}>
+                                <Text style={styles.cardIcon}>➕</Text>
+                                <Text style={styles.cardTitle}>Post New Job</Text>
+                                <Text style={styles.cardDesc}>Create a new request to find drivers</Text>
+                            </TouchableOpacity>
+                        )}
+
                         <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('Matches')}>
                             <Text style={styles.cardIcon}>🔍</Text>
                             <Text style={styles.cardTitle}>Matches Found</Text>

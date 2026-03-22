@@ -22,8 +22,8 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
 
-        versionCode 66
-        versionName "6.6"
+        versionCode 51
+        versionName "51"
     }
 
     signingConfigs {
@@ -67,3 +67,5 @@ dependencies {
         implementation jscFlavor
     }
 }
+
+apply plugin: "com.google.gms.google-services"

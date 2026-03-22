@@ -23,6 +23,10 @@ export default function RegisterScreen() {
     const [address, setAddress] = useState('');
     const [city, setCity] = useState('');
     const [contactPerson, setContactPerson] = useState('');
+    const [contactPhone, setContactPhone] = useState('');
+    // Legal Acceptance states
+    const [acceptTerms, setAcceptTerms] = useState(false);
+    const [acceptPrivacy, setAcceptPrivacy] = useState(false);
 
     const handleRegister = async () => {
         if (!nombre || !contacto || !password || !confirmPassword) {
@@ -35,11 +39,18 @@ export default function RegisterScreen() {
             return;
         }
 
+        if (!acceptTerms || !acceptPrivacy) {
+            Alert.alert('Error', 'Debes aceptar los Términos de Servicio y la Política de Privacidad para continuar.');
+            return;
+        }
+
         const payload: any = {
             type,
             nombre,
             contacto,
             password,
+            accept_terms: true, // Backend checks for true
+            accept_privacy: true
         };
 
         if (type === 'driver') {
@@ -59,7 +70,7 @@ export default function RegisterScreen() {
             payload.address_line1 = address;
             payload.address_city = city;
             payload.contact_person = contactPerson;
-            payload.contact_phone = contacto; // Reuse contact for phone
+            payload.contact_phone = contactPhone || contacto; // Fallback to login ID
         }
 
         setLoading(true);
@@ -150,8 +161,31 @@ export default function RegisterScreen() {
                     <TextInput style={styles.input} placeholder="Address Line 1" value={address} onChangeText={setAddress} />
                     <TextInput style={styles.input} placeholder="City" value={city} onChangeText={setCity} />
                     <TextInput style={styles.input} placeholder="Contact Person Name" value={contactPerson} onChangeText={setContactPerson} />
+                    <TextInput style={styles.input} placeholder="Company Contact Phone (Optional)" value={contactPhone} onChangeText={setContactPhone} keyboardType="phone-pad" />
                 </View>
             )}
+
+            <View style={styles.legalSection}>
+                <TouchableOpacity 
+                    style={styles.legalItem} 
+                    onPress={() => setAcceptTerms(!acceptTerms)}
+                >
+                    <View style={[styles.checkbox, acceptTerms && styles.checkboxChecked]}>
+                        {acceptTerms && <Text style={styles.checkboxTick}>✓</Text>}
+                    </View>
+                    <Text style={styles.legalText}>Acepto los Términos de Servicio</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                    style={styles.legalItem} 
+                    onPress={() => setAcceptPrivacy(!acceptPrivacy)}
+                >
+                    <View style={[styles.checkbox, acceptPrivacy && styles.checkboxChecked]}>
+                        {acceptPrivacy && <Text style={styles.checkboxTick}>✓</Text>}
+                    </View>
+                    <Text style={styles.legalText}>Acepto la Política de Privacidad</Text>
+                </TouchableOpacity>
+            </View>
 
             {loading ? (
                 <ActivityIndicator size="large" color="#007BFF" style={{ marginTop: 20 }} />
@@ -282,5 +316,37 @@ const styles = StyleSheet.create({
     linkText: {
         color: '#007BFF',
         fontSize: 14,
+    },
+    legalSection: {
+        marginVertical: 15,
+        paddingHorizontal: 5,
+    },
+    legalItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    checkbox: {
+        width: 22,
+        height: 22,
+        borderWidth: 2,
+        borderColor: '#007BFF',
+        borderRadius: 4,
+        marginRight: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#fff',
+    },
+    checkboxChecked: {
+        backgroundColor: '#007BFF',
+    },
+    checkboxTick: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: 'bold',
+    },
+    legalText: {
+        fontSize: 14,
+        color: '#495057',
     },
 });

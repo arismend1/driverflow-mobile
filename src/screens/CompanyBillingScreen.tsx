@@ -10,7 +10,7 @@ const formatCurrency = (cents: number, currency: string) => {
 };
 
 export const CompanyBillingScreen = () => {
-    const { token, adminToken: contextAdminToken } = useAuth(); // Use token from context
+    const { token, adminToken: contextAdminToken, suppressPinLock } = useAuth(); // Use token from context
     const [summary, setSummary] = useState<BillingSummary | null>(null);
     const [tickets, setTickets] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -66,6 +66,7 @@ export const CompanyBillingScreen = () => {
                 return;
             }
 
+            suppressPinLock();
             await Linking.openURL(url);
 
             setTimeout(loadData, 3000);

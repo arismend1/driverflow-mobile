@@ -290,8 +290,15 @@ export default function MatchesScreen() {
                 <Text style={pStyles.cardTitle}>📋 Professional Driver Profile</Text>
 
                 <View style={pStyles.headerRow}>
-                    {!isAnonymized && item.profile_photo_base64 ? (
-                        <Image source={{ uri: item.profile_photo_base64 }} style={pStyles.avatar} />
+                    {!isAnonymized ? (
+                        item.profile_photo_base64 ? (
+                            <Image source={{ uri: item.profile_photo_base64 }} style={pStyles.avatar} />
+                        ) : (
+                            <View style={[pStyles.avatar, pStyles.avatarPlaceholder, { backgroundColor: '#f0f0f0' }]}>
+                                <Text style={{ fontSize: 24, marginBottom: 4 }}>👤</Text>
+                                <Text style={{ fontSize: 10, color: '#999', textAlign: 'center' }}>No photo provided</Text>
+                            </View>
+                        )
                     ) : (
                         <View style={[pStyles.avatar, pStyles.avatarPlaceholder]}>
                             <Text style={{ fontSize: 28 }}>👤</Text>
@@ -477,8 +484,14 @@ export default function MatchesScreen() {
                 >
                     <View style={styles.headerRow}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                            {!isAnonymized && item.profile_photo_base64 && user?.type === 'empresa' ? (
-                                <Image source={{ uri: item.profile_photo_base64 }} style={styles.headerAvatar} />
+                            {!isAnonymized && user?.type === 'empresa' ? (
+                                item.profile_photo_base64 ? (
+                                    <Image source={{ uri: item.profile_photo_base64 }} style={styles.headerAvatar} />
+                                ) : (
+                                    <View style={[styles.headerAvatar, { backgroundColor: '#eee', justifyContent: 'center', alignItems: 'center' }]}>
+                                        <Text style={{ fontSize: 16 }}>👤</Text>
+                                    </View>
+                                )
                             ) : (
                                 <View style={[styles.headerAvatar, { backgroundColor: '#eee', justifyContent: 'center', alignItems: 'center' }]}>
                                     <Text style={{ fontSize: 16 }}>👤</Text>

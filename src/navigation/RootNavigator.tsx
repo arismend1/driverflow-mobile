@@ -22,6 +22,7 @@ import DriverProfileScreen from '../screens/DriverProfileScreen';
 import { DriverTicketsScreen } from '../screens/DriverTicketsScreen';
 import MatchesScreen from '../screens/MatchesScreen';
 import { NotificationsScreen } from '../screens/NotificationsScreen';
+import CreateRequestScreen from '../screens/CreateRequestScreen';
 
 export type RootStackParamList = Record<string, any>;
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -89,6 +90,7 @@ export default function RootNavigator() {
                         <Stack.Screen name="DriverTickets" component={DriverTicketsScreen} />
                         <Stack.Screen name="Matches" component={MatchesScreen} />
                         <Stack.Screen name="Notifications" component={NotificationsScreen} />
+                        <Stack.Screen name="CreateRequest" component={CreateRequestScreen} options={{ title: 'New Job' }} />
                     </>
                 )}
             </Stack.Navigator>

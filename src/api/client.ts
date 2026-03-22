@@ -235,26 +235,26 @@ export const updateDriverProfile = async (payload: any, token: string) => {
 };
 
 // --- REQUESTS API (Phase 2) ---
-// ⚠️ Estos endpoints casi seguro requieren token. Lo hago obligatorio para evitar “no hace nada”.
+// ✅ Sincronizados con backend server.js
 export const createRequest = async (
     data: { licencia_req: string; ubicacion: string; tiempo_estimado: number },
     token: string
 ) => {
-    return request('/requests', 'POST', data, token);
+    return request('/create_request', 'POST', data, token);
 };
 
 export const getAvailableRequests = async (token: string) => {
-    const res = await request('/requests/available', 'GET', undefined, token);
+    const res = await request('/list_available_requests', 'GET', undefined, token);
     if (!res.ok) throw new Error(res.error || 'Error fetching requests');
     return res.data;
 };
 
 export const applyToRequest = async (requestId: number, token: string) => {
-    return request(`/requests/${requestId}/apply`, 'POST', undefined, token);
+    return request('/apply_for_request', 'POST', { request_id: requestId }, token);
 };
 
 export const confirmRequest = async (requestId: number, token: string) => {
-    return request(`/requests/${requestId}/confirm`, 'POST', undefined, token);
+    return request('/approve_driver', 'POST', { request_id: requestId }, token);
 };
 
 // --- BILLING API (Phase 4.1) ---

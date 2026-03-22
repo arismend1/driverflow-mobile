@@ -107,6 +107,8 @@ export default function CompanyProfileFormScreen() {
     const [requiresTravelInterview, setRequiresTravelInterview] = useState(false);
     const [homeTime, setHomeTime] = useState('Flexible');
     const [offeredFreightTypes, setOfferedFreightTypes] = useState('');
+    const [contactPerson, setContactPerson] = useState('');
+    const [contactPhone, setContactPhone] = useState('');
 
     useEffect(() => {
         loadReqs();
@@ -140,6 +142,8 @@ export default function CompanyProfileFormScreen() {
             setRequiresTravelInterview(!!data.requires_travel_interview);
             setHomeTime(data.home_time || 'Flexible');
             setOfferedFreightTypes(data.offered_freight_types || '');
+            setContactPerson(data.contact_person || '');
+            setContactPhone(data.contact_phone || '');
 
         } catch (e: any) {
             console.error(e);
@@ -179,7 +183,9 @@ export default function CompanyProfileFormScreen() {
                 company_bio: companyBio,
                 requires_travel_interview: requiresTravelInterview,
                 home_time: homeTime,
-                offered_freight_types: offeredFreightTypes
+                offered_freight_types: offeredFreightTypes,
+                contact_person: contactPerson,
+                contact_phone: contactPhone
             };
 
             // console.log("[COMPANY_PROFILE] payload", JSON.stringify(apiPayload));
@@ -319,6 +325,23 @@ export default function CompanyProfileFormScreen() {
                             onChange={setRequiresTravelInterview}
                         />
                     </View>
+
+                    <Text style={[styles.label, { marginTop: 15 }]}>👤 Contact Person</Text>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Name of the person to contact"
+                        value={contactPerson}
+                        onChangeText={setContactPerson}
+                    />
+
+                    <Text style={[styles.label, { marginTop: 15 }]}>📞 Contact Phone</Text>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Phone number for drivers"
+                        value={contactPhone}
+                        onChangeText={setContactPhone}
+                        keyboardType="phone-pad"
+                    />
                 </View>
 
                 {/* 2. Tipo de Licencia */}
