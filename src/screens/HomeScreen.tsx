@@ -220,18 +220,6 @@ export default function HomeScreen() {
                     </>
                 ) : (
                     <>
-                        {banner?.image_url && (
-                            <Image
-                                source={{ uri: banner.image_url }}
-                                style={{
-                                    width: '100%',
-                                    height: 160,
-                                    borderRadius: 12,
-                                    marginBottom: 16
-                                }}
-                                resizeMode="cover"
-                            />
-                        )}
                         <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('Matches')}>
                             <Text style={styles.cardIcon}>✨</Text>
                             <Text style={styles.cardTitle}>My Matches</Text>
@@ -243,6 +231,20 @@ export default function HomeScreen() {
                             <Text style={styles.cardTitle}>My Profile</Text>
                             <Text style={styles.cardDesc}>Update documents and driver info</Text>
                         </TouchableOpacity>
+
+                        {banner?.image_url && (
+                            <Image
+                                source={{ uri: banner.image_url }}
+                                style={{
+                                    width: '100%',
+                                    height: 220,
+                                    borderRadius: 16,
+                                    marginTop: 24,
+                                    marginBottom: 16
+                                }}
+                                resizeMode="cover"
+                            />
+                        )}
                     </>
                 )}
             </View>
