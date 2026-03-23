@@ -76,3 +76,8 @@ yarn-error.log
 
 # Corrupt folder
 node_modules_corrupt/
+
+# Firebase / Secrets
+android/app/google-services.json
+android/app/build.stable.gradle
+package.stable.json
