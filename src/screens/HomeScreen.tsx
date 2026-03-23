@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch, Alert, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { checkHealth } from '../api/client';
 import { API_URL } from '../api/config';
@@ -10,6 +10,7 @@ export default function HomeScreen() {
     const { userInfo, logout, token, hasPin, updateUserSearchStatus } = useAuth();
     const [connected, setConnected] = useState<boolean | null>(null);
     const [searchStatus, setSearchStatus] = useState<string>('OFF');
+    const [banner, setBanner] = useState<{ image_url: string } | null>(null);
 
     const tokenLen = token ? token.length : 0;
 
@@ -44,8 +45,24 @@ export default function HomeScreen() {
             }
         };
 
+        const fetchBanner = async () => {
+            if (userInfo?.type !== 'driver' || !token) return;
+            try {
+                const res = await fetch(`${API_URL}/api/driver/banner`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    setBanner(data);
+                }
+            } catch (e) {
+                // fail silently
+            }
+        };
+
         verifyConnection();
         fetchRealSearchStatus();
+        fetchBanner();
 
         if (userInfo && userInfo.search_status) {
             setSearchStatus(userInfo.search_status);
@@ -203,6 +220,18 @@ export default function HomeScreen() {
                     </>
                 ) : (
                     <>
+                        {banner?.image_url && (
+                            <Image
+                                source={{ uri: banner.image_url }}
+                                style={{
+                                    width: '100%',
+                                    height: 160,
+                                    borderRadius: 12,
+                                    marginBottom: 16
+                                }}
+                                resizeMode="cover"
+                            />
+                        )}
                         <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('Matches')}>
                             <Text style={styles.cardIcon}>✨</Text>
                             <Text style={styles.cardTitle}>My Matches</Text>
