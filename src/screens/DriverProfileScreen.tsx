@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TextInput, TouchableOpacity, Switch, Alert, StyleSheet, ActivityIndicator } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { API_URL } from '../api/config';
+import { getDriverProfile, updateDriverProfile } from '../api/client';
 import { useNavigation } from '@react-navigation/native';
 
 // Helper for MultiSelect
@@ -51,12 +51,10 @@ export default function DriverProfileScreen() {
 
     const loadProfile = async () => {
         try {
-            const res = await fetch(`${API_URL}/drivers/profile`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) {
-                const data = await res.json();
-                if (data.driver_id) { // If exists
+            const res = await getDriverProfile(token || '');
+            if (res.ok && res.data) {
+                const data = res.data;
+                if (data.id) { // If exists
                     setHasCdl(!!data.has_cdl);
                     setLicenseTypes(data.license_types || []);
                     setEndorsements(data.endorsements || []);
@@ -91,14 +89,7 @@ export default function DriverProfileScreen() {
                 work_relationships: relationships
             };
 
-            const res = await fetch(`${API_URL}/drivers/profile`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(payload)
-            });
+            const res = await updateDriverProfile(payload, token || '');
 
             if (res.ok) {
                 Alert.alert('Success', 'Profile updated successfully.');
