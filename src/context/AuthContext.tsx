@@ -166,6 +166,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 const userInfoRaw = await AsyncStorage.getItem(STORAGE_KEYS.userInfo);
                 const restricted = await AsyncStorage.getItem(STORAGE_KEYS.restrictedToken);
 
+                if (userInfoRaw) {
+                    try {
+                        const parsed = JSON.parse(userInfoRaw) as UserInfo;
+                        if (parsed?.id && parsed?.type) setUserInfo(parsed);
+                    } catch {
+                        await AsyncStorage.removeItem(STORAGE_KEYS.userInfo);
+                    }
+                }
+
                 if (restricted) {
                     setRestrictedToken(restricted);
                     setNeedsLegalAccept(true);
@@ -179,15 +188,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                     registerPushToken(token).catch((err) => {
                         console.error("[PUSH] Bootstrap: Error in call chain:", err);
                     });
-                }
-
-                if (userInfoRaw) {
-                    try {
-                        const parsed = JSON.parse(userInfoRaw) as UserInfo;
-                        if (parsed?.id && parsed?.type) setUserInfo(parsed);
-                    } catch {
-                        await AsyncStorage.removeItem(STORAGE_KEYS.userInfo);
-                    }
                 }
             } catch (e) {
                 console.error('Error bootstrapping Auth state', e);
@@ -364,6 +364,21 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             });
     }, []);
 
+    const seedPendingLegalSession = async (rt: string, data: any, pType: 'driver' | 'empresa') => {
+        const finalType: 'driver' | 'empresa' = (data.type || pType) as any;
+        const info: UserInfo = { 
+            id: data.id, 
+            name: data.name || 'Usuario', 
+            type: finalType, 
+            search_status: data.search_status || 'ON' 
+        };
+        await AsyncStorage.setItem(STORAGE_KEYS.restrictedToken, rt);
+        await AsyncStorage.setItem(STORAGE_KEYS.userInfo, JSON.stringify(info));
+        setRestrictedToken(rt);
+        setUserInfo(info);
+        setNeedsLegalAccept(true);
+    };
+
     const login = async (
         contacto: string,
         password: string,
@@ -373,6 +388,24 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setIsLoading(true);
         try {
             const res = await apiLogin(contacto, password, type);
+
+            if (res.data?.requires_legal_acceptance) {
+                const rt = res.data.token || null;
+                if (rt) {
+                    await seedPendingLegalSession(rt, res.data, type);
+                    if (remember) {
+                        await AsyncStorage.setItem(STORAGE_KEYS.savedEmail, contacto);
+                        await AsyncStorage.setItem(STORAGE_KEYS.savedPassword, password);
+                        await AsyncStorage.setItem(STORAGE_KEYS.savedType, res.data.type || type);
+                        const existingPin = await AsyncStorage.getItem(STORAGE_KEYS.savedPin);
+                        setPinGate(existingPin ? 'enter' : 'create');
+                        setPinReady(!!(existingPin && password));
+                    }
+                    setIsLoading(false);
+                    return;
+                }
+            }
+
             if (!res.ok) throw new Error(res.error || 'Login failed');
 
             const { token, id, name, type: serverType, search_status } = res.data as any;
@@ -472,11 +505,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             const res = await apiLogin(email, password, type);
 
             if (res.data?.requires_legal_acceptance) {
-                setNeedsLegalAccept(true);
                 const rt = res.data.token || null;
-                setRestrictedToken(rt);
-                if (rt) await AsyncStorage.setItem(STORAGE_KEYS.restrictedToken, rt);
-                return true;
+                if (rt) {
+                    await seedPendingLegalSession(rt, res.data, type);
+                    return true;
+                }
             }
 
             if (!res.ok) {
@@ -595,6 +628,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         needsLegalAccept,
         restrictedToken,
         completeLegalAcceptance: async (unlockedToken: string) => {
+            if (!userInfo) {
+                const userInfoRaw = await AsyncStorage.getItem(STORAGE_KEYS.userInfo);
+                if (userInfoRaw) {
+                    try {
+                        const parsed = JSON.parse(userInfoRaw) as UserInfo;
+                        if (parsed?.id && parsed?.type) setUserInfo(parsed);
+                    } catch { }
+                }
+            }
+
             await AsyncStorage.setItem(STORAGE_KEYS.token, unlockedToken);
             await AsyncStorage.removeItem(STORAGE_KEYS.restrictedToken);
             setUserToken(unlockedToken);
