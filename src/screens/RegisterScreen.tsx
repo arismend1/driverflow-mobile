@@ -2,11 +2,10 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, Alert, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { register } from '../api/client';
-import { useAuth } from '../context/AuthContext';
 
 export default function RegisterScreen() {
     const navigation = useNavigation<any>();
-    const { login: authLogin } = useAuth();
+
     const [loading, setLoading] = useState(false);
 
     // Form State
@@ -81,11 +80,20 @@ export default function RegisterScreen() {
                 throw new Error(res.error || 'Registration failed on server');
             }
 
-            // Auto-login or redirect? Let's redirect to Login for security/simplicity or Auto Login
-            Alert.alert('Success', 'Account created! Logging in...');
-
-            await authLogin(contacto, password, type);
-            navigation.navigate('Home');
+            Alert.alert(
+                'Success',
+                'Account created. Please verify your email before logging in.',
+                [
+                    {
+                        text: 'Continue',
+                        onPress: () =>
+                            navigation.navigate('VerifyEmail', {
+                                email: contacto.trim().toLowerCase(),
+                                type,
+                            }),
+                    },
+                ]
+            );
 
         } catch (error: any) {
             Alert.alert('Registration Failed', error.message);
