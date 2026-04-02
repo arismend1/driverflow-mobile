@@ -263,7 +263,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             if (fcmToken) {
                 console.log("[PUSH] Sending POST /api/push/register...");
                 const res = await request('/api/push/register', 'POST', { token: fcmToken, platform: 'android' }, token);
-                console.log("[PUSH] RESPONSE:", res.ok ? "OK" : "FAIL", "Status:", res.status, "Error:", res.error);
+                if (!res.ok) {
+                    console.error("[PUSH_REGISTER_FAIL] Server rejected token registration:", res.error);
+                } else {
+                    console.log("[PUSH] RESPONSE: OK");
+                }
             } else {
                 console.warn("[PUSH] ERROR: fcmToken is null");
             }
