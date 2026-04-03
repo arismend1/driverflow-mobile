@@ -4,7 +4,7 @@
  * Any modification must be explicitly approved.
  */
 import React, { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
-import { AppState } from 'react-native';
+import { AppState, PermissionsAndroid, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import messaging from '@react-native-firebase/messaging';
 import notifee, { AndroidImportance } from '@notifee/react-native';
@@ -251,12 +251,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             // 1. Device registration (official recommendation)
             await messenger.registerDeviceForRemoteMessages();
             
-            // 2. Request permission (non-blocking)
+            if (Platform.OS === 'android' && Platform.Version >= 33) {
+                const granted = await PermissionsAndroid.request(
+                    PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
+                );
+                console.log('[PUSH] Permission status:', granted);
+            }
+
+            // 3. Request Firebase permission (non-blocking)
             await messenger.requestPermission().catch((err) => {
                 console.warn("[PUSH] ERROR (Permission):", err);
             });
             
-            // 3. Get token
+            // 4. Get token
             const fcmToken = await messenger.getToken();
             console.log("[PUSH] TOKEN:", fcmToken);
 

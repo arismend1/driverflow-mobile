@@ -5,5 +5,15 @@
 import { AppRegistry } from 'react-native';
 import App from './App';
 import { name as appName } from './app.json';
+import notifee, { EventType } from '@notifee/react-native';
+
+notifee.onBackgroundEvent(async ({ type, detail }) => {
+    console.log('[NOTIFEE BACKGROUND EVENT]:', type, detail);
+
+    if (type === EventType.PRESS) {
+        console.log('[NOTIFEE] Notification pressed in background');
+    }
+
+});
 
 AppRegistry.registerComponent(appName, () => App);
