@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, ScrollView, TextInput, TouchableOpacity, Alert, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { request, mapErrorToMessage } from '../api/client';
@@ -111,11 +111,7 @@ export default function CompanyProfileFormScreen() {
     const [contactPerson, setContactPerson] = useState('');
     const [contactPhone, setContactPhone] = useState('');
 
-    useEffect(() => {
-        loadReqs();
-    }, []);
-
-    const loadReqs = async () => {
+    const loadReqs = useCallback(async () => {
         try {
             const res = await request('/api/companies/requirements', 'GET', undefined, token || undefined);
             if (!res.ok) {
@@ -152,7 +148,11 @@ export default function CompanyProfileFormScreen() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [token]);
+
+    useEffect(() => {
+        loadReqs();
+    }, [loadReqs]);
 
     const saveReqs = async () => {
         setSaving(true);

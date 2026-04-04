@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, ScrollView, TextInput, TouchableOpacity, Switch, Alert, StyleSheet, ActivityIndicator } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { getDriverProfile, updateDriverProfile } from '../api/client';
-import { useNavigation } from '@react-navigation/native';
 
 // Helper for MultiSelect
 const MultiSelect = ({ label, options, selected = [], onToggle }: any) => {
@@ -29,7 +28,6 @@ const MultiSelect = ({ label, options, selected = [], onToggle }: any) => {
 
 export default function DriverProfileScreen() {
     const { token, userInfo: user } = useAuth();
-    const navigation = useNavigation();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
@@ -39,17 +37,12 @@ export default function DriverProfileScreen() {
     const [endorsements, setEndorsements] = useState<string[]>([]);
     const [opsTypes, setOpsTypes] = useState<string[]>([]);
     const [expYears, setExpYears] = useState('0');
-    const [expRange, setExpRange] = useState(''); // Optional if using years
     const [preferences, setPreferences] = useState<string[]>([]);
     const [hasTruck, setHasTruck] = useState(false);
     const [paymentMethods, setPaymentMethods] = useState<string[]>([]);
     const [relationships, setRelationships] = useState<string[]>([]);
 
-    useEffect(() => {
-        loadProfile();
-    }, []);
-
-    const loadProfile = async () => {
+    const loadProfile = useCallback(async () => {
         try {
             const res = await getDriverProfile(token || '');
             if (res.ok && res.data) {
@@ -71,7 +64,11 @@ export default function DriverProfileScreen() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [token]);
+
+    useEffect(() => {
+        loadProfile();
+    }, [loadProfile]);
 
     const saveProfile = async () => {
         setSaving(true);
@@ -97,7 +94,7 @@ export default function DriverProfileScreen() {
             } else {
                 Alert.alert('Error', 'Could not save profile.');
             }
-        } catch (e) {
+        } catch {
             Alert.alert('Error', 'Connection error.');
         } finally {
             setSaving(false);

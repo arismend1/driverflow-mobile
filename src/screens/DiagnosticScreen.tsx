@@ -5,18 +5,16 @@ import { DiagnosticsState, checkHealth } from '../api/client';
 export const DiagnosticScreen = () => {
     const [health, setHealth] = useState<any>(null);
     const [loading, setLoading] = useState(false);
-    const [lastRefreshed, setLastRefreshed] = useState(new Date());
 
     const refreshHealth = async () => {
         setLoading(true);
         try {
             const res = await checkHealth();
             setHealth(res.ok ? 'ONLINE (200)' : `ERROR ${res.status}`);
-        } catch (e) {
+        } catch {
             setHealth('NETWORK_ERROR');
         } finally {
             setLoading(false);
-            setLastRefreshed(new Date());
         }
     };
 

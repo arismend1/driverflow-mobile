@@ -9,7 +9,7 @@ export default function PinScreen() {
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
 
-    const { hasPin, savePin, verifyPinAndLogin, logout, userInfo, token, clearPinGate, unlockApp, clearSavedCredentials, appLocked } = useAuth();
+    const { hasPin, savePin, verifyPinAndLogin, logout, userInfo, clearPinGate, unlockApp, clearSavedCredentials } = useAuth();
 
     // mode puede venir de Login: { mode: 'create' }
     const forcedMode: 'create' | undefined = route?.params?.mode === 'create' ? 'create' : undefined;
@@ -96,14 +96,6 @@ export default function PinScreen() {
     };
 
     const handleBackspace = () => setPin(prev => prev.slice(0, -1));
-
-    const handleLogout = async () => {
-        await logout();
-        navigation.reset({
-            index: 0,
-            routes: [{ name: 'Login' }],
-        });
-    };
 
     const renderDots = () => {
         const dots = [];

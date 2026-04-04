@@ -1,0 +1,101 @@
+﻿node.exe : FAIL __tests__/App.test.tsx (9.151 s)
+En línea: 1 Carácter: 1
++ & "C:\Program Files\nodejs/node.exe" 
+"C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (FA 
+   IL __tests__/App.test.tsx (9.151 s):String)  
+   [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandErro 
+   r
+ 
+  ├ù renders correctly (38 ms)
+
+  ΓùÅ renders correctly
+
+    Element type is invalid: expected a string 
+(for built-in components) or a class/function 
+(for composite components) but got: undefined. 
+You likely forgot to export your component from 
+the file it's defined in, or you might have 
+mixed up default and named imports.
+
+    Check the render method of `App`.
+
+    [0m [90m 22 |[39m
+     [90m 23 |[39m test([32m'renders 
+correctly'[39m[33m,[39m [36masync[39m () 
+[33m=>[39m {
+    [31m[1m>[22m[39m[90m 24 |[39m   
+[36mawait[39m 
+[33mReactTestRenderer[39m[33m.[39mact(() 
+[33m=>[39m {
+     [90m    |[39m                           
+[31m[1m^[22m[39m
+     [90m 25 |[39m     [33mReactTestRenderer
+[39m[33m.[39mcreate([33m<[39m[33mApp[39m 
+[33m/[39m[33m>[39m)[33m;[39m
+     [90m 26 |[39m   })[33m;[39m
+     [90m 27 |[39m })[33m;[39m[0m
+
+      at createFiberFromTypeAndProps (node_modul
+es/react-test-renderer/cjs/react-test-renderer.d
+evelopment.js:14784:28)
+      at createFiberFromElement (node_modules/re
+act-test-renderer/cjs/react-test-renderer.develo
+pment.js:14798:14)
+      at reconcileChildFibersImpl (node_modules/
+react-test-renderer/cjs/react-test-renderer.deve
+lopment.js:4024:31)
+      at node_modules/react-test-renderer/cjs/re
+act-test-renderer.development.js:4202:33
+      at reconcileChildren (node_modules/react-t
+est-renderer/cjs/react-test-renderer.development
+.js:6684:13)
+      at updateFunctionComponent (node_modules/r
+eact-test-renderer/cjs/react-test-renderer.devel
+opment.js:7032:7)
+      at beginWork (node_modules/react-test-rend
+erer/cjs/react-test-renderer.development.js:8499
+:18)
+      at runWithFiberInDEV (node_modules/react-t
+est-renderer/cjs/react-test-renderer.development
+.js:2315:13)
+      at performUnitOfWork (node_modules/react-t
+est-renderer/cjs/react-test-renderer.development
+.js:13224:22)
+      at workLoopSync (node_modules/react-test-r
+enderer/cjs/react-test-renderer.development.js:1
+3068:41)
+      at renderRootSync (node_modules/react-test
+-renderer/cjs/react-test-renderer.development.js
+:13049:11)
+      at performWorkOnRoot (node_modules/react-t
+est-renderer/cjs/react-test-renderer.development
+.js:12253:39)
+      at performWorkOnRootViaSchedulerTask (node
+_modules/react-test-renderer/cjs/react-test-rend
+erer.development.js:2908:7)
+      at flushActQueue (node_modules/react/cjs/r
+eact.development.js:590:34)
+      at Object.<anonymous>.process.env.NODE_ENV
+.exports.act (node_modules/react/cjs/react.devel
+opment.js:884:10)
+      at Object.act 
+(__tests__/App.test.tsx:24:27)
+      at asyncGeneratorStep (node_modules/@babel
+/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/help
+ers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asy
+ncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel
+/runtime/helpers/asyncToGenerator.js:14:12)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 1 total
+Snapshots:   0 total
+Time:        10.2 s
+Ran all test suites matching 
+/__tests__\\App.test.tsx/i.

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, FlatList, ActivityIndicator, StyleSheet, TouchableOpacity } from 'react-native';
 import { getTickets } from '../api/client';
 import { useAuth } from '../context/AuthContext';
@@ -18,11 +18,7 @@ export const DriverTicketsScreen = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        loadTickets();
-    }, [token]);
-
-    const loadTickets = async () => {
+    const loadTickets = useCallback(async () => {
         if (!token) {
             setError('No active session.');
             return;
@@ -39,7 +35,11 @@ export const DriverTicketsScreen = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [token]);
+
+    useEffect(() => {
+        loadTickets();
+    }, [loadTickets]);
 
     const renderItem = ({ item }: { item: Ticket }) => (
         <View style={styles.card}>

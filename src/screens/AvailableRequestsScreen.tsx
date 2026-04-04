@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, FlatList, Button, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { getAvailableRequests, applyToRequest, mapErrorToMessage } from '../api/client';
 import { useAuth } from '../context/AuthContext';
@@ -16,7 +16,7 @@ export const AvailableRequestsScreen = () => {
     const [requests, setRequests] = useState<RequestItem[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const loadParams = async () => {
+    const loadParams = useCallback(async () => {
         setLoading(true);
         try {
             const data = await getAvailableRequests(token || '');
@@ -26,11 +26,11 @@ export const AvailableRequestsScreen = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [token]);
 
     useEffect(() => {
         loadParams();
-    }, []);
+    }, [loadParams]);
 
     const handleApply = async (id: number) => {
         const res = await applyToRequest(id, token || '');

@@ -1,6 +1,5 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState, useContext, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, RefreshControl, Clipboard, Linking, Image, TextInput } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthContext } from '../context/AuthContext';
 import { API_URL } from '../api/config';
 import RNPrint from 'react-native-print';
@@ -14,7 +13,7 @@ export default function MatchesScreen() {
     const [searchQuery, setSearchQuery] = useState('');
     const [expandedCardId, setExpandedCardId] = useState<any>(null);
 
-    const fetchMatches = async () => {
+    const fetchMatches = useCallback(async () => {
         try {
             const endpoint = user?.type === 'driver' ? 'matches/opportunities' : 'matches/candidates';
             const resp = await fetch(`${API_URL}/${endpoint}`, {
@@ -29,11 +28,11 @@ export default function MatchesScreen() {
             setLoading(false);
             setRefreshing(false);
         }
-    };
+    }, [user?.type, token]);
 
     useEffect(() => {
         fetchMatches();
-    }, []);
+    }, [fetchMatches]);
 
     const onRefresh = () => {
         setRefreshing(true);
@@ -68,7 +67,7 @@ export default function MatchesScreen() {
                 try {
                     const err = await resp.json();
                     errStr = err.error || 'Failed to update status';
-                } catch (jsonErr) {
+                } catch {
                     errStr = `HTTP Error ${resp.status}`;
                 }
                 Alert.alert('Server Error', errStr);
@@ -105,7 +104,7 @@ export default function MatchesScreen() {
                                 const err = await resp.json();
                                 Alert.alert(err.error || 'Error', err.message || 'Failed to process consent');
                             }
-                        } catch (e) {
+                        } catch {
                             Alert.alert('Error', 'Network Failure');
                         }
                     }
@@ -131,7 +130,7 @@ export default function MatchesScreen() {
             } else {
                 Alert.alert('Error', data.message || data.error || 'Failed to resolve match');
             }
-        } catch (e) {
+        } catch {
             Alert.alert('Network Failure', 'Could not access the server.');
         }
     };

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, ActivityIndicator, StyleSheet, Alert, TouchableOpacity, Modal, TextInput, Linking } from 'react-native';
-import { getBillingSummary, getBillingTickets, getTickets, createCheckoutSession, createInvoiceCheckoutSession, BillingSummary } from '../api/client';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, FlatList, ActivityIndicator, StyleSheet, Alert, TouchableOpacity, Linking } from 'react-native';
+import { getBillingSummary, getBillingTickets, getTickets, createInvoiceCheckoutSession, BillingSummary } from '../api/client';
 
 import { useAuth } from '../context/AuthContext';
 
@@ -10,21 +10,13 @@ const formatCurrency = (cents: number, currency: string) => {
 };
 
 export const CompanyBillingScreen = () => {
-    const { token, adminToken: contextAdminToken, suppressPinLock } = useAuth(); // Use token from context
+    const { token, suppressPinLock } = useAuth(); // Use token from context
     const [summary, setSummary] = useState<BillingSummary | null>(null);
     const [tickets, setTickets] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'pending' | 'paid' | 'all' | 'tickets'>('pending');
 
-    useEffect(() => {
-        if (!token) {
-            Alert.alert('Error', 'No authentication token found. Please login again.');
-            return;
-        }
-        loadData();
-    }, [activeTab]);
-
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
         try {
             if (!token) return;
             setLoading(true);
@@ -43,7 +35,15 @@ export const CompanyBillingScreen = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [token, activeTab]);
+
+    useEffect(() => {
+        if (!token) {
+            Alert.alert('Error', 'No authentication token found. Please login again.');
+            return;
+        }
+        loadData();
+    }, [loadData, token]);
 
     const payTicket = async (item: any) => {
         if (!token) {
@@ -85,7 +85,7 @@ export const CompanyBillingScreen = () => {
             } else {
                 Alert.alert('Error', 'Cannot open receipt link.');
             }
-        } catch (error: any) {
+        } catch {
             Alert.alert('Error', 'Could not open receipt');
         }
     };
@@ -208,13 +208,6 @@ export const CompanyBillingScreen = () => {
         </View>
     );
 };
-
-// Simplified Button component to avoid import issues if not standard
-const Button = ({ title, onPress, color = '#007BFF' }: any) => (
-    <TouchableOpacity onPress={onPress} style={{ backgroundColor: color, padding: 10, borderRadius: 5, minWidth: 80, alignItems: 'center' }}>
-        <Text style={{ color: 'white', fontWeight: 'bold' }}>{title}</Text>
-    </TouchableOpacity>
-);
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f2f2f2' },

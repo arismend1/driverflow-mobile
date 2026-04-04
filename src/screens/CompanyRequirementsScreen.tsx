@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, ScrollView, TextInput, TouchableOpacity, Switch, Alert, StyleSheet, ActivityIndicator } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { API_URL } from '../api/config';
-import { useNavigation } from '@react-navigation/native';
 
 const MultiSelect = ({ label, options, selected = [], onToggle }: any) => {
     return (
@@ -28,7 +27,6 @@ const MultiSelect = ({ label, options, selected = [], onToggle }: any) => {
 
 export default function CompanyRequirementsScreen() {
     const { token } = useAuth();
-    const navigation = useNavigation();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
@@ -44,11 +42,7 @@ export default function CompanyRequirementsScreen() {
     const [reqRelationships, setReqRelationships] = useState<string[]>([]);
     const [availability, setAvailability] = useState('Immediate');
 
-    useEffect(() => {
-        loadReqs();
-    }, []);
-
-    const loadReqs = async () => {
+    const loadReqs = useCallback(async () => {
         try {
             const res = await fetch(`${API_URL}/companies/requirements`, {
                 headers: { 'Authorization': `Bearer ${token}` }
@@ -74,7 +68,11 @@ export default function CompanyRequirementsScreen() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [token]);
+
+    useEffect(() => {
+        loadReqs();
+    }, [loadReqs]);
 
     const saveReqs = async () => {
         setSaving(true);
@@ -106,7 +104,7 @@ export default function CompanyRequirementsScreen() {
             } else {
                 Alert.alert('Error', 'Could not save.');
             }
-        } catch (e) {
+        } catch {
             Alert.alert('Error', 'Connection error.');
         } finally {
             setSaving(false);

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch, Alert, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { checkHealth } from '../api/client';
 import { API_URL } from '../api/config';
@@ -7,22 +7,27 @@ import { useAuth } from '../context/AuthContext';
 
 export default function HomeScreen() {
     const navigation = useNavigation<any>();
-    const { userInfo, logout, token, hasPin, updateUserSearchStatus } = useAuth();
-    const [connected, setConnected] = useState<boolean | null>(null);
+    const { userInfo, logout, token, updateUserSearchStatus } = useAuth();
+    const [_connected, setConnected] = useState<boolean | null>(null);
     const [searchStatus, setSearchStatus] = useState<string>('OFF');
     const [banner, setBanner] = useState<{ image_url: string } | null>(null);
 
-    const tokenLen = token ? token.length : 0;
-
+    // A) Conectividad
     useEffect(() => {
         let alive = true;
-
         const verifyConnection = async () => {
             setConnected(null);
             const result = await checkHealth();
             if (alive) setConnected(result.ok);
         };
+        verifyConnection();
+        return () => {
+            alive = false;
+        };
+    }, []);
 
+    // B) Fetch de estado remoto
+    useEffect(() => {
         const fetchRealSearchStatus = async () => {
             if (!userInfo || !token) return;
             try {
@@ -55,23 +60,21 @@ export default function HomeScreen() {
                     const data = await res.json();
                     setBanner(data);
                 }
-            } catch (e) {
+            } catch {
                 // fail silently
             }
         };
 
-        verifyConnection();
         fetchRealSearchStatus();
         fetchBanner();
+    }, [token, userInfo, updateUserSearchStatus]);
 
+    // C) Sync de estado local
+    useEffect(() => {
         if (userInfo && userInfo.search_status) {
             setSearchStatus(userInfo.search_status);
         }
-
-        return () => {
-            alive = false;
-        };
-    }, [userInfo?.id]);
+    }, [userInfo]);
 
     // ✅ Guardrail: si hay token pero userInfo no está listo, NO navegues a nada.
     if (!userInfo) {

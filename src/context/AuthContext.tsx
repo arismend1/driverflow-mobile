@@ -3,7 +3,7 @@
  * Push notifications system is fully functional.
  * Any modification must be explicitly approved.
  */
-import React, { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef, useCallback, ReactNode } from 'react';
 import { AppState, PermissionsAndroid, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import messaging from '@react-native-firebase/messaging';
@@ -583,7 +583,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
             // Nota: NO borramos saved_pin aquí para permitir PIN login.
             // saved_email/saved_password/saved_type/saved_pin se mantienen.
-        } catch (_) {
+        } catch {
             // ignore
         } finally {
             setIsLoading(false);
@@ -607,12 +607,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
     };
 
-    const updateUserSearchStatus = async (status: string) => {
+    const updateUserSearchStatus = useCallback(async (status: string) => {
         if (!userInfo) return;
         const newInfo = { ...userInfo, search_status: status };
         setUserInfo(newInfo);
         await AsyncStorage.setItem('auth_user_info', JSON.stringify(newInfo));
-    };
+    }, [userInfo]);
 
     const value: AuthContextType = {
         userToken,

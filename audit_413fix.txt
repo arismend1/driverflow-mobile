@@ -1,0 +1,50 @@
+﻿diff --git a/src/screens/CompanyProfileFormScreen.tsx b/src/screens/CompanyProfileFormScreen.tsx
+index 92f839b..94165bc 100644
+--- a/src/screens/CompanyProfileFormScreen.tsx
++++ b/src/screens/CompanyProfileFormScreen.tsx
+@@ -103,6 +103,7 @@ export default function CompanyProfileFormScreen() {
+     const [payPerMileMin, setPayPerMileMin] = useState('');
+     const [payPerMileMax, setPayPerMileMax] = useState('');
+     const [companyLogo, setCompanyLogo] = useState<string | null>(null);
++    const [companyLogoChanged, setCompanyLogoChanged] = useState(false);
+     const [companyBio, setCompanyBio] = useState('');
+     const [requiresTravelInterview, setRequiresTravelInterview] = useState(false);
+     const [homeTime, setHomeTime] = useState('Flexible');
+@@ -166,7 +167,7 @@ export default function CompanyProfileFormScreen() {
+                 finalExp = 2;
+             }
+ 
+-            const apiPayload = {
++            const apiPayload: any = {
+                 req_cdl: reqCdl,
+                 req_license_types: reqLicenseTypes,
+                 req_endorsements: reqEndorsements,
+@@ -179,7 +180,6 @@ export default function CompanyProfileFormScreen() {
+                 req_experience_years: finalExp,
+                 pay_per_mile_min: payPerMileMin ? parseFloat(payPerMileMin) : null,
+                 pay_per_mile_max: payPerMileMax ? parseFloat(payPerMileMax) : null,
+-                company_logo: companyLogo,
+                 company_bio: companyBio,
+                 requires_travel_interview: requiresTravelInterview,
+                 home_time: homeTime,
+@@ -188,7 +188,11 @@ export default function CompanyProfileFormScreen() {
+                 contact_phone: contactPhone
+             };
+ 
+-            // console.log("[COMPANY_PROFILE] payload", JSON.stringify(apiPayload));
++            if (companyLogoChanged && companyLogo) {
++                apiPayload.company_logo = companyLogo;
++            }
++
++            console.log('[SAVE] payload size:', JSON.stringify(apiPayload).length);
+ 
+             const res = await request('/api/companies/requirements', 'PUT', apiPayload, token || undefined);
+ 
+@@ -253,6 +257,7 @@ export default function CompanyProfileFormScreen() {
+                             resumePinLock();
+                             if (result.assets && result.assets[0].base64) {
+                                 setCompanyLogo(`data:image/jpeg;base64,${result.assets[0].base64}`);
++                                setCompanyLogoChanged(true);
+                             }
+                         }}
+                     >

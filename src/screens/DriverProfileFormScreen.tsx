@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, ScrollView, TextInput, TouchableOpacity, Alert, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, Image, PermissionsAndroid } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useNavigation, CommonActions } from '@react-navigation/native';
@@ -97,11 +97,7 @@ export default function DriverProfileFormScreen() {
     const [photoConsent, setPhotoConsent] = useState(false);
     const [photoConsentAt, setPhotoConsentAt] = useState<string | null>(null);
 
-    useEffect(() => {
-        loadProfile();
-    }, []);
-
-    const loadProfile = async () => {
+    const loadProfile = useCallback(async () => {
         try {
             const res = await getDriverProfile(token || '');
             if (res.ok && res.data) {
@@ -152,7 +148,11 @@ export default function DriverProfileFormScreen() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [token]);
+
+    useEffect(() => {
+        loadProfile();
+    }, [loadProfile]);
 
     const saveProfile = async () => {
         setSaving(true);

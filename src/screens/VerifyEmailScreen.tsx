@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { verifyEmail, resendVerification, mapErrorToMessage } from '../api/client';
@@ -14,13 +14,7 @@ export default function VerifyEmailScreen() {
     const [loading, setLoading] = useState(false);
 
     // Auto-verify if token is present on mount
-    useEffect(() => {
-        if (paramToken) {
-            handleVerify(paramToken);
-        }
-    }, [paramToken]);
-
-    const handleVerify = async (tokenToVerify: string) => {
+    const handleVerify = useCallback(async (tokenToVerify: string) => {
         if (!tokenToVerify) return;
         setLoading(true);
         const res = await verifyEmail(tokenToVerify);
@@ -34,7 +28,14 @@ export default function VerifyEmailScreen() {
             const msg = mapErrorToMessage(res.error);
             Alert.alert('Verification Error', msg);
         }
-    };
+    }, [navigation]);
+
+    // Auto-verify if token is present on mount
+    useEffect(() => {
+        if (paramToken) {
+            handleVerify(paramToken);
+        }
+    }, [paramToken, handleVerify]);
 
     const handleResend = async () => {
         if (!email || !type) {

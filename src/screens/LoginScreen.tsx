@@ -6,7 +6,7 @@ import { resendVerification } from '../api/client';
 
 export default function LoginScreen() {
     const navigation = useNavigation<any>();
-    const { login: authLogin, hasPin } = useAuth();
+    const { login: authLogin } = useAuth();
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
