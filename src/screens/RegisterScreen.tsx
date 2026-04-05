@@ -196,7 +196,7 @@ export default function RegisterScreen() {
             </View>
 
             {loading ? (
-                <ActivityIndicator size="large" color="#007BFF" style={{ marginTop: 20 }} />
+                <ActivityIndicator size="large" color="#007BFF" style={styles.loadingIndicator} />
             ) : (
                 <TouchableOpacity style={styles.button} onPress={handleRegister}>
                     <Text style={styles.buttonText}>REGISTER</Text>
@@ -316,6 +316,9 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
         letterSpacing: 1,
+    },
+    loadingIndicator: {
+        marginTop: 20,
     },
     linkButton: {
         marginTop: 20,

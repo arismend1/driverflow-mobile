@@ -29,7 +29,7 @@ function RadioYesNo({ label, value, onChange }: any) {
     return (
         <View style={styles.section}>
             <Text style={styles.label}>{label}</Text>
-            <View style={{ flexDirection: 'row' }}>
+            <View style={styles.radioRow}>
                 <TouchableOpacity
                     style={[styles.radioButton, value && styles.radioSelected]}
                     onPress={() => onChange(true)}
@@ -159,7 +159,7 @@ export default function DriverProfileFormScreen() {
         try {
             let finalExp = 0;
             if (expYearsExact) {
-                finalExp = parseInt(expYearsExact);
+                finalExp = parseInt(expYearsExact, 10);
             }
 
             const payload: any = {
@@ -178,11 +178,11 @@ export default function DriverProfileFormScreen() {
 
                 // Phase 6 fields
                 city, state,
-                weekly_miles: weeklyMiles ? parseInt(weeklyMiles) : null,
+                weekly_miles: weeklyMiles ? parseInt(weeklyMiles, 10) : null,
                 longest_otr: longestOtr || null,
                 trailer_experience: trailerExperience,
-                accidents_3y: parseInt(accidents3y) || 0,
-                tickets_3y: parseInt(tickets3y) || 0,
+                accidents_3y: parseInt(accidents3y, 10) || 0,
+                tickets_3y: parseInt(tickets3y, 10) || 0,
                 home_time: homeTime || null,
                 preferred_freight: preferredFreight || null,
                 preferred_region: preferredRegion || null,
@@ -346,14 +346,14 @@ export default function DriverProfileFormScreen() {
         );
     };
 
-    if (loading) return <ActivityIndicator style={{ flex: 1 }} size="large" />;
+    if (loading) return <ActivityIndicator style={styles.loadingIndicator} size="large" />;
 
     return (
         <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : "height"}
-            style={{ flex: 1 }}
+            style={styles.keyboardContainer}
         >
-            <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 60 }}>
+            <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
                 {/* UX Banner */}
                 {userInfo && (
                     <View style={styles.statusBanner}>
@@ -437,7 +437,7 @@ export default function DriverProfileFormScreen() {
                         <Image source={{ uri: profilePhoto! }} style={styles.photoPreview} />
                     ) : (
                         <View style={styles.photoPlaceholder}>
-                            <Text style={{ color: '#999', fontSize: 14 }}>No photo uploaded</Text>
+                            <Text style={styles.photoPlaceholderText}>No photo uploaded</Text>
                         </View>
                     )}
                     <TouchableOpacity style={styles.photoButton} onPress={() => pickImage(setProfilePhoto)}>
@@ -456,7 +456,7 @@ export default function DriverProfileFormScreen() {
                         if (newVal) setPhotoConsentAt(new Date().toISOString());
                     }}>
                         <View style={[styles.checkbox, photoConsent && styles.checkboxChecked]}>
-                            {photoConsent && <Text style={{ color: '#fff', fontWeight: 'bold' }}>✓</Text>}
+                            {photoConsent && <Text style={styles.checkboxTick}>✓</Text>}
                         </View>
                         <Text style={styles.consentText}>
                             By uploading your CDL license and profile photo, you authorize DriverFlow to share this information with companies you match with for employment purposes.
@@ -464,25 +464,25 @@ export default function DriverProfileFormScreen() {
                     </TouchableOpacity>
 
                     {photoConsent && (
-                        <View style={{ marginTop: 12 }}>
+                        <View style={styles.licensePhotosSection}>
                             <Text style={styles.sublabel}>License Front</Text>
                             {isSafeImage(licenseFront) ? (
                                 <Image source={{ uri: licenseFront! }} style={styles.licensePreview} />
                             ) : (
                                 <View style={styles.licensePlaceholder}>
-                                    <Text style={{ color: '#999' }}>No front photo</Text>
+                                    <Text style={styles.photoPlaceholderMutedText}>No front photo</Text>
                                 </View>
                             )}
                             <TouchableOpacity style={styles.photoButton} onPress={() => pickImage(setLicenseFront)}>
                                 <Text style={styles.photoButtonText}>{licenseFront ? 'Change Front' : 'Upload Front'}</Text>
                             </TouchableOpacity>
 
-                            <Text style={[styles.sublabel, { marginTop: 15 }]}>License Back</Text>
+                            <Text style={[styles.sublabel, styles.sublabelTopSpacing]}>License Back</Text>
                             {isSafeImage(licenseBack) ? (
                                 <Image source={{ uri: licenseBack! }} style={styles.licensePreview} />
                             ) : (
                                 <View style={styles.licensePlaceholder}>
-                                    <Text style={{ color: '#999' }}>No back photo</Text>
+                                    <Text style={styles.photoPlaceholderMutedText}>No back photo</Text>
                                 </View>
                             )}
                             <TouchableOpacity style={styles.photoButton} onPress={() => pickImage(setLicenseBack)}>
@@ -597,18 +597,18 @@ export default function DriverProfileFormScreen() {
 
                 <View style={styles.section}>
                     <Text style={styles.label}>24. Driver Bio</Text>
-                    <Text style={{ color: '#666', fontSize: 12, marginBottom: 8 }}>
+                    <Text style={styles.bioHelpText}>
                         Short description (max 300 characters). Companies will see this.
                     </Text>
                     <TextInput
-                        style={[styles.input, { height: 100, textAlignVertical: 'top' }]}
+                        style={[styles.input, styles.bioInput]}
                         multiline
                         maxLength={300}
                         placeholder="e.g. 5 years OTR experience, tanker endorsement, clean driving record."
                         value={driverBio}
                         onChangeText={setDriverBio}
                     />
-                    <Text style={{ color: '#999', fontSize: 11, marginTop: 4, textAlign: 'right' }}>
+                    <Text style={styles.bioCounter}>
                         {driverBio.length}/300
                     </Text>
                 </View>
@@ -641,6 +641,11 @@ const styles = StyleSheet.create({
     section: { marginBottom: 25 },
     label: { fontSize: 16, fontWeight: '700', marginBottom: 12, color: '#333' },
     sublabel: { fontSize: 14, fontWeight: '600', color: '#555', marginBottom: 8 },
+    sublabelTopSpacing: { marginTop: 15 },
+    radioRow: { flexDirection: 'row' },
+    loadingIndicator: { flex: 1 },
+    keyboardContainer: { flex: 1 },
+    scrollContent: { paddingBottom: 60 },
 
     optionContainer: { flexDirection: 'row', flexWrap: 'wrap' },
     optionButton: {
@@ -673,11 +678,14 @@ const styles = StyleSheet.create({
         width: 120, height: 120, borderRadius: 60, alignSelf: 'center', marginBottom: 10,
         backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#e2e8f0'
     },
+    photoPlaceholderText: { color: '#999', fontSize: 14 },
     licensePreview: { width: '100%', height: 180, borderRadius: 8, marginBottom: 10, resizeMode: 'cover' },
     licensePlaceholder: {
         width: '100%', height: 100, borderRadius: 8, marginBottom: 10,
         backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#e2e8f0'
     },
+    photoPlaceholderMutedText: { color: '#999' },
+    licensePhotosSection: { marginTop: 12 },
     photoButton: {
         backgroundColor: '#4a5568', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8,
         alignSelf: 'center', marginBottom: 5
@@ -691,7 +699,11 @@ const styles = StyleSheet.create({
         marginRight: 12, justifyContent: 'center', alignItems: 'center', marginTop: 2
     },
     checkboxChecked: { backgroundColor: '#38a169', borderColor: '#38a169' },
+    checkboxTick: { color: '#fff', fontWeight: 'bold' },
     consentText: { flex: 1, color: '#4a5568', fontSize: 13, lineHeight: 18 },
+    bioHelpText: { color: '#666', fontSize: 12, marginBottom: 8 },
+    bioInput: { height: 100, textAlignVertical: 'top' },
+    bioCounter: { color: '#999', fontSize: 11, marginTop: 4, textAlign: 'right' },
 
     saveButton: {
         backgroundColor: '#000', paddingVertical: 18, borderRadius: 8, alignItems: 'center', marginTop: 10, marginBottom: 40,

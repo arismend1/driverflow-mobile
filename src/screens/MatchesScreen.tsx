@@ -293,17 +293,17 @@ export default function MatchesScreen() {
                         item.profile_photo_base64 ? (
                             <Image source={{ uri: item.profile_photo_base64 }} style={pStyles.avatar} />
                         ) : (
-                            <View style={[pStyles.avatar, pStyles.avatarPlaceholder, { backgroundColor: '#f0f0f0' }]}>
-                                <Text style={{ fontSize: 24, marginBottom: 4 }}>👤</Text>
-                                <Text style={{ fontSize: 10, color: '#999', textAlign: 'center' }}>No photo provided</Text>
+                            <View style={[pStyles.avatar, pStyles.avatarPlaceholder, pStyles.avatarPlaceholderLight]}>
+                                <Text style={pStyles.noPhotoIcon}>👤</Text>
+                                <Text style={pStyles.noPhotoText}>No photo provided</Text>
                             </View>
                         )
                     ) : (
                         <View style={[pStyles.avatar, pStyles.avatarPlaceholder]}>
-                            <Text style={{ fontSize: 28 }}>👤</Text>
+                            <Text style={pStyles.placeholderIcon}>👤</Text>
                         </View>
                     )}
-                    <View style={{ flex: 1, marginLeft: 12 }}>
+                    <View style={pStyles.headerTextWrap}>
                         <Text style={pStyles.driverName}>{displayName}</Text>
                         <Text style={pStyles.location}>📍 {displayLocation}</Text>
                         <Text style={pStyles.expBadge}>🏷️ {item.experience_years || 0} yrs experience</Text>
@@ -345,7 +345,7 @@ export default function MatchesScreen() {
 
                 {!isAnonymized && (
                     <TouchableOpacity
-                        style={[styles.button, { backgroundColor: '#6c757d', marginTop: 15 }]}
+                        style={[styles.button, styles.printButton]}
                         onPress={() => printDriverProfile(item)}
                     >
                         <Text style={styles.buttonText}>🖨️ Print / Export PDF</Text>
@@ -380,7 +380,7 @@ export default function MatchesScreen() {
         const endorsements = parseJSON(item.endorsements);
 
         return (
-            <View style={[pStyles.card, { borderLeftWidth: 5, borderLeftColor: '#000' }]}>
+            <View style={[pStyles.card, pStyles.companyCard]}>
                 {/* Hero Header: Pay Range */}
                 {hasPay && (
                     <View style={cHStyles.heroBanner}>
@@ -394,10 +394,10 @@ export default function MatchesScreen() {
                         <Image source={{ uri: item.company_logo }} style={pStyles.avatar} />
                     ) : (
                         <View style={[pStyles.avatar, pStyles.avatarPlaceholder]}>
-                            <Text style={{ fontSize: 28 }}>🏢</Text>
+                            <Text style={pStyles.placeholderIcon}>🏢</Text>
                         </View>
                     )}
-                    <View style={{ flex: 1, marginLeft: 12 }}>
+                    <View style={pStyles.headerTextWrap}>
                         <Text style={pStyles.driverName}>{displayName}</Text>
                         <Text style={pStyles.location}>📍 {displayLocation}</Text>
                         <View style={cHStyles.verifiedRow}>
@@ -422,12 +422,12 @@ export default function MatchesScreen() {
                             <View key={t} style={cHStyles.tag}><Text style={cHStyles.tagText}>{t}</Text></View>
                         ))}
                         {modalities.map((t: string) => (
-                            <View key={t} style={[cHStyles.tag, { backgroundColor: '#eef2ff' }]}><Text style={cHStyles.tagText}>{t}</Text></View>
+                            <View key={t} style={[cHStyles.tag, cHStyles.modalityTag]}><Text style={cHStyles.tagText}>{t}</Text></View>
                         ))}
                     </View>
 
                     {/* Freight & Home Time */}
-                    <View style={{ marginTop: 8 }}>
+                    <View style={cHStyles.logisticsMeta}>
                         {item.offered_freight_types ? (
                             <Text style={pStyles.field}>📦 Freight: {item.offered_freight_types}</Text>
                         ) : null}
@@ -441,12 +441,12 @@ export default function MatchesScreen() {
                     </View>
 
                     {/* Payment & Endorsements */}
-                    <View style={[styles.optionContainer, { marginTop: 12 }]}>
+                    <View style={[styles.optionContainer, cHStyles.paymentTagsContainer]}>
                         {payMethods.map((m: string) => (
-                            <View key={m} style={[cHStyles.tag, { backgroundColor: '#e2f3f5' }]}><Text style={cHStyles.tagText}>{m}</Text></View>
+                            <View key={m} style={[cHStyles.tag, cHStyles.payMethodTag]}><Text style={cHStyles.tagText}>{m}</Text></View>
                         ))}
                         {endorsements.map((e: string) => (
-                            <View key={e} style={[cHStyles.tag, { backgroundColor: '#fff7ed' }]}><Text style={cHStyles.tagText}>{e} Endorsement</Text></View>
+                            <View key={e} style={[cHStyles.tag, cHStyles.endorsementTag]}><Text style={cHStyles.tagText}>{e} Endorsement</Text></View>
                         ))}
                     </View>
                 </View>
@@ -482,21 +482,21 @@ export default function MatchesScreen() {
                     style={styles.cardTouchableHeader}
                 >
                     <View style={styles.headerRow}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                        <View style={styles.headerMainRow}>
                             {!isAnonymized && user?.type === 'empresa' ? (
                                 item.profile_photo_base64 ? (
                                     <Image source={{ uri: item.profile_photo_base64 }} style={styles.headerAvatar} />
                                 ) : (
-                                    <View style={[styles.headerAvatar, { backgroundColor: '#eee', justifyContent: 'center', alignItems: 'center' }]}>
-                                        <Text style={{ fontSize: 16 }}>👤</Text>
+                                    <View style={[styles.headerAvatar, styles.headerAvatarPlaceholder]}>
+                                        <Text style={styles.headerAvatarIcon}>👤</Text>
                                     </View>
                                 )
                             ) : (
-                                <View style={[styles.headerAvatar, { backgroundColor: '#eee', justifyContent: 'center', alignItems: 'center' }]}>
-                                    <Text style={{ fontSize: 16 }}>👤</Text>
+                                <View style={[styles.headerAvatar, styles.headerAvatarPlaceholder]}>
+                                    <Text style={styles.headerAvatarIcon}>👤</Text>
                                 </View>
                             )}
-                            <View style={{ marginLeft: 10, flex: 1 }}>
+                            <View style={styles.headerTextWrap}>
                                 <Text style={styles.title} numberOfLines={1}>
                                     {displayName}
                                 </Text>
@@ -505,7 +505,7 @@ export default function MatchesScreen() {
                                 </Text>
                             </View>
                         </View>
-                        <View style={{ alignItems: 'flex-end' }}>
+                        <View style={styles.headerBadgeWrap}>
                             <View style={styles.badge}>
                                 <Text style={styles.badgeText}>{Math.round((item.match_score || 0.85) * 100)}% Match</Text>
                             </View>
@@ -577,20 +577,20 @@ export default function MatchesScreen() {
                                     const isMaxExtension = extensionHours >= 432;
 
                                     const myRes = user?.type === 'empresa' ? item.resolution_company : item.resolution_driver;
-                                    if (myRes) return <Text style={{ marginTop: 15, color: '#666', fontStyle: 'italic', textAlign: 'center' }}>Marked as: {myRes}</Text>;
+                                    if (myRes) return <Text style={styles.resolutionMarked}>Marked as: {myRes}</Text>;
 
                                     const showResolutionButtons = isExpired || user?.type === 'empresa';
 
                                     if (showResolutionButtons) {
                                         return (
-                                            <View style={{ marginTop: 20, padding: 15, backgroundColor: isExpired ? '#fff3cd' : '#f8f9fa', borderRadius: 8, borderWidth: 1, borderColor: isExpired ? '#ffeeba' : '#dee2e6' }}>
-                                                <Text style={{ fontWeight: 'bold', color: isExpired ? '#856404' : '#333', marginBottom: 5 }}>
+                                            <View style={[styles.resolutionBox, isExpired ? styles.resolutionBoxExpired : styles.resolutionBoxDefault]}>
+                                                <Text style={[styles.resolutionTitle, isExpired ? styles.resolutionTitleExpired : styles.resolutionTitleDefault]}>
                                                     {isExpired ? 'Timer Expired' : 'Match Resolution'}
                                                 </Text>
-                                                <Text style={{ color: isExpired ? '#856404' : '#666', marginBottom: 15 }}>
+                                                <Text style={[styles.resolutionDescription, isExpired ? styles.resolutionDescriptionExpired : styles.resolutionDescriptionDefault]}>
                                                     {isExpired ? 'Was the driver hired?' : 'Decide the outcome of this match:'}
                                                 </Text>
-                                                <View style={{ gap: 10 }}>
+                                                <View style={styles.resolutionButtons}>
                                                     <TouchableOpacity style={[styles.button, styles.buttonGreen]} onPress={() => handleResolveMatch(matchId, 'HIRED')}>
                                                         <Text style={styles.buttonText}>Yes (Hired)</Text>
                                                     </TouchableOpacity>
@@ -604,7 +604,7 @@ export default function MatchesScreen() {
                                                     </TouchableOpacity>
                                                 </View>
                                                 {!isExpired && (
-                                                    <Text style={{ marginTop: 15, color: '#0056b3', fontSize: 12, textAlign: 'center' }}>
+                                                    <Text style={styles.exclusivityDateSmall}>
                                                         Exclusivity ends: {expirationDate.toLocaleDateString()}
                                                     </Text>
                                                 )}
@@ -613,7 +613,7 @@ export default function MatchesScreen() {
                                     }
 
                                     return (
-                                        <Text style={{ marginTop: 15, color: '#0056b3', fontSize: 13, textAlign: 'center' }}>
+                                        <Text style={styles.exclusivityDate}>
                                             Exclusivity ends: {expirationDate.toLocaleDateString()}
                                         </Text>
                                     );
@@ -626,33 +626,33 @@ export default function MatchesScreen() {
 
                                 {/* STAGE 1: Accept/Decline */}
                                 {!myAcceptDate ? (
-                                    <View style={{ marginTop: 15 }}>
-                                        <Text style={[styles.consentPrompt, { textAlign: 'center', marginBottom: 5 }]}>
+                                    <View style={styles.stageSection}>
+                                        <Text style={[styles.consentPrompt, styles.consentPromptCentered]}>
                                             {otherAcceptDate ? 'Mutual Interest! They liked your profile.' : 'New Opportunity Detected'}
                                         </Text>
                                         <View style={styles.actionsRow}>
-                                            <TouchableOpacity style={[styles.button, styles.buttonGreen, { flex: 1 }]} onPress={() => handleStatusChange(matchId, 'ACCEPTED')}>
+                                            <TouchableOpacity style={[styles.button, styles.buttonGreen, styles.buttonFlex]} onPress={() => handleStatusChange(matchId, 'ACCEPTED')}>
                                                 <Text style={styles.buttonText}>Accept Interest</Text>
                                             </TouchableOpacity>
-                                            <TouchableOpacity style={[styles.button, styles.buttonRed, { flex: 1 }]} onPress={() => handleStatusChange(matchId, 'DECLINED')}>
+                                            <TouchableOpacity style={[styles.button, styles.buttonRed, styles.buttonFlex]} onPress={() => handleStatusChange(matchId, 'DECLINED')}>
                                                 <Text style={styles.buttonText}>Decline</Text>
                                             </TouchableOpacity>
                                         </View>
                                     </View>
                                 ) : /* STAGE 2: Waiting for other side */
                                 !otherAcceptDate ? (
-                                    <View style={{ marginTop: 20, alignItems: 'center', padding: 15, backgroundColor: '#f0f7ff', borderRadius: 8 }}>
-                                        <Text style={{ fontSize: 24, marginBottom: 5 }}>⏳</Text>
-                                        <Text style={{ fontWeight: 'bold', color: '#0056b3' }}>Waiting for response...</Text>
-                                        <Text style={{ color: '#666', textAlign: 'center', marginTop: 4, fontSize: 13 }}>
+                                    <View style={styles.waitingStage}>
+                                        <Text style={styles.stageIcon}>⏳</Text>
+                                        <Text style={styles.waitingStageTitle}>Waiting for response...</Text>
+                                        <Text style={styles.stageDescription}>
                                             The other party has been notified of your interest.
                                         </Text>
                                     </View>
                                 ) : /* STAGE 3: Final Consent / Pay */
                                 !myConsentDate ? (
-                                    <View style={{ marginTop: 20, padding: 15, backgroundColor: '#eef2ff', borderRadius: 10, borderWidth: 1, borderColor: '#c7d2fe' }}>
-                                        <Text style={[styles.consentPrompt, { color: '#4338ca' }]}>🤝 Mutual Interest Confirmed!</Text>
-                                        <Text style={{ color: '#666', fontSize: 13, marginTop: 4, marginBottom: 15 }}>
+                                    <View style={styles.consentStage}>
+                                        <Text style={[styles.consentPrompt, styles.consentPromptAccent]}>🤝 Mutual Interest Confirmed!</Text>
+                                        <Text style={styles.consentDescription}>
                                             {user?.type === 'empresa' 
                                                 ? 'Review the detailed profile and pay to unlock full contact information.' 
                                                 : 'Authorize sharing your contact details with the company to proceed.'}
@@ -665,10 +665,10 @@ export default function MatchesScreen() {
                                     </View>
                                 ) : (
                                     /* STAGE 4: Waiting for other consent (SHARE_PENDING) */
-                                    <View style={{ marginTop: 20, alignItems: 'center', padding: 15, backgroundColor: '#fff7ed', borderRadius: 8 }}>
-                                        <Text style={{ fontSize: 24, marginBottom: 5 }}>🔓</Text>
-                                        <Text style={{ fontWeight: 'bold', color: '#9a3412' }}>Final Authorization Pending...</Text>
-                                        <Text style={{ color: '#666', textAlign: 'center', marginTop: 4, fontSize: 13 }}>
+                                    <View style={styles.pendingStage}>
+                                        <Text style={styles.stageIcon}>🔓</Text>
+                                        <Text style={styles.pendingStageTitle}>Final Authorization Pending...</Text>
+                                        <Text style={styles.stageDescription}>
                                             You have authorized the exchange. Waiting for the other party to confirm.
                                         </Text>
                                     </View>
@@ -681,7 +681,7 @@ export default function MatchesScreen() {
         );
     };
 
-    if (loading) return <ActivityIndicator style={{ flex: 1 }} size="large" />;
+    if (loading) return <ActivityIndicator style={styles.loadingIndicator} size="large" />;
 
     const filterBySearch = (list: any[]) => {
         if (!searchQuery) return list;
@@ -711,7 +711,7 @@ export default function MatchesScreen() {
         if (activeTab === 'NUEVOS') {
             return (
                 <View style={styles.empty}>
-                    <Text style={{ fontSize: 40, marginBottom: 10 }}>📡</Text>
+                    <Text style={styles.emptyIcon}>📡</Text>
                     <Text style={styles.emptyTitle}>Your radar is on!</Text>
                     <Text style={styles.emptyText}>We are looking for the best opportunities for you. Swipe down to refresh.</Text>
                 </View>
@@ -720,7 +720,7 @@ export default function MatchesScreen() {
         if (activeTab === 'EN_PROCESO') {
             return (
                 <View style={styles.empty}>
-                    <Text style={{ fontSize: 40, marginBottom: 10 }}>⏳</Text>
+                    <Text style={styles.emptyIcon}>⏳</Text>
                     <Text style={styles.emptyTitle}>Nothing in progress yet</Text>
                     <Text style={styles.emptyText}>Offers you accept will appear here while waiting for a final response.</Text>
                 </View>
@@ -729,7 +729,7 @@ export default function MatchesScreen() {
         if (activeTab === 'EXCLUSIVOS') {
             return (
                 <View style={styles.empty}>
-                    <Text style={{ fontSize: 40, marginBottom: 10 }}>🤝</Text>
+                    <Text style={styles.emptyIcon}>🤝</Text>
                     <Text style={styles.emptyTitle}>No exclusive contracts</Text>
                     <Text style={styles.emptyText}>When you share your info with a company, it will appear here for 72 hours.</Text>
                 </View>
@@ -738,7 +738,7 @@ export default function MatchesScreen() {
         if (activeTab === 'HIRED') {
             return (
                 <View style={styles.empty}>
-                    <Text style={{ fontSize: 40, marginBottom: 10 }}>🎉</Text>
+                    <Text style={styles.emptyIcon}>🎉</Text>
                     <Text style={styles.emptyTitle}>No hires yet</Text>
                     <Text style={styles.emptyText}>When a driver is hired through DriverFlow, the record will appear here.</Text>
                 </View>
@@ -760,7 +760,7 @@ export default function MatchesScreen() {
                         onChangeText={setSearchQuery}
                         clearButtonMode="while-editing"
                     />
-                    <Text style={{ position: 'absolute', right: 25, top: 10, fontSize: 18, color: '#999' }}>🔍</Text>
+                    <Text style={styles.searchIcon}>🔍</Text>
                 </View>
             )}
 
@@ -768,28 +768,28 @@ export default function MatchesScreen() {
                 <TouchableOpacity style={[styles.tab, activeTab === 'NUEVOS' && styles.activeTab]} onPress={() => setActiveTab('NUEVOS')}>
                     <View style={styles.tabContentRow}>
                         <Text style={[styles.tabText, activeTab === 'NUEVOS' && styles.activeTabText]}>New</Text>
-                        {newMatches.length > 0 && <View style={[styles.badgeDot, { backgroundColor: '#dc3545' }]}><Text style={styles.badgeCount}>{newMatches.length}</Text></View>}
+                        {newMatches.length > 0 && <View style={[styles.badgeDot, styles.badgeDotNew]}><Text style={styles.badgeCount}>{newMatches.length}</Text></View>}
                     </View>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={[styles.tab, activeTab === 'EN_PROCESO' && styles.activeTab]} onPress={() => setActiveTab('EN_PROCESO')}>
                     <View style={styles.tabContentRow}>
                         <Text style={[styles.tabText, activeTab === 'EN_PROCESO' && styles.activeTabText]}>In Progress</Text>
-                        {processMatches.length > 0 && <View style={[styles.badgeDot, { backgroundColor: '#007bff' }]}><Text style={styles.badgeCount}>{processMatches.length}</Text></View>}
+                        {processMatches.length > 0 && <View style={[styles.badgeDot, styles.badgeDotProcess]}><Text style={styles.badgeCount}>{processMatches.length}</Text></View>}
                     </View>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={[styles.tab, activeTab === 'EXCLUSIVOS' && styles.activeTab]} onPress={() => setActiveTab('EXCLUSIVOS')}>
                     <View style={styles.tabContentRow}>
                         <Text style={[styles.tabText, activeTab === 'EXCLUSIVOS' && styles.activeTabText]}>Exclusive</Text>
-                        {exclusiveMatches.length > 0 && <View style={[styles.badgeDot, { backgroundColor: '#28a745' }]}><Text style={styles.badgeCount}>{exclusiveMatches.length}</Text></View>}
+                        {exclusiveMatches.length > 0 && <View style={[styles.badgeDot, styles.badgeDotExclusive]}><Text style={styles.badgeCount}>{exclusiveMatches.length}</Text></View>}
                     </View>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={[styles.tab, activeTab === 'HIRED' && styles.activeTab]} onPress={() => setActiveTab('HIRED')}>
                     <View style={styles.tabContentRow}>
                         <Text style={[styles.tabText, activeTab === 'HIRED' && styles.activeTabText]}>Hired</Text>
-                        {hiredMatches.length > 0 && <View style={[styles.badgeDot, { backgroundColor: '#6f42c1' }]}><Text style={styles.badgeCount}>{hiredMatches.length}</Text></View>}
+                        {hiredMatches.length > 0 && <View style={[styles.badgeDot, styles.badgeDotHired]}><Text style={styles.badgeCount}>{hiredMatches.length}</Text></View>}
                     </View>
                 </TouchableOpacity>
             </View>
@@ -801,7 +801,7 @@ export default function MatchesScreen() {
                     data={displayMatches}
                     keyExtractor={(item) => String(item.match_id || item.id)}
                     renderItem={renderItem}
-                    contentContainerStyle={{ paddingBottom: 20 }}
+                    contentContainerStyle={styles.listContent}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                 />
             )}
@@ -820,10 +820,17 @@ const styles = StyleSheet.create({
     activeTabText: { color: '#007bff' },
     tabContentRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
     badgeDot: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+    badgeDotNew: { backgroundColor: '#dc3545' },
+    badgeDotProcess: { backgroundColor: '#007bff' },
+    badgeDotExclusive: { backgroundColor: '#28a745' },
+    badgeDotHired: { backgroundColor: '#6f42c1' },
     badgeCount: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
 
     card: { backgroundColor: '#fff', padding: 15, borderRadius: 10, marginBottom: 15, elevation: 1, borderWidth: 1, borderColor: '#eee' },
     headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+    headerMainRow: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+    headerTextWrap: { marginLeft: 10, flex: 1 },
+    headerBadgeWrap: { alignItems: 'flex-end' },
     title: { fontSize: 18, fontWeight: 'bold', flex: 1, paddingRight: 10, color: '#333' },
 
     badge: { backgroundColor: '#4CAF50', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
@@ -840,6 +847,8 @@ const styles = StyleSheet.create({
     buttonGreen: { backgroundColor: '#28a745' },
     buttonRed: { backgroundColor: '#dc3545' },
     buttonBlue: { backgroundColor: '#007bff' },
+    buttonFlex: { flex: 1 },
+    printButton: { backgroundColor: '#6c757d', marginTop: 15 },
 
     sharedInfoBlock: { backgroundColor: '#e8f5e9', padding: 12, borderRadius: 10, width: '100%', borderWidth: 1, borderColor: '#c8e6c9' },
     sharedTitle: { color: '#2e7d32', fontWeight: 'bold', fontSize: 16, marginBottom: 4 },
@@ -856,22 +865,52 @@ const styles = StyleSheet.create({
 
     waitingText: { color: '#007bff', fontStyle: 'italic', marginTop: 8, fontSize: 13 },
     consentPrompt: { fontSize: 14, color: '#333', fontWeight: 'bold' },
+    consentPromptCentered: { textAlign: 'center', marginBottom: 5 },
+    consentPromptAccent: { color: '#4338ca' },
     consentSub: { fontSize: 12, color: '#666' },
+    consentDescription: { color: '#666', fontSize: 13, marginTop: 4, marginBottom: 15 },
+    stageSection: { marginTop: 15 },
+    waitingStage: { marginTop: 20, alignItems: 'center', padding: 15, backgroundColor: '#f0f7ff', borderRadius: 8 },
+    consentStage: { marginTop: 20, padding: 15, backgroundColor: '#eef2ff', borderRadius: 10, borderWidth: 1, borderColor: '#c7d2fe' },
+    pendingStage: { marginTop: 20, alignItems: 'center', padding: 15, backgroundColor: '#fff7ed', borderRadius: 8 },
+    stageIcon: { fontSize: 24, marginBottom: 5 },
+    waitingStageTitle: { fontWeight: 'bold', color: '#0056b3' },
+    pendingStageTitle: { fontWeight: 'bold', color: '#9a3412' },
+    stageDescription: { color: '#666', textAlign: 'center', marginTop: 4, fontSize: 13 },
+    resolutionMarked: { marginTop: 15, color: '#666', fontStyle: 'italic', textAlign: 'center' },
+    resolutionBox: { marginTop: 20, padding: 15, borderRadius: 8, borderWidth: 1 },
+    resolutionBoxDefault: { backgroundColor: '#f8f9fa', borderColor: '#dee2e6' },
+    resolutionBoxExpired: { backgroundColor: '#fff3cd', borderColor: '#ffeeba' },
+    resolutionTitle: { fontWeight: 'bold', marginBottom: 5 },
+    resolutionTitleDefault: { color: '#333' },
+    resolutionTitleExpired: { color: '#856404' },
+    resolutionDescription: { marginBottom: 15 },
+    resolutionDescriptionDefault: { color: '#666' },
+    resolutionDescriptionExpired: { color: '#856404' },
+    resolutionButtons: { gap: 10 },
+    exclusivityDateSmall: { marginTop: 15, color: '#0056b3', fontSize: 12, textAlign: 'center' },
+    exclusivityDate: { marginTop: 15, color: '#0056b3', fontSize: 13, textAlign: 'center' },
 
     empty: { alignItems: 'center', marginTop: 50, paddingHorizontal: 20 },
+    emptyIcon: { fontSize: 40, marginBottom: 10 },
     emptyTitle: { fontSize: 20, fontWeight: 'bold', color: '#000', marginBottom: 5 },
     emptyText: { fontSize: 16, color: '#666', textAlign: 'center', paddingHorizontal: 30 },
     searchContainer: { marginBottom: 15, paddingHorizontal: 2, position: 'relative' },
     searchInput: { backgroundColor: '#fff', borderRadius: 10, paddingVertical: 10, paddingHorizontal: 15, borderWidth: 1, borderColor: '#ddd', fontSize: 15, color: '#333' },
+    searchIcon: { position: 'absolute', right: 25, top: 10, fontSize: 18, color: '#999' },
 
     cardTouchableHeader: { padding: 5 },
     headerAvatar: { width: 44, height: 44, borderRadius: 22 },
+    headerAvatarPlaceholder: { backgroundColor: '#eee', justifyContent: 'center', alignItems: 'center' },
+    headerAvatarIcon: { fontSize: 16 },
     headerSubtitle: { fontSize: 13, color: '#666', marginTop: 1 },
     expandIcon: { fontSize: 18, color: '#999', marginTop: 2 },
     collapsedBrief: { marginTop: 8, paddingLeft: 54, borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingTop: 6 },
     briefText: { fontSize: 12, color: '#777', fontStyle: 'italic' },
     cardExpandedContent: { marginTop: 10, borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 10 },
     optionContainer: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 },
+    listContent: { paddingBottom: 20 },
+    loadingIndicator: { flex: 1 },
 });
 
 const cHStyles = StyleSheet.create({
@@ -919,6 +958,21 @@ const cHStyles = StyleSheet.create({
         fontSize: 11,
         color: '#475569',
         fontWeight: '600'
+    },
+    modalityTag: {
+        backgroundColor: '#eef2ff'
+    },
+    logisticsMeta: {
+        marginTop: 8
+    },
+    paymentTagsContainer: {
+        marginTop: 12
+    },
+    payMethodTag: {
+        backgroundColor: '#e2f3f5'
+    },
+    endorsementTag: {
+        backgroundColor: '#fff7ed'
     }
 });
 
@@ -937,9 +991,32 @@ const pStyles = StyleSheet.create({
     avatarPlaceholder: {
         backgroundColor: '#e2e8f0', justifyContent: 'center', alignItems: 'center'
     },
+    avatarPlaceholderLight: {
+        backgroundColor: '#f0f0f0'
+    },
+    noPhotoIcon: {
+        fontSize: 24,
+        marginBottom: 4
+    },
+    noPhotoText: {
+        fontSize: 10,
+        color: '#999',
+        textAlign: 'center'
+    },
+    placeholderIcon: {
+        fontSize: 28
+    },
+    headerTextWrap: {
+        flex: 1,
+        marginLeft: 12
+    },
     driverName: { fontSize: 18, fontWeight: 'bold', color: '#1a202c' },
     location: { fontSize: 14, color: '#4a5568', marginTop: 2 },
     expBadge: { fontSize: 13, color: '#2b6cb0', marginTop: 4, fontWeight: '600' },
+    companyCard: {
+        borderLeftWidth: 5,
+        borderLeftColor: '#000'
+    },
     section: {
         marginTop: 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#e2e8f0'
     },

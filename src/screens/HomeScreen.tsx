@@ -87,7 +87,7 @@ export default function HomeScreen() {
 
 
 
-                <Text style={{ color: '#6c757d', marginBottom: 16 }}>
+                <Text style={styles.sessionHint}>
                     If this is stuck, your session is incomplete. Log out and log in again.
                 </Text>
 
@@ -148,20 +148,23 @@ export default function HomeScreen() {
     return (
         <ScrollView style={styles.container} contentContainerStyle={styles.content}>
 
-            <View style={[styles.header, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
+            <View style={[styles.header, styles.headerRow]}>
                 <View>
                     <Text style={styles.greeting}>Hello, {userInfo.name || 'User'}</Text>
                     <Text style={styles.subtitle}>{isCompany ? 'Company' : 'Driver'} Dashboard</Text>
                 </View>
-                <View style={{ alignItems: 'center' }}>
-                    <Text style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>
+                <View style={styles.searchStatusBlock}>
+                    <Text style={styles.searchStatusLabel}>
                         {isCompany ? 'Search' : 'Available'}
                     </Text>
                     <TouchableOpacity
-                        style={{ backgroundColor: searchStatus === 'ON' ? '#4CAF50' : '#ccc', paddingVertical: 6, paddingHorizontal: 16, borderRadius: 16 }}
+                        style={[
+                            styles.searchStatusToggle,
+                            searchStatus === 'ON' ? styles.searchStatusToggleOn : styles.searchStatusToggleOff
+                        ]}
                         onPress={() => toggleSearchStatus(searchStatus !== 'ON')}
                     >
-                        <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 12 }}>
+                        <Text style={styles.searchStatusToggleText}>
                             {searchStatus === 'ON' ? 'ON' : 'OFF'}
                         </Text>
                     </TouchableOpacity>
@@ -170,11 +173,11 @@ export default function HomeScreen() {
 
             {/* Hired Banner for Drivers */}
             {!isCompany && searchStatus === 'OFF' && (
-                <View style={{ backgroundColor: '#d4edda', borderColor: '#c3e6cb', borderWidth: 1, padding: 15, borderRadius: 10, marginBottom: 16 }}>
-                    <Text style={{ fontWeight: 'bold', fontSize: 16, color: '#155724', marginBottom: 4 }}>🎉 You are currently hired!</Text>
-                    <Text style={{ color: '#155724', fontSize: 14 }}>Your profile is not receiving new matches.</Text>
+                <View style={styles.hiredBanner}>
+                    <Text style={styles.hiredBannerTitle}>🎉 You are currently hired!</Text>
+                    <Text style={styles.hiredBannerText}>Your profile is not receiving new matches.</Text>
                     <TouchableOpacity
-                        style={{ backgroundColor: '#28a745', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, marginTop: 12, alignItems: 'center' }}
+                        style={styles.resumeSearchButton}
                         onPress={() => {
                             Alert.alert(
                                 'Return to Job Search',
@@ -186,7 +189,7 @@ export default function HomeScreen() {
                             );
                         }}
                     >
-                        <Text style={{ color: '#fff', fontWeight: 'bold' }}>Return to Job Search</Text>
+                        <Text style={styles.resumeSearchButtonText}>Return to Job Search</Text>
                     </TouchableOpacity>
                 </View>
             )}
@@ -238,13 +241,7 @@ export default function HomeScreen() {
                         {banner?.image_url && (
                             <Image
                                 source={{ uri: banner.image_url }}
-                                style={{
-                                    width: '100%',
-                                    height: 220,
-                                    borderRadius: 16,
-                                    marginTop: 24,
-                                    marginBottom: 16
-                                }}
+                                style={styles.bannerImage}
                                 resizeMode="cover"
                             />
                         )}
@@ -270,6 +267,11 @@ const styles = StyleSheet.create({
         marginTop: 20,
         marginBottom: 20,
     },
+    headerRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
     greeting: {
         fontSize: 28,
         fontWeight: 'bold',
@@ -279,6 +281,64 @@ const styles = StyleSheet.create({
         fontSize: 18,
         color: '#6c757d',
         marginTop: 4,
+    },
+    sessionHint: {
+        color: '#6c757d',
+        marginBottom: 16,
+    },
+    searchStatusBlock: {
+        alignItems: 'center',
+    },
+    searchStatusLabel: {
+        fontSize: 12,
+        color: '#666',
+        marginBottom: 4,
+    },
+    searchStatusToggle: {
+        paddingVertical: 6,
+        paddingHorizontal: 16,
+        borderRadius: 16,
+    },
+    searchStatusToggleOn: {
+        backgroundColor: '#4CAF50',
+    },
+    searchStatusToggleOff: {
+        backgroundColor: '#ccc',
+    },
+    searchStatusToggleText: {
+        color: 'white',
+        fontWeight: 'bold',
+        fontSize: 12,
+    },
+    hiredBanner: {
+        backgroundColor: '#d4edda',
+        borderColor: '#c3e6cb',
+        borderWidth: 1,
+        padding: 15,
+        borderRadius: 10,
+        marginBottom: 16,
+    },
+    hiredBannerTitle: {
+        fontWeight: 'bold',
+        fontSize: 16,
+        color: '#155724',
+        marginBottom: 4,
+    },
+    hiredBannerText: {
+        color: '#155724',
+        fontSize: 14,
+    },
+    resumeSearchButton: {
+        backgroundColor: '#28a745',
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+        borderRadius: 8,
+        marginTop: 12,
+        alignItems: 'center',
+    },
+    resumeSearchButtonText: {
+        color: '#fff',
+        fontWeight: 'bold',
     },
     networkBox: {
         backgroundColor: '#fff',
@@ -319,6 +379,13 @@ const styles = StyleSheet.create({
     menuGrid: {
         gap: 16,
         marginBottom: 40,
+    },
+    bannerImage: {
+        width: '100%',
+        height: 220,
+        borderRadius: 16,
+        marginTop: 24,
+        marginBottom: 16,
     },
     card: {
         backgroundColor: '#fff',

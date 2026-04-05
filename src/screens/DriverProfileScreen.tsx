@@ -78,7 +78,7 @@ export default function DriverProfileScreen() {
                 license_types: licenseTypes,
                 endorsements: endorsements,
                 operation_types: opsTypes,
-                experience_years: parseInt(expYears) || 0,
+                experience_years: parseInt(expYears, 10) || 0,
                 experience_range: "Custom",
                 job_preferences: preferences,
                 has_truck: hasTruck,
@@ -109,10 +109,10 @@ export default function DriverProfileScreen() {
         }
     };
 
-    if (loading) return <ActivityIndicator style={{ flex: 1 }} size="large" />;
+    if (loading) return <ActivityIndicator style={styles.loadingIndicator} size="large" />;
 
     return (
-        <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
+        <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
             <Text style={styles.header}>Professional Profile</Text>
 
             {/* UX Requirement: Active Status Feedback */}
@@ -200,6 +200,8 @@ export default function DriverProfileScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, padding: 20, backgroundColor: '#fff' },
+    loadingIndicator: { flex: 1 },
+    scrollContent: { paddingBottom: 40 },
     header: { fontSize: 24, fontWeight: 'bold', marginBottom: 5 },
     section: { marginBottom: 20 },
     row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },

@@ -32,7 +32,7 @@ export const NotificationsScreen = () => {
                 keyExtractor={item => item.id.toString()}
                 renderItem={renderItem}
                 ListEmptyComponent={<Text style={styles.empty}>No new notifications</Text>}
-                contentContainerStyle={{ paddingBottom: 20 }}
+                contentContainerStyle={styles.listContent}
             />
         </View>
     );
@@ -68,6 +68,9 @@ const styles = StyleSheet.create({
         color: '#555',
         fontSize: 14,
         fontFamily: 'monospace'
+    },
+    listContent: {
+        paddingBottom: 20
     },
     empty: {
         textAlign: 'center',

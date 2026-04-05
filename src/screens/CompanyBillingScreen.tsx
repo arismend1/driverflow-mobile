@@ -97,12 +97,12 @@ export const CompanyBillingScreen = () => {
                 <View style={styles.summaryRow}>
                     <View style={styles.summaryBox}>
                         <Text style={styles.summaryLabel}>PENDING</Text>
-                        <Text style={[styles.summaryValue, { color: 'orange' }]}>{summary.pending_count}</Text>
+                        <Text style={[styles.summaryValue, styles.summaryValuePending]}>{summary.pending_count}</Text>
                         <Text style={styles.summaryAmount}>{formatCurrency(summary.pending_amount_cents, summary.currency)}</Text>
                     </View>
                     <View style={styles.summaryBox}>
                         <Text style={styles.summaryLabel}>PAID</Text>
-                        <Text style={[styles.summaryValue, { color: 'green' }]}>{summary.paid_count}</Text>
+                        <Text style={[styles.summaryValue, styles.summaryValuePaid]}>{summary.paid_count}</Text>
                         <Text style={styles.summaryAmount}>{formatCurrency(summary.paid_amount_cents, summary.currency)}</Text>
                     </View>
                 </View>
@@ -116,13 +116,13 @@ export const CompanyBillingScreen = () => {
                 <View style={styles.card}>
                     <View style={styles.cardHeader}>
                         <Text style={styles.title}>Ticket #{item.id}</Text>
-                        <Text style={[styles.statusBadge, { backgroundColor: '#e2e3e5' }]}>
+                        <Text style={[styles.statusBadge, styles.statusBadgeTicket]}>
                             {item.status ? item.status.toUpperCase() : 'N/A'}
                         </Text>
                     </View>
                     <Text>Driver: {item.driver_name || 'Unknown'}</Text>
                     <Text>Generated: {new Date(item.created_at).toLocaleDateString()}</Text>
-                    <Text style={styles.amount}>$150.00 <Text style={{ fontSize: 12, fontWeight: 'normal' }}>(To Be Billed)</Text></Text>
+                    <Text style={styles.amount}>$150.00 <Text style={styles.amountNote}>(To Be Billed)</Text></Text>
                 </View>
             );
         }
@@ -143,7 +143,7 @@ export const CompanyBillingScreen = () => {
             <View style={styles.card}>
                 <View style={styles.cardHeader}>
                     <Text style={styles.title}>Invoice #{item.id}</Text>
-                    <Text style={[styles.statusBadge, { backgroundColor: status === 'paid' ? '#d4edda' : '#fff3cd' }]}>
+                    <Text style={[styles.statusBadge, status === 'paid' ? styles.statusBadgePaid : styles.statusBadgePending]}>
                         {status.toUpperCase()}
                     </Text>
                 </View>
@@ -152,7 +152,7 @@ export const CompanyBillingScreen = () => {
                 <Text style={styles.amount}>{formatCurrency(amount, item?.currency || 'USD')}</Text>
 
                 {amount <= 0 && (
-                    <Text style={{ color: '#888', fontStyle: 'italic', marginTop: 4 }}>
+                    <Text style={styles.emptyChargesText}>
                         No charges this week
                     </Text>
                 )}
@@ -160,7 +160,7 @@ export const CompanyBillingScreen = () => {
                 {canPayByStatus && canPayByAmount && (
                     <View style={styles.actionsRow}>
                         <TouchableOpacity
-                            style={[styles.btn, styles.btnPayOnline, isPrepay && { backgroundColor: '#007bff' }]}
+                            style={[styles.btn, styles.btnPayOnline, isPrepay && styles.btnPrepay]}
                             onPress={() => payTicket(item)}
                         >
                             <Text style={styles.btnText}>{isPrepay ? 'PREPAY' : 'PAY NOW'}</Text>
@@ -195,7 +195,7 @@ export const CompanyBillingScreen = () => {
                 ))}
             </View>
 
-            {loading ? <ActivityIndicator size="large" color="#000" style={{ marginTop: 20 }} /> : (
+            {loading ? <ActivityIndicator size="large" color="#000" style={styles.loadingIndicator} /> : (
                 <FlatList
                     data={tickets}
                     renderItem={renderItem}
@@ -216,6 +216,8 @@ const styles = StyleSheet.create({
     summaryBox: { alignItems: 'center' },
     summaryLabel: { fontSize: 12, color: '#666', fontWeight: 'bold' },
     summaryValue: { fontSize: 24, fontWeight: 'bold' },
+    summaryValuePending: { color: 'orange' },
+    summaryValuePaid: { color: 'green' },
     summaryAmount: { fontSize: 14, color: '#333' },
 
     tabs: { flexDirection: 'row', backgroundColor: 'white', marginBottom: 10 },
@@ -228,14 +230,21 @@ const styles = StyleSheet.create({
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
     title: { fontWeight: 'bold', fontSize: 16 },
     statusBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, overflow: 'hidden', fontSize: 12 },
+    statusBadgeTicket: { backgroundColor: '#e2e3e5' },
+    statusBadgePaid: { backgroundColor: '#d4edda' },
+    statusBadgePending: { backgroundColor: '#fff3cd' },
     amount: { fontSize: 18, fontWeight: 'bold', marginTop: 5 },
+    amountNote: { fontSize: 12, fontWeight: 'normal' },
+    emptyChargesText: { color: '#888', fontStyle: 'italic', marginTop: 4 },
     actionsRow: { flexDirection: 'row', marginTop: 15, justifyContent: 'flex-end' },
     btn: { padding: 8, borderRadius: 5, marginLeft: 10 },
     btnPay: { backgroundColor: '#6c757d' }, // Grey for admin manual
     btnPayOnline: { backgroundColor: '#28a745' }, // Green for real pay
+    btnPrepay: { backgroundColor: '#007bff' },
     btnVoid: { backgroundColor: '#dc3545' },
     btnText: { color: 'white', fontWeight: 'bold', fontSize: 12 },
     empty: { textAlign: 'center', marginTop: 30, color: '#888' },
+    loadingIndicator: { marginTop: 20 },
 
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
     modalContent: { backgroundColor: 'white', padding: 20, borderRadius: 10 },

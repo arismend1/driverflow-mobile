@@ -127,7 +127,7 @@ export default function PinScreen() {
 
                 {showSubtitle ? <Text style={styles.subtitle}>Hello, {userInfo!.name}</Text> : null}
 
-                {!!showError ? <Text style={styles.errorText}>{showError}</Text> : null}
+                {showError ? <Text style={styles.errorText}>{showError}</Text> : null}
 
                 {/* Debug opcional (si quieres ver si hay token) */}
                 {/* <Text>{token ? 'TOKEN OK' : 'NO TOKEN'}</Text> */}

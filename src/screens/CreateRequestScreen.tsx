@@ -31,7 +31,7 @@ export default function CreateRequestScreen() {
             return;
         }
 
-        const timeNum = parseInt(tiempoEstimado);
+        const timeNum = parseInt(tiempoEstimado, 10);
         if (isNaN(timeNum) || timeNum <= 0) {
             Alert.alert('Error', 'Estimated time must be a number greater than 0.');
             return;
@@ -67,7 +67,7 @@ export default function CreateRequestScreen() {
     return (
         <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={{ flex: 1 }}
+            style={styles.keyboardContainer}
         >
             <ScrollView style={styles.container} contentContainerStyle={styles.content}>
                 <Text style={styles.header}>Post New Job</Text>
@@ -110,7 +110,7 @@ export default function CreateRequestScreen() {
                 </View>
 
                 <TouchableOpacity 
-                    style={[styles.submitButton, loading && { opacity: 0.7 }]} 
+                    style={[styles.submitButton, loading && styles.submitButtonDisabled]} 
                     onPress={handleCreate}
                     disabled={loading}
                 >
@@ -126,6 +126,9 @@ export default function CreateRequestScreen() {
 }
 
 const styles = StyleSheet.create({
+    keyboardContainer: {
+        flex: 1,
+    },
     container: {
         flex: 1,
         backgroundColor: '#fff',
@@ -198,6 +201,9 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.2,
         shadowRadius: 8,
         elevation: 4,
+    },
+    submitButtonDisabled: {
+        opacity: 0.7,
     },
     submitButtonText: {
         color: '#fff',

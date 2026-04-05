@@ -40,7 +40,7 @@ export const request = async <T = any>(
             'User-Agent': 'DriverFlowApp/1.0.0 (Android)',
         };
 
-        if (token) headers['Authorization'] = `Bearer ${token}`;
+        if (token) headers.Authorization = `Bearer ${token}`;
 
         const fullUrl = `${API_URL}${endpoint}`;
         // console.log("[REQ] URL", fullUrl); 

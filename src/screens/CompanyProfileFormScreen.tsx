@@ -59,7 +59,7 @@ const RadioYesNo = ({ label, value, onChange }: any) => {
     return (
         <View style={styles.section}>
             <Text style={styles.label}>{label}</Text>
-            <View style={{ flexDirection: 'row' }}>
+            <View style={styles.radioRow}>
                 <TouchableOpacity
                     style={[styles.radioButton, value === true && styles.radioSelected]}
                     onPress={() => onChange(true)}
@@ -160,7 +160,7 @@ export default function CompanyProfileFormScreen() {
             // Determine final experience value (logic: "years" is backend field)
             let finalExp = 0;
             if (expYearsExact) {
-                finalExp = parseInt(expYearsExact);
+                finalExp = parseInt(expYearsExact, 10);
             } else if (expOption === '1–2 years') {
                 finalExp = 1;
             } else if (expOption === '2–5 years') {
@@ -215,14 +215,14 @@ export default function CompanyProfileFormScreen() {
         }
     };
 
-    if (loading) return <ActivityIndicator style={{ flex: 1 }} size="large" />;
+    if (loading) return <ActivityIndicator style={styles.loadingIndicator} size="large" />;
 
     return (
         <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : "height"}
-            style={{ flex: 1 }}
+            style={styles.keyboardContainer}
         >
-            <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 60 }}>
+            <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
                 <Text style={styles.header}>Job Requirements</Text>
 
                 {/* 1. Licencia (Checkbox - Implied by RadioYesNo or just Check) */}
@@ -230,14 +230,14 @@ export default function CompanyProfileFormScreen() {
                 <View style={styles.row}>
                     <Text style={styles.label}>1. CDL Required</Text>
                     <TouchableOpacity onPress={() => setReqCdl(!reqCdl)}>
-                        <Text style={{ fontSize: 24 }}>{reqCdl ? '☑️' : '⬜'}</Text>
+                        <Text style={styles.checkboxIcon}>{reqCdl ? '☑️' : '⬜'}</Text>
                     </TouchableOpacity>
                 </View>
 
                 {/* --- PUBLIC PROFILE SECTION --- */}
-                <View style={[styles.section, { backgroundColor: '#f0f4f8', padding: 15, borderRadius: 10 }]}>
-                    <Text style={[styles.header, { fontSize: 20, marginBottom: 10 }]}>Public Profile (Driver View)</Text>
-                    <Text style={{ fontSize: 13, color: '#666', marginBottom: 15 }}>These fields will be shown to drivers to attract their interest.</Text>
+                <View style={[styles.section, styles.publicProfileSection]}>
+                    <Text style={[styles.header, styles.publicProfileHeader]}>Public Profile (Driver View)</Text>
+                    <Text style={styles.publicProfileIntro}>These fields will be shown to drivers to attract their interest.</Text>
 
                     {/* Logo Picker */}
                     <Text style={styles.label}>Company Logo</Text>
@@ -267,9 +267,9 @@ export default function CompanyProfileFormScreen() {
                     </TouchableOpacity>
 
                     {/* Bio */}
-                    <Text style={[styles.label, { marginTop: 15 }]}>Short Description / Motto</Text>
+                    <Text style={[styles.label, styles.labelTopSpacing]}>Short Description / Motto</Text>
                     <TextInput
-                        style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+                        style={[styles.input, styles.multilineInput]}
                         multiline
                         placeholder="e.g. We treat our drivers like family. High safety standards."
                         value={companyBio}
@@ -277,10 +277,10 @@ export default function CompanyProfileFormScreen() {
                     />
 
                     {/* Pay range */}
-                    <Text style={[styles.label, { marginTop: 15 }]}>💰 Pay Range per Mile (USD)</Text>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                        <View style={{ width: '48%' }}>
-                            <Text style={{ fontSize: 12, color: '#666' }}>Min</Text>
+                    <Text style={[styles.label, styles.labelTopSpacing]}>💰 Pay Range per Mile (USD)</Text>
+                    <View style={styles.payRangeRow}>
+                        <View style={styles.halfWidth}>
+                            <Text style={styles.rangeLabel}>Min</Text>
                             <TextInput
                                 style={styles.input}
                                 keyboardType="numeric"
@@ -289,8 +289,8 @@ export default function CompanyProfileFormScreen() {
                                 onChangeText={setPayPerMileMin}
                             />
                         </View>
-                        <View style={{ width: '48%' }}>
-                            <Text style={{ fontSize: 12, color: '#666' }}>Max</Text>
+                        <View style={styles.halfWidth}>
+                            <Text style={styles.rangeLabel}>Max</Text>
                             <TextInput
                                 style={styles.input}
                                 keyboardType="numeric"
@@ -302,7 +302,7 @@ export default function CompanyProfileFormScreen() {
                     </View>
 
                     {/* Freight Type */}
-                    <Text style={[styles.label, { marginTop: 15 }]}>📦 Offered Freight Types</Text>
+                    <Text style={[styles.label, styles.labelTopSpacing]}>📦 Offered Freight Types</Text>
                     <TextInput
                         style={styles.input}
                         placeholder="e.g. Refrigerated, Dry Van, Hazmat"
@@ -311,7 +311,7 @@ export default function CompanyProfileFormScreen() {
                     />
 
                     {/* Home Time */}
-                    <View style={{ marginTop: 15 }}>
+                    <View style={styles.sectionTopSpacing}>
                         <SingleSelect
                             label="🏠 Home Time Offered"
                             options={['Weekly', 'Bi-weekly', 'Monthly', 'Flexible']}
@@ -321,7 +321,7 @@ export default function CompanyProfileFormScreen() {
                     </View>
 
                     {/* Travel for interview */}
-                    <View style={{ marginTop: 20 }}>
+                    <View style={styles.sectionTopLargeSpacing}>
                         <RadioYesNo
                             label="Requires in-person interview (requires travel for driver)?"
                             value={requiresTravelInterview}
@@ -329,7 +329,7 @@ export default function CompanyProfileFormScreen() {
                         />
                     </View>
 
-                    <Text style={[styles.label, { marginTop: 15 }]}>👤 Contact Person</Text>
+                    <Text style={[styles.label, styles.labelTopSpacing]}>👤 Contact Person</Text>
                     <TextInput
                         style={styles.input}
                         placeholder="Name of the person to contact"
@@ -337,7 +337,7 @@ export default function CompanyProfileFormScreen() {
                         onChangeText={setContactPerson}
                     />
 
-                    <Text style={[styles.label, { marginTop: 15 }]}>📞 Contact Phone</Text>
+                    <Text style={[styles.label, styles.labelTopSpacing]}>📞 Contact Phone</Text>
                     <TextInput
                         style={styles.input}
                         placeholder="Phone number for drivers"
@@ -385,7 +385,7 @@ export default function CompanyProfileFormScreen() {
                             </TouchableOpacity>
                         ))}
                     </View>
-                    <Text style={[styles.label, { marginTop: 10, fontSize: 14 }]}>Optional: Exact Years</Text>
+                    <Text style={[styles.label, styles.optionalExactYearsLabel]}>Optional: Exact Years</Text>
                     <TextInput
                         style={styles.input}
                         keyboardType="numeric"
@@ -450,6 +450,22 @@ const styles = StyleSheet.create({
     section: { marginBottom: 25 },
     label: { fontSize: 16, fontWeight: '700', marginBottom: 12, color: '#333' },
     row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25 },
+    radioRow: { flexDirection: 'row' },
+    loadingIndicator: { flex: 1 },
+    keyboardContainer: { flex: 1 },
+    scrollContent: { paddingBottom: 60 },
+    checkboxIcon: { fontSize: 24 },
+    publicProfileSection: { backgroundColor: '#f0f4f8', padding: 15, borderRadius: 10 },
+    publicProfileHeader: { fontSize: 20, marginBottom: 10 },
+    publicProfileIntro: { fontSize: 13, color: '#666', marginBottom: 15 },
+    labelTopSpacing: { marginTop: 15 },
+    multilineInput: { height: 80, textAlignVertical: 'top' },
+    payRangeRow: { flexDirection: 'row', justifyContent: 'space-between' },
+    halfWidth: { width: '48%' },
+    rangeLabel: { fontSize: 12, color: '#666' },
+    sectionTopSpacing: { marginTop: 15 },
+    sectionTopLargeSpacing: { marginTop: 20 },
+    optionalExactYearsLabel: { marginTop: 10, fontSize: 14 },
 
     optionContainer: { flexDirection: 'row', flexWrap: 'wrap' },
     optionButton: {

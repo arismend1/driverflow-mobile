@@ -82,7 +82,7 @@ export default function CompanyRequirementsScreen() {
                 req_license_types: reqLicenseTypes,
                 req_endorsements: reqEndorsements,
                 req_operation_types: reqOpsTypes,
-                req_experience_years: parseInt(expYears) || 0, // FIXED: Sent to backend as integer directly
+                req_experience_years: parseInt(expYears, 10) || 0, // FIXED: Sent to backend as integer directly
                 req_modalities: reqModalities,
                 req_truck: reqTruck,
                 offered_payment_methods: offeredPayments,
@@ -119,12 +119,12 @@ export default function CompanyRequirementsScreen() {
         }
     };
 
-    if (loading) return <ActivityIndicator style={{ flex: 1 }} size="large" />;
+    if (loading) return <ActivityIndicator style={styles.loadingIndicator} size="large" />;
 
     return (
-        <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
+        <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
             <Text style={styles.header}>Hiring Requirements</Text>
-            <Text style={{ marginBottom: 20, color: '#666' }}>Define what you are looking for in a driver.</Text>
+            <Text style={styles.introText}>Define what you are looking for in a driver.</Text>
 
             <View style={styles.row}>
                 <Text style={styles.label}>1. CDL Required?</Text>
@@ -218,7 +218,10 @@ export default function CompanyRequirementsScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, padding: 20, backgroundColor: '#fff' },
+    loadingIndicator: { flex: 1 },
+    scrollContent: { paddingBottom: 40 },
     header: { fontSize: 24, fontWeight: 'bold', marginBottom: 5 },
+    introText: { marginBottom: 20, color: '#666' },
     section: { marginBottom: 20 },
     row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
     label: { fontSize: 16, fontWeight: '600', marginBottom: 10 },

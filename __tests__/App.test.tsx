@@ -12,10 +12,10 @@ jest.mock('../src/context/AuthContext', () => ({
 }));
 
 jest.mock('@react-navigation/native', () => {
-    const React = require('react');
+    const ReactLib = require('react');
     return {
         __esModule: true,
-        NavigationContainer: ({ children }: any) => React.createElement(React.Fragment, null, children),
+        NavigationContainer: ({ children }: any) => ReactLib.createElement(ReactLib.Fragment, null, children),
     };
 });
 

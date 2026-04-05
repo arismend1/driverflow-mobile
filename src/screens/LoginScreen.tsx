@@ -114,7 +114,7 @@ export default function LoginScreen() {
                 </View>
 
                 {loading ? (
-                    <ActivityIndicator size="large" color="#007BFF" style={{ marginTop: 20 }} />
+                    <ActivityIndicator size="large" color="#007BFF" style={styles.loadingIndicator} />
                 ) : (
                     <View>
                         <TouchableOpacity style={styles.button} onPress={handleLogin}>
@@ -160,6 +160,7 @@ const styles = StyleSheet.create({
     passwordInput: { flex: 1, padding: 15, fontSize: 16, color: '#333' },
     eyeButton: { padding: 15 },
     eyeText: { fontSize: 18 },
+    loadingIndicator: { marginTop: 20 },
     button: { backgroundColor: '#007BFF', paddingVertical: 15, borderRadius: 8, alignItems: 'center', marginTop: 10, shadowColor: '#007BFF', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 5 },
     buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold', letterSpacing: 1 },
     registerContainer: { flexDirection: 'row', justifyContent: 'center', marginTop: 20 },

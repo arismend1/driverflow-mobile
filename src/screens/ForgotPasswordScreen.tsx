@@ -53,7 +53,7 @@ export default function ForgotPasswordScreen() {
                 />
 
                 {loading ? (
-                    <ActivityIndicator size="large" color="#007BFF" style={{ marginTop: 20 }} />
+                    <ActivityIndicator size="large" color="#007BFF" style={styles.loadingIndicator} />
                 ) : (
                     <TouchableOpacity style={styles.button} onPress={handleRecover}>
                         <Text style={styles.buttonText}>SEND</Text>
@@ -108,6 +108,9 @@ const styles = StyleSheet.create({
         marginBottom: 20,
         fontSize: 16,
         color: '#333',
+    },
+    loadingIndicator: {
+        marginTop: 20,
     },
     button: {
         backgroundColor: '#007BFF',

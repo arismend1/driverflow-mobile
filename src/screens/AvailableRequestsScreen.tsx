@@ -47,8 +47,8 @@ export const AvailableRequestsScreen = () => {
             <Text style={styles.title}>{item.company_name}</Text>
             <Text>Location: {item.ubicacion}</Text>
             <Text>Time: {item.tiempo_estimado} min</Text>
-            <Text style={{ marginTop: 5, fontWeight: 'bold' }}>License: {item.licencia_req}</Text>
-            <View style={{ marginTop: 10 }}>
+            <Text style={styles.licenseText}>License: {item.licencia_req}</Text>
+            <View style={styles.applyButtonWrap}>
                 <Button title="Accept Request" onPress={() => handleApply(item.id)} />
             </View>
         </View>
@@ -62,7 +62,7 @@ export const AvailableRequestsScreen = () => {
                     data={requests}
                     keyExtractor={i => i.id.toString()}
                     renderItem={renderItem}
-                    ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 20 }}>No requests available for your profile.</Text>}
+                    ListEmptyComponent={<Text style={styles.emptyText}>No requests available for your profile.</Text>}
                 />
             )}
             <Button title="Refresh" onPress={loadParams} color="gray" />
@@ -74,5 +74,8 @@ const styles = StyleSheet.create({
     container: { flex: 1, padding: 16, backgroundColor: '#f5f5f5' },
     header: { fontSize: 24, fontWeight: 'bold', marginBottom: 16 },
     card: { backgroundColor: 'white', padding: 16, marginVertical: 8, borderRadius: 8, elevation: 2 },
-    title: { fontWeight: 'bold', fontSize: 18, marginBottom: 5 }
+    title: { fontWeight: 'bold', fontSize: 18, marginBottom: 5 },
+    licenseText: { marginTop: 5, fontWeight: 'bold' },
+    applyButtonWrap: { marginTop: 10 },
+    emptyText: { textAlign: 'center', marginTop: 20 }
 });

@@ -58,10 +58,10 @@ ${DiagnosticsState.lastError ? JSON.stringify(DiagnosticsState.lastError, null, 
 
             <View style={styles.card}>
                 <Text style={styles.label}>API Status</Text>
-                <Text style={[styles.value, { color: health?.includes('ONLINE') ? 'green' : 'red' }]}>{health || '...'}</Text>
+                <Text style={[styles.value, health?.includes('ONLINE') ? styles.valueOnline : styles.valueOffline]}>{health || '...'}</Text>
                 <Button title="Refresh Health" onPress={refreshHealth} disabled={loading} />
 
-                <View style={{ marginTop: 10, flexDirection: 'row', justifyContent: 'space-around' }}>
+                <View style={styles.pingButtonsRow}>
                     <Button title="Ping /healthz" onPress={() => pingEndpoint('/healthz')} disabled={loading} color="#444" />
                     <Button title="Ping /readyz" onPress={() => pingEndpoint('/readyz')} disabled={loading} color="#444" />
                 </View>
@@ -75,7 +75,7 @@ ${DiagnosticsState.lastError ? JSON.stringify(DiagnosticsState.lastError, null, 
             <View style={styles.card}>
                 <Text style={styles.label}>Last Activity</Text>
                 <Text style={styles.labelSmall}>Request-ID (Trace):</Text>
-                <Text style={[styles.mono, { fontWeight: 'bold' }]}>{DiagnosticsState.lastRequestId}</Text>
+                <Text style={[styles.mono, styles.monoBold]}>{DiagnosticsState.lastRequestId}</Text>
             </View>
 
             <View style={styles.card}>
@@ -83,11 +83,11 @@ ${DiagnosticsState.lastError ? JSON.stringify(DiagnosticsState.lastError, null, 
                 {DiagnosticsState.lastError ? (
                     <Text style={styles.errorText}>{JSON.stringify(DiagnosticsState.lastError, null, 2)}</Text>
                 ) : (
-                    <Text style={{ color: 'gray', fontStyle: 'italic' }}>No recent errors.</Text>
+                    <Text style={styles.emptyErrorText}>No recent errors.</Text>
                 )}
             </View>
 
-            <View style={{ marginTop: 20 }}>
+            <View style={styles.copyButtonWrap}>
                 <Button title="Copy Report" onPress={copyToClipboard} color="#666" />
             </View>
         </ScrollView>
@@ -101,6 +101,12 @@ const styles = StyleSheet.create({
     label: { fontSize: 16, fontWeight: 'bold', marginBottom: 5, color: '#333' },
     labelSmall: { fontSize: 14, color: '#666', marginBottom: 2 },
     value: { fontSize: 18, marginBottom: 10 },
+    valueOnline: { color: 'green' },
+    valueOffline: { color: 'red' },
+    pingButtonsRow: { marginTop: 10, flexDirection: 'row', justifyContent: 'space-around' },
     mono: { fontFamily: 'monospace', fontSize: 12, backgroundColor: '#eee', padding: 5, borderRadius: 4 },
-    errorText: { fontFamily: 'monospace', fontSize: 12, color: 'red', backgroundColor: '#fee', padding: 5 }
+    monoBold: { fontWeight: 'bold' },
+    errorText: { fontFamily: 'monospace', fontSize: 12, color: 'red', backgroundColor: '#fee', padding: 5 },
+    emptyErrorText: { color: 'gray', fontStyle: 'italic' },
+    copyButtonWrap: { marginTop: 20 }
 });

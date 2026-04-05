@@ -1,6 +1,6 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { ActivityIndicator, View, Modal } from 'react-native';
+import { ActivityIndicator, View, Modal, StyleSheet } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
 import LoginScreen from '../screens/LoginScreen';
@@ -32,7 +32,7 @@ export default function RootNavigator() {
 
     if (isLoading) {
         return (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" />
             </View>
         );
@@ -41,7 +41,7 @@ export default function RootNavigator() {
     const isAuthed = !!token;
 
     return (
-        <View style={{ flex: 1 }}>
+        <View style={styles.root}>
             <Stack.Navigator screenOptions={{ headerShown: true }}>
                 {needsLegalAccept ? (
                     <Stack.Screen name="LegalAcceptance" component={LegalAcceptanceScreen} options={{ headerShown: false }} />
@@ -101,3 +101,14 @@ export default function RootNavigator() {
         </View>
     );
 }
+
+const styles = StyleSheet.create({
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    root: {
+        flex: 1,
+    },
+});

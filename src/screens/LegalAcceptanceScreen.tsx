@@ -54,7 +54,7 @@ export default function LegalAcceptanceScreen() {
                 <Text style={styles.title}>Update to Terms of Service</Text>
             </View>
 
-            <ScrollView style={styles.contentContainer} contentContainerStyle={{ paddingBottom: 40 }}>
+            <ScrollView style={styles.contentContainer} contentContainerStyle={styles.scrollContent}>
                 <Text style={styles.paragraph}>
                     DriverFlow has updated its operation terms to comply with platform distribution standards. 
                     Before continuing to your dashboard, you must thoroughly review and accept the latest 
@@ -115,6 +115,9 @@ const styles = StyleSheet.create({
     contentContainer: {
         flex: 1,
         padding: 20,
+    },
+    scrollContent: {
+        paddingBottom: 40,
     },
     paragraph: {
         fontSize: 16,
