@@ -201,7 +201,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     useEffect(() => {
         const subscription = AppState.addEventListener('change', nextAppState => {
-            if ((nextAppState === 'background' || nextAppState === 'inactive') && pinReady && !suppressLockRef.current) {
+            if ((nextAppState === 'background' || nextAppState === 'inactive') && hasPin && !suppressLockRef.current) {
                 console.log("[AUTH] App backgrounded, locking...");
                 setAppLocked(true);
             } else if ((nextAppState === 'background' || nextAppState === 'inactive') && suppressLockRef.current) {
@@ -212,7 +212,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         return () => {
             subscription.remove();
         };
-    }, [pinReady]);
+    }, [hasPin]);
 
     const lockApp = () => setAppLocked(true);
     const unlockApp = () => setAppLocked(false);
@@ -572,17 +572,27 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const logout = async () => {
         setIsLoading(true);
         try {
+            suppressLockRef.current = false;
+            if (suppressTimeoutRef.current) {
+                clearTimeout(suppressTimeoutRef.current);
+                suppressTimeoutRef.current = null;
+            }
             setUserToken(null);
             setUserInfo(null);
             setNeedsLegalAccept(false);
             setRestrictedToken(null);
+            setAppLocked(false);
+            setHasPin(false);
+            setPinReady(false);
+            setPinGate(null);
 
             await AsyncStorage.removeItem(STORAGE_KEYS.token);
             await AsyncStorage.removeItem(STORAGE_KEYS.restrictedToken);
             await AsyncStorage.removeItem(STORAGE_KEYS.userInfo);
-
-            // Nota: NO borramos saved_pin aquí para permitir PIN login.
-            // saved_email/saved_password/saved_type/saved_pin se mantienen.
+            await AsyncStorage.removeItem(STORAGE_KEYS.savedEmail);
+            await AsyncStorage.removeItem(STORAGE_KEYS.savedPassword);
+            await AsyncStorage.removeItem(STORAGE_KEYS.savedType);
+            await AsyncStorage.removeItem(STORAGE_KEYS.savedPin);
         } catch {
             // ignore
         } finally {
