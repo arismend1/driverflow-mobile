@@ -131,7 +131,15 @@ export default function CompanyProfileFormScreen() {
             setReqTruck(!!data.req_truck);
             setOfferedPayments(Array.isArray(data.offered_payment_methods) ? data.offered_payment_methods : (data.offered_payment_methods ? JSON.parse(data.offered_payment_methods) : []));
             setReqRelationships(Array.isArray(data.req_relationships) ? data.req_relationships : (data.req_relationships ? JSON.parse(data.req_relationships) : []));
-            setAvailability(data.availability || 'Immediate');
+            setAvailability(data.availability === 'Inmediata' ? 'Immediate' : (data.availability || 'Immediate'));
+            setExpOption('');
+            setExpYearsExact(
+                data.req_experience_years !== undefined &&
+                data.req_experience_years !== null &&
+                String(data.req_experience_years) !== '0'
+                    ? String(data.req_experience_years)
+                    : ''
+            );
             setPayPerMileMin(data.pay_per_mile_min ? String(data.pay_per_mile_min) : '');
             setPayPerMileMax(data.pay_per_mile_max ? String(data.pay_per_mile_max) : '');
             setCompanyLogo(data.company_logo || null);
