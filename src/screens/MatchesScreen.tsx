@@ -101,8 +101,15 @@ export default function MatchesScreen() {
                             if (resp.ok) {
                                 fetchMatches();
                             } else {
-                                const err = await resp.json();
-                                Alert.alert(err.error || 'Error', err.message || 'Failed to process consent');
+                                const error = await resp.json();
+                                if (error?.error === 'driver_locked') {
+                                    Alert.alert(
+                                        "Profile Temporarily Unavailable",
+                                        `You are currently in an evaluation period with another company.\n\nYou won’t be able to share your information with a new company until this period ends.\n\n⏳ Available again: ${error.exclusive_until || 'soon'}`
+                                    );
+                                    return;
+                                }
+                                Alert.alert(error?.error || 'Error', error?.message || 'Failed to process consent');
                             }
                         } catch {
                             Alert.alert('Error', 'Network Failure');
