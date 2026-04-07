@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, FlatList, ActivityIndicator, StyleSheet, Alert, TouchableOpacity, Linking } from 'react-native';
 import { getBillingSummary, getBillingTickets, getTickets, createInvoiceCheckoutSession, BillingSummary } from '../api/client';
 
@@ -12,22 +12,41 @@ const formatCurrency = (cents: number, currency: string) => {
 export const CompanyBillingScreen = () => {
     const { token, suppressPinLock } = useAuth(); // Use token from context
     const [summary, setSummary] = useState<BillingSummary | null>(null);
-    const [tickets, setTickets] = useState<any[]>([]);
+    const [invoices, setInvoices] = useState<any[]>([]);
+    const [displayItems, setDisplayItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'pending' | 'paid' | 'all' | 'tickets'>('pending');
+
+    const lastPayment = useMemo(() => {
+        const paidInvoices = invoices
+            .filter((inv: any) => inv.status === 'charged')
+            .sort((a: any, b: any) => {
+                const aDate = new Date(a.paid_at || a.charged_at || a.created_at || 0).getTime();
+                const bDate = new Date(b.paid_at || b.charged_at || b.created_at || 0).getTime();
+                return bDate - aDate;
+            });
+
+        return paidInvoices[0] || null;
+    }, [invoices]);
 
     const loadData = useCallback(async () => {
         try {
             if (!token) return;
             setLoading(true);
-            // Fetch directly below
+            const allInvoices = await getBillingTickets(token);
+            setInvoices(allInvoices);
             setSummary(await getBillingSummary(token));
 
             if (activeTab === 'tickets') {
-                setTickets(await getTickets(token));
+                setDisplayItems(await getTickets(token));
             } else {
-                const statusFilter = activeTab === 'all' ? undefined : activeTab;
-                setTickets(await getBillingTickets(token, statusFilter));
+                let filteredInvoices = allInvoices;
+                if (activeTab === 'paid') {
+                    filteredInvoices = allInvoices.filter((inv: any) => inv.status === 'charged');
+                } else if (activeTab === 'pending') {
+                    filteredInvoices = allInvoices.filter((inv: any) => inv.status === 'pending');
+                }
+                setDisplayItems(filteredInvoices);
             }
 
         } catch (error: any) {
@@ -92,6 +111,13 @@ export const CompanyBillingScreen = () => {
 
     const renderHeader = () => {
         if (!summary) return null;
+        const lastPaymentAmount = lastPayment?.total_cents ?? 0;
+        const lastPaymentCurrency = lastPayment?.currency || summary.currency || 'USD';
+        const lastPaymentDateValue = lastPayment?.paid_at || lastPayment?.charged_at || lastPayment?.created_at || null;
+        const lastPaymentDate = lastPaymentDateValue && !isNaN(new Date(lastPaymentDateValue).getTime())
+            ? new Date(lastPaymentDateValue).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+            : 'No payments yet';
+
         return (
             <View style={styles.summaryContainer}>
                 <View style={styles.summaryRow}>
@@ -101,9 +127,9 @@ export const CompanyBillingScreen = () => {
                         <Text style={styles.summaryAmount}>{formatCurrency(summary.pending_amount_cents, summary.currency)}</Text>
                     </View>
                     <View style={styles.summaryBox}>
-                        <Text style={styles.summaryLabel}>PAID</Text>
-                        <Text style={[styles.summaryValue, styles.summaryValuePaid]}>{summary.paid_count}</Text>
-                        <Text style={styles.summaryAmount}>{formatCurrency(summary.paid_amount_cents, summary.currency)}</Text>
+                        <Text style={styles.summaryLabel}>Last Payment</Text>
+                        <Text style={[styles.summaryValue, styles.summaryValuePaid]}>{formatCurrency(lastPaymentAmount, lastPaymentCurrency)}</Text>
+                        <Text style={styles.summaryAmount}>{lastPaymentDate}</Text>
                     </View>
                 </View>
             </View>
@@ -197,7 +223,7 @@ export const CompanyBillingScreen = () => {
 
             {loading ? <ActivityIndicator size="large" color="#000" style={styles.loadingIndicator} /> : (
                 <FlatList
-                    data={tickets}
+                    data={displayItems}
                     renderItem={renderItem}
                     keyExtractor={item => item.id.toString()}
                     refreshing={loading}
