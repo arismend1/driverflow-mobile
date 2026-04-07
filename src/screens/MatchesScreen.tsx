@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useContext, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, RefreshControl, Clipboard, Linking, Image, TextInput } from 'react-native';
+import React, { useEffect, useState, useContext, useCallback, useRef } from 'react';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, RefreshControl, Clipboard, Linking, Image, TextInput, AppState } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
 import { API_URL } from '../api/config';
 import { createCheckoutSession } from '../api/client';
@@ -14,6 +14,8 @@ export default function MatchesScreen() {
     const [searchQuery, setSearchQuery] = useState('');
     const [expandedCardId, setExpandedCardId] = useState<any>(null);
     const [unlockingMatchId, setUnlockingMatchId] = useState<any>(null);
+    const appState = useRef(AppState.currentState);
+    const shouldRefreshOnFocus = useRef(false);
 
     const fetchMatches = useCallback(async () => {
         try {
@@ -34,6 +36,24 @@ export default function MatchesScreen() {
 
     useEffect(() => {
         fetchMatches();
+    }, [fetchMatches]);
+
+    useEffect(() => {
+        const subscription = AppState.addEventListener('change', nextAppState => {
+            const wasInBackground = /inactive|background/.test(appState.current);
+            const isActive = nextAppState === 'active';
+
+            if (wasInBackground && isActive && shouldRefreshOnFocus.current) {
+                shouldRefreshOnFocus.current = false;
+                fetchMatches();
+            }
+
+            appState.current = nextAppState;
+        });
+
+        return () => {
+            subscription.remove();
+        };
     }, [fetchMatches]);
 
     const onRefresh = () => {
@@ -177,6 +197,7 @@ export default function MatchesScreen() {
             }
 
             suppressPinLock();
+            shouldRefreshOnFocus.current = true;
             await Linking.openURL(checkoutUrl);
         } catch (e: any) {
             resumePinLock();
