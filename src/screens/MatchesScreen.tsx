@@ -2,6 +2,7 @@ import React, { useEffect, useState, useContext, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, RefreshControl, Clipboard, Linking, Image, TextInput } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
 import { API_URL } from '../api/config';
+import { createCheckoutSession } from '../api/client';
 import RNPrint from 'react-native-print';
 
 export default function MatchesScreen() {
@@ -12,6 +13,7 @@ export default function MatchesScreen() {
     const [activeTab, setActiveTab] = useState('NUEVOS');
     const [searchQuery, setSearchQuery] = useState('');
     const [expandedCardId, setExpandedCardId] = useState<any>(null);
+    const [unlockingMatchId, setUnlockingMatchId] = useState<any>(null);
 
     const fetchMatches = useCallback(async () => {
         try {
@@ -109,6 +111,13 @@ export default function MatchesScreen() {
                                     );
                                     return;
                                 }
+                                if (error?.error === 'requires_payment_method' || error?.code === 'requires_payment_method') {
+                                    Alert.alert(
+                                        'Payment Method Required',
+                                        'This company must add a payment method before contact sharing can continue.'
+                                    );
+                                    return;
+                                }
                                 Alert.alert(error?.error || 'Error', error?.message || 'Failed to process consent');
                             }
                         } catch {
@@ -139,6 +148,46 @@ export default function MatchesScreen() {
             }
         } catch {
             Alert.alert('Network Failure', 'Could not access the server.');
+        }
+    };
+
+    const handleUnlockDriver = async (item: any) => {
+        if (!token || !item?.ticket_id || unlockingMatchId === (item.match_id || item.id)) return;
+
+        const targetMatchId = item.match_id || item.id;
+        setUnlockingMatchId(targetMatchId);
+
+        try {
+            const session = await createCheckoutSession(token, item.ticket_id);
+
+            if (!session?.ok) {
+                const backendError = session?.data || {};
+                if (session?.error === 'payment_required' || backendError?.error === 'payment_required') {
+                    Alert.alert('Payment Method Required', 'Payment method required before continuing');
+                    return;
+                }
+                Alert.alert('Error', backendError?.message || session?.error || 'Failed to create checkout session');
+                return;
+            }
+
+            const checkoutUrl = session?.data?.url;
+            if (!checkoutUrl) {
+                Alert.alert('Error', 'Failed to create checkout session');
+                return;
+            }
+
+            suppressPinLock();
+            await Linking.openURL(checkoutUrl);
+        } catch (e: any) {
+            resumePinLock();
+            const message = String(e?.message || '');
+            if (message.includes('payment_required')) {
+                Alert.alert('Payment Method Required', 'Payment method required before continuing');
+                return;
+            }
+            Alert.alert('Error', 'Unable to start payment.');
+        } finally {
+            setUnlockingMatchId(null);
         }
     };
 
@@ -631,6 +680,28 @@ export default function MatchesScreen() {
                             <View>
                                 {user?.type === 'empresa' ? renderProfessionalProfile(item, true) : renderCompanyHero(item, true)}
 
+                                {user?.type === 'empresa' && item.locked ? (
+                                    <View style={styles.unlockStage}>
+                                        <Text style={styles.unlockTitle}>🔒 Contact hidden</Text>
+                                        <TouchableOpacity
+                                            style={[
+                                                styles.button,
+                                                styles.buttonBlue,
+                                                styles.unlockButton,
+                                                (!item.ticket_id || unlockingMatchId === matchId) && styles.buttonDisabled
+                                            ]}
+                                            onPress={() => handleUnlockDriver(item)}
+                                            disabled={!item.ticket_id || unlockingMatchId === matchId}
+                                        >
+                                            {unlockingMatchId === matchId ? (
+                                                <ActivityIndicator color="#fff" />
+                                            ) : (
+                                                <Text style={styles.buttonText}>Unlock Driver</Text>
+                                            )}
+                                        </TouchableOpacity>
+                                    </View>
+                                ) : null}
+
                                 {/* STAGE 1: Accept/Decline */}
                                 {!myAcceptDate ? (
                                     <View style={styles.stageSection}>
@@ -880,6 +951,10 @@ const styles = StyleSheet.create({
     waitingStage: { marginTop: 20, alignItems: 'center', padding: 15, backgroundColor: '#f0f7ff', borderRadius: 8 },
     consentStage: { marginTop: 20, padding: 15, backgroundColor: '#eef2ff', borderRadius: 10, borderWidth: 1, borderColor: '#c7d2fe' },
     pendingStage: { marginTop: 20, alignItems: 'center', padding: 15, backgroundColor: '#fff7ed', borderRadius: 8 },
+    unlockStage: { marginTop: 16, padding: 15, backgroundColor: '#fff7ed', borderRadius: 10, borderWidth: 1, borderColor: '#fed7aa' },
+    unlockTitle: { fontWeight: 'bold', color: '#9a3412', marginBottom: 10, textAlign: 'center' },
+    unlockButton: { marginTop: 0 },
+    buttonDisabled: { opacity: 0.6 },
     stageIcon: { fontSize: 24, marginBottom: 5 },
     waitingStageTitle: { fontWeight: 'bold', color: '#0056b3' },
     pendingStageTitle: { fontWeight: 'bold', color: '#9a3412' },
