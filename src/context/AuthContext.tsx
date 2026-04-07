@@ -145,26 +145,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 const password = await AsyncStorage.getItem(STORAGE_KEYS.savedPassword);
                 const type = await AsyncStorage.getItem(STORAGE_KEYS.savedType);
 
-                const isPinReady = !!(pin && email && password && type);
-                setPinReady(isPinReady);
-
-                if (pin && email && type) {
-                    setHasPin(true);
-                    // console.log("[PIN] bootstrap existingPin? YES");
-                    setPinGate('enter');
-                } else if (!pin && email && type) {
-                    console.log("[PIN] bootstrap existingPin? NO (but account remembered)");
-                    setPinGate('create');
-                } else {
-                    if (pin) await AsyncStorage.removeItem(STORAGE_KEYS.savedPin);
-                    setHasPin(false);
-                    setPinGate(null);
-                }
+                const hasStoredPin = !!pin;
+                const hasRememberedCredentials = !!(email && password && type);
+                setHasPin(hasStoredPin);
 
                 // 2) Restaurar sesión (TOKEN + USERINFO)
                 const token = await AsyncStorage.getItem(STORAGE_KEYS.token);
                 const userInfoRaw = await AsyncStorage.getItem(STORAGE_KEYS.userInfo);
                 const restricted = await AsyncStorage.getItem(STORAGE_KEYS.restrictedToken);
+                setPinReady(hasStoredPin);
 
                 if (userInfoRaw) {
                     try {
@@ -183,11 +172,22 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
                 if (token) {
                     setUserToken(token);
+                    if (hasStoredPin) {
+                        setAppLocked(true);
+                        setPinGate('enter');
+                    } else {
+                        console.log("[PIN] bootstrap active session without PIN, forcing creation");
+                        setPinGate('create');
+                    }
                     // --- HOOK: Push Notification Registration (Bootstrap) ---
                     console.log("[PUSH] Bootstrap: Session found, calling registerPushToken...");
                     registerPushToken(token).catch((err) => {
                         console.error("[PUSH] Bootstrap: Error in call chain:", err);
                     });
+                } else if (hasRememberedCredentials) {
+                    setPinGate(hasStoredPin ? 'enter' : 'create');
+                } else {
+                    setPinGate(null);
                 }
             } catch (e) {
                 console.error('Error bootstrapping Auth state', e);
@@ -201,9 +201,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     useEffect(() => {
         const subscription = AppState.addEventListener('change', nextAppState => {
-            if ((nextAppState === 'background' || nextAppState === 'inactive') && hasPin && !suppressLockRef.current) {
+            if ((nextAppState === 'background' || nextAppState === 'inactive') && userToken && !suppressLockRef.current) {
                 console.log("[AUTH] App backgrounded, locking...");
                 setAppLocked(true);
+                if (!hasPin) {
+                    setPinGate('create');
+                }
             } else if ((nextAppState === 'background' || nextAppState === 'inactive') && suppressLockRef.current) {
                 console.log("[AUTH] App backgrounded but PIN lock SUPPRESSED (camera/gallery active)");
             }
@@ -212,10 +215,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         return () => {
             subscription.remove();
         };
-    }, [hasPin]);
+    }, [hasPin, userToken]);
 
     const lockApp = () => setAppLocked(true);
-    const unlockApp = () => setAppLocked(false);
+    const unlockApp = () => {
+        setAppLocked(false);
+        setPinGate(null);
+    };
 
     const suppressPinLock = () => {
         console.log("[AUTH] PIN lock SUPPRESSED for trusted flow");
@@ -224,8 +230,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         if (suppressTimeoutRef.current) clearTimeout(suppressTimeoutRef.current);
         suppressTimeoutRef.current = setTimeout(() => {
             console.warn("[AUTH] PIN lock suppression TIMEOUT — auto-resuming");
-            suppressLockRef.current = false;
-            suppressTimeoutRef.current = null;
+            resumePinLock();
         }, 60000);
     };
 
@@ -410,7 +415,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                         await AsyncStorage.setItem(STORAGE_KEYS.savedType, res.data.type || type);
                         const existingPin = await AsyncStorage.getItem(STORAGE_KEYS.savedPin);
                         setPinGate(existingPin ? 'enter' : 'create');
-                        setPinReady(!!(existingPin && password));
+                        setHasPin(!!existingPin);
+                        setPinReady(!!existingPin);
                     }
                     setIsLoading(false);
                     return;
@@ -443,25 +449,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 registerPushToken(token).catch(() => {});
             }, 1000);
 
+            const existingPin = await AsyncStorage.getItem(STORAGE_KEYS.savedPin);
+            setHasPin(!!existingPin);
             if (remember) {
                 await AsyncStorage.setItem(STORAGE_KEYS.savedEmail, contacto);
                 await AsyncStorage.setItem(STORAGE_KEYS.savedPassword, password);
                 await AsyncStorage.setItem(STORAGE_KEYS.savedType, finalType);
-
-                const existingPin = await AsyncStorage.getItem(STORAGE_KEYS.savedPin);
-                // console.log("[PIN] login existingPin?", existingPin ? "YES" : "NO");
-                setPinGate(existingPin ? 'enter' : 'create');
-
-                setPinReady(!!(existingPin && password));
             } else {
                 await AsyncStorage.removeItem(STORAGE_KEYS.savedEmail);
                 await AsyncStorage.removeItem(STORAGE_KEYS.savedPassword);
                 await AsyncStorage.removeItem(STORAGE_KEYS.savedType);
-                await AsyncStorage.removeItem(STORAGE_KEYS.savedPin);
-                setHasPin(false);
-                setPinGate(null);
-                setPinReady(false);
             }
+            setPinGate(existingPin ? 'enter' : 'create');
+            setPinReady(!!existingPin);
         } catch (e: any) {
             console.error("[AUTH] login failed", e?.message || e);
             throw e;
@@ -478,11 +478,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         // console.log("[PIN] saving pin len", pin?.length);
         await AsyncStorage.setItem(STORAGE_KEYS.savedPin, pin);
         setHasPin(true);
-
-        const email = await AsyncStorage.getItem(STORAGE_KEYS.savedEmail);
-        const password = await AsyncStorage.getItem(STORAGE_KEYS.savedPassword);
-        const type = await AsyncStorage.getItem(STORAGE_KEYS.savedType);
-        setPinReady(!!(pin && email && password && type));
+        setPinReady(true);
     };
 
     const verifyPinAndLogin = async (enteredPin: string): Promise<boolean> => {
