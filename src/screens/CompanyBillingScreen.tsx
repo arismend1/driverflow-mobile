@@ -29,6 +29,10 @@ export const CompanyBillingScreen = () => {
         return paidInvoices[0] || null;
     }, [invoices]);
 
+    const pendingInvoices = useMemo(() => {
+        return invoices.filter((inv: any) => inv.status !== 'charged');
+    }, [invoices]);
+
     const loadData = useCallback(async () => {
         try {
             if (!token) return;
@@ -44,7 +48,7 @@ export const CompanyBillingScreen = () => {
                 if (activeTab === 'paid') {
                     filteredInvoices = allInvoices.filter((inv: any) => inv.status === 'charged');
                 } else if (activeTab === 'pending') {
-                    filteredInvoices = allInvoices.filter((inv: any) => inv.status === 'pending');
+                    filteredInvoices = allInvoices.filter((inv: any) => inv.status !== 'charged');
                 }
                 setDisplayItems(filteredInvoices);
             }
@@ -111,6 +115,9 @@ export const CompanyBillingScreen = () => {
 
     const renderHeader = () => {
         if (!summary) return null;
+        const pendingCount = pendingInvoices.length;
+        const pendingAmountCents = pendingInvoices.reduce((sum: number, inv: any) => sum + Number(inv?.total_cents || 0), 0);
+        const pendingCurrency = summary.currency || invoices[0]?.currency || 'USD';
         const lastPaymentAmount = lastPayment?.total_cents ?? 0;
         const lastPaymentCurrency = lastPayment?.currency || summary.currency || 'USD';
         const lastPaymentDateValue = lastPayment?.paid_at || lastPayment?.charged_at || lastPayment?.created_at || null;
@@ -123,8 +130,8 @@ export const CompanyBillingScreen = () => {
                 <View style={styles.summaryRow}>
                     <View style={styles.summaryBox}>
                         <Text style={styles.summaryLabel}>PENDING</Text>
-                        <Text style={[styles.summaryValue, styles.summaryValuePending]}>{summary.pending_count}</Text>
-                        <Text style={styles.summaryAmount}>{formatCurrency(summary.pending_amount_cents, summary.currency)}</Text>
+                        <Text style={[styles.summaryValue, styles.summaryValuePending]}>{pendingCount}</Text>
+                        <Text style={styles.summaryAmount}>{formatCurrency(pendingAmountCents, pendingCurrency)}</Text>
                     </View>
                     <View style={styles.summaryBox}>
                         <Text style={styles.summaryLabel}>Last Payment</Text>
