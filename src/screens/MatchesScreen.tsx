@@ -16,6 +16,8 @@ export default function MatchesScreen() {
     const [unlockingMatchId, setUnlockingMatchId] = useState<any>(null);
     const appState = useRef(AppState.currentState);
     const shouldRefreshOnFocus = useRef(false);
+    const previousLockedState = useRef<Map<any, boolean>>(new Map());
+    const hasInitializedLockedState = useRef(false);
 
     const fetchMatches = useCallback(async () => {
         try {
@@ -55,6 +57,41 @@ export default function MatchesScreen() {
             subscription.remove();
         };
     }, [fetchMatches]);
+
+    useEffect(() => {
+        const currentLockedState = new Map<any, boolean>();
+        let unlockedCount = 0;
+
+        matches.forEach((item: any) => {
+            const key = item.match_id || item.id;
+            const isLocked = !!item.locked;
+            currentLockedState.set(key, isLocked);
+
+            if (
+                hasInitializedLockedState.current &&
+                previousLockedState.current.get(key) === true &&
+                isLocked === false
+            ) {
+                unlockedCount++;
+            }
+        });
+
+        previousLockedState.current = currentLockedState;
+
+        if (!hasInitializedLockedState.current) {
+            hasInitializedLockedState.current = true;
+            return;
+        }
+
+        if (unlockedCount > 0) {
+            Alert.alert(
+                'Success',
+                unlockedCount === 1
+                    ? 'Driver unlocked — you can now contact directly'
+                    : `${unlockedCount} drivers unlocked — you can now contact them`
+            );
+        }
+    }, [matches]);
 
     const onRefresh = () => {
         setRefreshing(true);
@@ -703,7 +740,11 @@ export default function MatchesScreen() {
 
                                 {user?.type === 'empresa' && item.locked ? (
                                     <View style={styles.unlockStage}>
-                                        <Text style={styles.unlockTitle}>🔒 Contact hidden</Text>
+                                        <Text style={styles.unlockTitle}>🔒 Unlock this driver to hire immediately</Text>
+                                        <Text style={styles.unlockBullet}>• Phone number</Text>
+                                        <Text style={styles.unlockBullet}>• Direct contact</Text>
+                                        <Text style={styles.unlockBullet}>• No intermediaries</Text>
+                                        <Text style={styles.unlockHint}>Most companies contact drivers immediately after unlocking</Text>
                                         <TouchableOpacity
                                             style={[
                                                 styles.button,
@@ -717,7 +758,7 @@ export default function MatchesScreen() {
                                             {unlockingMatchId === matchId ? (
                                                 <ActivityIndicator color="#fff" />
                                             ) : (
-                                                <Text style={styles.buttonText}>Unlock Driver</Text>
+                                                <Text style={styles.buttonText}>Unlock & Contact Driver</Text>
                                             )}
                                         </TouchableOpacity>
                                     </View>
@@ -974,6 +1015,8 @@ const styles = StyleSheet.create({
     pendingStage: { marginTop: 20, alignItems: 'center', padding: 15, backgroundColor: '#fff7ed', borderRadius: 8 },
     unlockStage: { marginTop: 16, padding: 15, backgroundColor: '#fff7ed', borderRadius: 10, borderWidth: 1, borderColor: '#fed7aa' },
     unlockTitle: { fontWeight: 'bold', color: '#9a3412', marginBottom: 10, textAlign: 'center' },
+    unlockBullet: { color: '#7c2d12', fontSize: 13, marginBottom: 4 },
+    unlockHint: { color: '#9a3412', fontSize: 12, fontWeight: '600', marginTop: 10, marginBottom: 10, textAlign: 'center' },
     unlockButton: { marginTop: 0 },
     buttonDisabled: { opacity: 0.6 },
     stageIcon: { fontSize: 24, marginBottom: 5 },
