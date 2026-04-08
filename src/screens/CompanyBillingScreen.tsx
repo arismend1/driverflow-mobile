@@ -9,17 +9,19 @@ const formatCurrency = (cents: number, currency: string) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(cents / 100);
 };
 
+const getInvoiceStatus = (inv: any) => String(inv?.status || inv?.billing_status || 'pending').toLowerCase();
+
 export const CompanyBillingScreen = () => {
     const { token, suppressPinLock } = useAuth(); // Use token from context
     const [summary, setSummary] = useState<BillingSummary | null>(null);
     const [invoices, setInvoices] = useState<any[]>([]);
-    const [displayItems, setDisplayItems] = useState<any[]>([]);
+    const [tickets, setTickets] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'pending' | 'paid' | 'all' | 'tickets'>('pending');
 
     const lastPayment = useMemo(() => {
         const paidInvoices = invoices
-            .filter((inv: any) => inv.status === 'charged')
+            .filter((inv: any) => getInvoiceStatus(inv) === 'charged')
             .sort((a: any, b: any) => {
                 const aDate = new Date(a.paid_at || a.charged_at || a.created_at || 0).getTime();
                 const bDate = new Date(b.paid_at || b.charged_at || b.created_at || 0).getTime();
@@ -30,8 +32,21 @@ export const CompanyBillingScreen = () => {
     }, [invoices]);
 
     const pendingInvoices = useMemo(() => {
-        return invoices.filter((inv: any) => inv.status !== 'charged');
+        return invoices.filter((inv: any) => getInvoiceStatus(inv) !== 'charged');
     }, [invoices]);
+
+    const visibleInvoices = useMemo(() => {
+        if (activeTab === 'paid') {
+            return invoices.filter((inv: any) => getInvoiceStatus(inv) === 'charged');
+        }
+        if (activeTab === 'pending') {
+            return pendingInvoices;
+        }
+        if (activeTab === 'all') {
+            return invoices;
+        }
+        return [];
+    }, [activeTab, invoices, pendingInvoices]);
 
     const loadData = useCallback(async () => {
         try {
@@ -42,15 +57,7 @@ export const CompanyBillingScreen = () => {
             setSummary(await getBillingSummary(token));
 
             if (activeTab === 'tickets') {
-                setDisplayItems(await getTickets(token));
-            } else {
-                let filteredInvoices = allInvoices;
-                if (activeTab === 'paid') {
-                    filteredInvoices = allInvoices.filter((inv: any) => inv.status === 'charged');
-                } else if (activeTab === 'pending') {
-                    filteredInvoices = allInvoices.filter((inv: any) => inv.status !== 'charged');
-                }
-                setDisplayItems(filteredInvoices);
+                setTickets(await getTickets(token));
             }
 
         } catch (error: any) {
@@ -161,7 +168,7 @@ export const CompanyBillingScreen = () => {
         }
 
         const amount = Number(item?.total_cents || 0);
-        const status = String(item?.status || item?.billing_status || 'pending');
+        const status = getInvoiceStatus(item);
         const period = item?.billing_week || 'N/A';
         const rawDate = item?.issue_date || item?.created_at;
         const generated = rawDate && !isNaN(new Date(rawDate).getTime())
@@ -230,7 +237,7 @@ export const CompanyBillingScreen = () => {
 
             {loading ? <ActivityIndicator size="large" color="#000" style={styles.loadingIndicator} /> : (
                 <FlatList
-                    data={displayItems}
+                    data={activeTab === 'tickets' ? tickets : visibleInvoices}
                     renderItem={renderItem}
                     keyExtractor={item => item.id.toString()}
                     refreshing={loading}
