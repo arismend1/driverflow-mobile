@@ -745,6 +745,9 @@ export default function MatchesScreen() {
                                         <Text style={styles.unlockBullet}>• Direct contact</Text>
                                         <Text style={styles.unlockBullet}>• No intermediaries</Text>
                                         <Text style={styles.unlockHint}>Most companies contact drivers immediately after unlocking</Text>
+                                        <Text style={styles.unlockBillingNote}>
+                                            This action will be billed to your company
+                                        </Text>
                                         <TouchableOpacity
                                             style={[
                                                 styles.button,
@@ -1017,6 +1020,7 @@ const styles = StyleSheet.create({
     unlockTitle: { fontWeight: 'bold', color: '#9a3412', marginBottom: 10, textAlign: 'center' },
     unlockBullet: { color: '#7c2d12', fontSize: 13, marginBottom: 4 },
     unlockHint: { color: '#9a3412', fontSize: 12, fontWeight: '600', marginTop: 10, marginBottom: 10, textAlign: 'center' },
+    unlockBillingNote: { fontSize: 12, color: '#92400e', textAlign: 'center', marginBottom: 10 },
     unlockButton: { marginTop: 0 },
     buttonDisabled: { opacity: 0.6 },
     stageIcon: { fontSize: 24, marginBottom: 5 },
