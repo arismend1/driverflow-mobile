@@ -15,6 +15,7 @@ import VerifyEmailScreen from '../screens/VerifyEmailScreen';
 import ResetPasswordScreen from '../screens/ResetPasswordScreen';
 import { AvailableRequestsScreen } from '../screens/AvailableRequestsScreen';
 import { CompanyBillingScreen } from '../screens/CompanyBillingScreen';
+import CompanyReactivationRequestsScreen from '../screens/CompanyReactivationRequestsScreen';
 import CompanyProfileFormScreen from '../screens/CompanyProfileFormScreen';
 import CompanyRequirementsScreen from '../screens/CompanyRequirementsScreen';
 import DriverProfileFormScreen from '../screens/DriverProfileFormScreen';
@@ -83,6 +84,7 @@ export default function RootNavigator() {
                         )}
                         <Stack.Screen name="AvailableRequests" component={AvailableRequestsScreen} />
                         <Stack.Screen name="CompanyBilling" component={CompanyBillingScreen} />
+                        <Stack.Screen name="CompanyReactivationRequests" component={CompanyReactivationRequestsScreen} options={{ title: 'Employment Confirmations' }} />
                         <Stack.Screen name="CompanyProfileForm" component={CompanyProfileFormScreen} />
                         <Stack.Screen name="CompanyRequirements" component={CompanyRequirementsScreen} />
                         <Stack.Screen name="DriverProfileForm" component={DriverProfileFormScreen} />

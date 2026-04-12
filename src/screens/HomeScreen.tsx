@@ -1,7 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { checkHealth } from '../api/client';
+import {
+    checkHealth,
+    getCompanySearchStatus,
+    getDriverSearchStatus,
+    requestDriverReactivation,
+    updateCompanySearchStatus,
+    updateDriverSearchStatus
+} from '../api/client';
 import { API_URL } from '../api/config';
 import { useAuth } from '../context/AuthContext';
 
@@ -11,6 +18,8 @@ export default function HomeScreen() {
     const [_connected, setConnected] = useState<boolean | null>(null);
     const [searchStatus, setSearchStatus] = useState<string>('OFF');
     const [banner, setBanner] = useState<{ image_url: string } | null>(null);
+    const [driverReactivation, setDriverReactivation] = useState<any | null>(null);
+    const [reactivationSubmitting, setReactivationSubmitting] = useState(false);
 
     // A) Conectividad
     useEffect(() => {
@@ -26,30 +35,44 @@ export default function HomeScreen() {
         };
     }, []);
 
+    const isCompany = userInfo?.type === 'empresa';
+
+    const applySearchPayload = useCallback(async (data: any) => {
+        const nextStatus = data?.status || 'ON';
+        setSearchStatus(nextStatus);
+        await updateUserSearchStatus(nextStatus);
+
+        if (isCompany) {
+            setDriverReactivation(null);
+            return;
+        }
+
+        setDriverReactivation({
+            isCurrentlyHired: !!data?.is_currently_hired,
+            canRequestReactivation: !!data?.can_request_reactivation,
+            reactivationStatus: data?.reactivation_status || null,
+            lastHiringCompany: data?.last_hiring_company || null,
+            request: data?.reactivation_request || null,
+        });
+    }, [isCompany, updateUserSearchStatus]);
+
+    const loadSearchStatus = useCallback(async () => {
+        if (!userInfo || !token) return;
+        try {
+            const result = isCompany
+                ? await getCompanySearchStatus(token)
+                : await getDriverSearchStatus(token);
+
+            if (result.ok && result.data) {
+                await applySearchPayload(result.data);
+            }
+        } catch (e) {
+            console.log("Error fetching real search status", e);
+        }
+    }, [applySearchPayload, isCompany, token, userInfo]);
+
     // B) Fetch de estado remoto
     useEffect(() => {
-        const fetchRealSearchStatus = async () => {
-            if (!userInfo || !token) return;
-            try {
-                // Use dedicated search_status GET endpoints that read from empresas/drivers tables
-                const endpoint = userInfo.type === 'empresa'
-                    ? '/api/company/search_status'
-                    : '/api/driver/search_status';
-                const res = await fetch(`${API_URL}${endpoint}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.status) {
-                        setSearchStatus(data.status);
-                        updateUserSearchStatus(data.status);
-                    }
-                }
-            } catch (e) {
-                console.log("Error fetching real search status", e);
-            }
-        };
-
         const fetchBanner = async () => {
             if (userInfo?.type !== 'driver' || !token) return;
             try {
@@ -65,9 +88,9 @@ export default function HomeScreen() {
             }
         };
 
-        fetchRealSearchStatus();
+        loadSearchStatus();
         fetchBanner();
-    }, [token, userInfo, updateUserSearchStatus]);
+    }, [loadSearchStatus, token, userInfo]);
 
     // C) Sync de estado local
     useEffect(() => {
@@ -98,51 +121,135 @@ export default function HomeScreen() {
         );
     }
 
-    const isCompany = userInfo.type === 'empresa';
+    const isCurrentlyHired = !isCompany && !!driverReactivation?.isCurrentlyHired;
+    const reactivationStatus = !isCompany ? driverReactivation?.reactivationStatus : null;
 
     const toggleSearchStatus = async (value: boolean) => {
         const newStatus = value ? 'ON' : 'OFF';
         const prevStatus = searchStatus; // save for rollback
 
+        if (!isCompany && newStatus === 'ON' && isCurrentlyHired) {
+            const message = reactivationStatus === 'pending_company_confirmation'
+                ? 'Your last hiring company still needs to confirm that you no longer work there. No new matches will appear until they respond.'
+                : reactivationStatus === 'denied_by_company'
+                    ? 'Your last hiring company reported that you still work there. Matching will remain blocked.'
+                    : 'Use "Looking for work again" first so DriverFlow can ask your last hiring company to confirm that you no longer work there.';
+            Alert.alert('Confirmation required', message);
+            return;
+        }
+
         // Optimistic update
         setSearchStatus(newStatus);
         console.log(`[Toggle] Attempting ${prevStatus} → ${newStatus}`);
 
-        // ✅ Fixed: both endpoints now include the /api prefix
-        const endpoint = isCompany ? '/api/company/search_status' : '/api/driver/search_status';
-        const url = `${API_URL}${endpoint}`;
-
         try {
-            console.log(`[Toggle] POST ${url}`, { status: newStatus });
-            const res = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ status: newStatus })
-            });
+            const result = isCompany
+                ? await updateCompanySearchStatus(token!, newStatus as 'ON' | 'OFF')
+                : await updateDriverSearchStatus(token!, newStatus as 'ON' | 'OFF');
+            const data = result.data || {};
 
-            console.log(`[Toggle] Response status: ${res.status}, ok: ${res.ok}`);
-            const data = await res.json();
-            console.log(`[Toggle] Response body:`, data);
-
-            if (!res.ok) {
+            if (!result.ok) {
                 // Rollback to previous state
                 setSearchStatus(prevStatus);
-                Alert.alert('Error', data.error || 'Could not update status. Please try again.');
+                if (!isCompany) {
+                    await loadSearchStatus();
+                }
+                Alert.alert('Error', data.message || data.error || result.error || 'Could not update status. Please try again.');
             } else {
                 // Backend is source of truth: use what the server confirmed
-                const confirmedStatus = data.status || newStatus;
-                setSearchStatus(confirmedStatus);
-                await updateUserSearchStatus(confirmedStatus);
-                console.log(`[Toggle] Confirmed new status: ${confirmedStatus}`);
+                await applySearchPayload({ ...data, status: data.status || newStatus });
             }
         } catch (e) {
             console.log(`[Toggle] Network error:`, e);
             setSearchStatus(prevStatus); // Rollback
             Alert.alert('Connection Error', 'Check your internet connection.');
         }
+    };
+
+    const handleRequestReactivation = async () => {
+        if (!token || reactivationSubmitting) return;
+
+        setReactivationSubmitting(true);
+        try {
+            const result = await requestDriverReactivation(token);
+            const data = result.data || {};
+
+            if (!result.ok) {
+                if (data.status) {
+                    await applySearchPayload(data);
+                } else {
+                    await loadSearchStatus();
+                }
+                Alert.alert('Unable to send request', data.message || data.error || result.error || 'Please try again later.');
+                return;
+            }
+
+            await applySearchPayload(data);
+            Alert.alert(
+                'Request sent',
+                data.message || 'DriverFlow has asked your last hiring company to confirm that you no longer work there.'
+            );
+        } catch (e) {
+            console.log('[Reactivation] request failed', e);
+            Alert.alert('Connection Error', 'Check your internet connection.');
+        } finally {
+            setReactivationSubmitting(false);
+        }
+    };
+
+    const renderDriverReactivationBanner = () => {
+        if (isCompany || !driverReactivation) return null;
+        if (!driverReactivation.lastHiringCompany && driverReactivation.reactivationStatus !== 'approved_by_company') return null;
+
+        const companyName = driverReactivation.lastHiringCompany?.name || 'your last hiring company';
+        let title = 'You are currently hired';
+        let body = 'Your profile is not receiving new matches right now.';
+        let action: React.ReactNode = null;
+
+        if (driverReactivation.reactivationStatus === 'pending_company_confirmation') {
+            title = 'Reactivation pending';
+            body = `${companyName} still needs to confirm that you no longer work there. You will not receive new matches until they respond.`;
+        } else if (driverReactivation.reactivationStatus === 'denied_by_company') {
+            title = 'Reactivation denied';
+            body = `${companyName} reported that you still work there. Matching will remain blocked.`;
+        } else if (driverReactivation.reactivationStatus === 'approved_by_company') {
+            title = 'Reactivation approved';
+            body = `${companyName} confirmed that you can receive new job opportunities again.`;
+        } else if (driverReactivation.isCurrentlyHired && driverReactivation.canRequestReactivation) {
+            body = `Use this only if you are truly no longer working for ${companyName}. DriverFlow will ask them to confirm before matching turns back on.`;
+            action = (
+                <TouchableOpacity
+                    style={[styles.resumeSearchButton, reactivationSubmitting && styles.resumeSearchButtonDisabled]}
+                    disabled={reactivationSubmitting}
+                    onPress={() => {
+                        Alert.alert(
+                            'Looking for work again',
+                            'Use this only if you are truly no longer working for your current company.\n\nIf you continue, DriverFlow will ask your last hiring company to confirm whether you are no longer employed there.\n\nYou will not receive new matches until that confirmation is completed.',
+                            [
+                                { text: 'Cancel', style: 'cancel' },
+                                { text: "Yes, I'm no longer working there", onPress: handleRequestReactivation }
+                            ]
+                        );
+                    }}
+                >
+                    <Text style={styles.resumeSearchButtonText}>
+                        {reactivationSubmitting ? 'Sending request...' : 'Looking for work again'}
+                    </Text>
+                </TouchableOpacity>
+            );
+        } else if (driverReactivation.isCurrentlyHired) {
+            body = `DriverFlow still needs your last hiring company to manage this employment confirmation before matching can resume.`;
+        } else {
+            return null;
+        }
+
+        return (
+            <View style={styles.hiredBanner}>
+                <Text style={styles.hiredBannerTitle}>{title}</Text>
+                <Text style={styles.hiredBannerText}>{body}</Text>
+                {action}
+            </View>
+        );
     };
 
     return (
@@ -171,28 +278,7 @@ export default function HomeScreen() {
                 </View>
             </View>
 
-            {/* Hired Banner for Drivers */}
-            {!isCompany && searchStatus === 'OFF' && (
-                <View style={styles.hiredBanner}>
-                    <Text style={styles.hiredBannerTitle}>🎉 You are currently hired!</Text>
-                    <Text style={styles.hiredBannerText}>Your profile is not receiving new matches.</Text>
-                    <TouchableOpacity
-                        style={styles.resumeSearchButton}
-                        onPress={() => {
-                            Alert.alert(
-                                'Return to Job Search',
-                                'This will make your profile visible to companies again and you will start receiving new matches.',
-                                [
-                                    { text: 'Cancel', style: 'cancel' },
-                                    { text: 'Yes, Resume Search', onPress: () => toggleSearchStatus(true) }
-                                ]
-                            );
-                        }}
-                    >
-                        <Text style={styles.resumeSearchButtonText}>Return to Job Search</Text>
-                    </TouchableOpacity>
-                </View>
-            )}
+            {renderDriverReactivationBanner()}
 
             <View style={styles.menuGrid}>
                 {isCompany ? (
@@ -222,6 +308,12 @@ export default function HomeScreen() {
                             <Text style={styles.cardIcon}>💳</Text>
                             <Text style={styles.cardTitle}>Billing</Text>
                             <Text style={styles.cardDesc}>Review and pay pending tickets</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('CompanyReactivationRequests')}>
+                            <Text style={styles.cardIcon}>✅</Text>
+                            <Text style={styles.cardTitle}>Employment Confirmations</Text>
+                            <Text style={styles.cardDesc}>Confirm whether hired drivers still work for your company</Text>
                         </TouchableOpacity>
                     </>
                 ) : (
@@ -335,6 +427,9 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         marginTop: 12,
         alignItems: 'center',
+    },
+    resumeSearchButtonDisabled: {
+        opacity: 0.7,
     },
     resumeSearchButtonText: {
         color: '#fff',

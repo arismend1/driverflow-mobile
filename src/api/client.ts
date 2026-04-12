@@ -183,6 +183,39 @@ export const post = async (endpoint: string, body: any, token: string | null = n
     return request(endpoint, 'POST', body, token || undefined);
 };
 
+export const getDriverSearchStatus = async (token: string) => {
+    return request('/api/driver/search_status', 'GET', undefined, token);
+};
+
+export const updateDriverSearchStatus = async (token: string, status: 'ON' | 'OFF') => {
+    return request('/api/driver/search_status', 'POST', { status }, token);
+};
+
+export const requestDriverReactivation = async (token: string, notes?: string) => {
+    return request('/api/driver/reactivation-requests', 'POST', notes ? { notes } : {}, token);
+};
+
+export const getCompanySearchStatus = async (token: string) => {
+    return request('/api/company/search_status', 'GET', undefined, token);
+};
+
+export const updateCompanySearchStatus = async (token: string, status: 'ON' | 'OFF') => {
+    return request('/api/company/search_status', 'POST', { status }, token);
+};
+
+export const getCompanyReactivationRequests = async (token: string) => {
+    return request('/api/company/reactivation-requests', 'GET', undefined, token);
+};
+
+export const respondToCompanyReactivationRequest = async (
+    token: string,
+    requestId: number,
+    response: 'still_employed' | 'no_longer_employed',
+    notes?: string
+) => {
+    return request(`/api/company/reactivation-requests/${requestId}/respond`, 'POST', notes ? { response, notes } : { response }, token);
+};
+
 // --- AUTH API WRAPPERS ---
 export const checkHealth = async () => {
     return request('/health', 'GET');
