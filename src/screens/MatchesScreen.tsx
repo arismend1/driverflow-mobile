@@ -1,9 +1,39 @@
-import React, { useEffect, useState, useContext, useCallback, useRef } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, RefreshControl, Clipboard, Linking, Image, TextInput, AppState } from 'react-native';
-import { AuthContext } from '../context/AuthContext';
-import { API_URL } from '../api/config';
-import { createCheckoutSession } from '../api/client';
+import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Clipboard,
+    FlatList,
+    Image,
+    Linking,
+    RefreshControl,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
+} from 'react-native';
+import { initPaymentSheet, initStripe, presentPaymentSheet } from '@stripe/stripe-react-native';
 import RNPrint from 'react-native-print';
+import { API_URL } from '../api/config';
+import { postPayAndShare } from '../api/client';
+import { AuthContext } from '../context/AuthContext';
+
+const PAYMENT_POLL_INTERVAL_MS = 2500;
+const PAYMENT_POLL_MAX_RETRIES = 3;
+const STRIPE_URL_SCHEME = 'driverflow';
+const STRIPE_RETURN_URL = 'driverflow://stripe-redirect';
+
+const parseList = (value: any) => {
+    if (!value) return [];
+    if (Array.isArray(value)) return value;
+    try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch {
+        return [];
+    }
+};
 
 export default function MatchesScreen() {
     const { userInfo: user, token, suppressPinLock, resumePinLock } = useContext(AuthContext);
@@ -13,85 +43,46 @@ export default function MatchesScreen() {
     const [activeTab, setActiveTab] = useState('NUEVOS');
     const [searchQuery, setSearchQuery] = useState('');
     const [expandedCardId, setExpandedCardId] = useState<any>(null);
-    const [unlockingMatchId, setUnlockingMatchId] = useState<any>(null);
-    const appState = useRef(AppState.currentState);
-    const shouldRefreshOnFocus = useRef(false);
-    const previousLockedState = useRef<Map<any, boolean>>(new Map());
-    const hasInitializedLockedState = useRef(false);
+    const [payingMatchId, setPayingMatchId] = useState<any>(null);
+    const [pendingPaymentMatchId, setPendingPaymentMatchId] = useState<any>(null);
 
-    const fetchMatches = useCallback(async () => {
+    const fetchMatches = useCallback(async (options: { silent?: boolean } = {}) => {
         try {
             const endpoint = user?.type === 'driver' ? 'matches/opportunities' : 'matches/candidates';
             const resp = await fetch(`${API_URL}/${endpoint}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             const data = await resp.json();
-            setMatches(data || []);
-        } catch (e) {
-            console.error('Fetch Matches Error:', e);
-            Alert.alert('Error', 'Failed to load results');
+            const nextMatches = Array.isArray(data) ? data : [];
+            setMatches(nextMatches);
+            return nextMatches;
+        } catch (error) {
+            console.error('Fetch Matches Error:', error);
+            if (!options.silent) {
+                Alert.alert('Error', 'Failed to load results');
+            }
+            return [];
         } finally {
             setLoading(false);
             setRefreshing(false);
         }
-    }, [user?.type, token]);
+    }, [token, user?.type]);
 
     useEffect(() => {
         fetchMatches();
     }, [fetchMatches]);
 
-    useEffect(() => {
-        const subscription = AppState.addEventListener('change', nextAppState => {
-            const wasInBackground = /inactive|background/.test(appState.current);
-            const isActive = nextAppState === 'active';
-
-            if (wasInBackground && isActive && shouldRefreshOnFocus.current) {
-                shouldRefreshOnFocus.current = false;
-                fetchMatches();
+    const refreshMatchesUntilUnlocked = useCallback(async (matchId: any) => {
+        for (let attempt = 0; attempt < PAYMENT_POLL_MAX_RETRIES; attempt++) {
+            const latestMatches = await fetchMatches({ silent: true });
+            const refreshedMatch = latestMatches.find(candidate => String(candidate.match_id || candidate.id) === String(matchId));
+            if (refreshedMatch?.status === 'INFO_SHARED') return true;
+            if (attempt < PAYMENT_POLL_MAX_RETRIES - 1) {
+                await new Promise<void>(resolve => setTimeout(() => resolve(), PAYMENT_POLL_INTERVAL_MS));
             }
-
-            appState.current = nextAppState;
-        });
-
-        return () => {
-            subscription.remove();
-        };
+        }
+        return false;
     }, [fetchMatches]);
-
-    useEffect(() => {
-        const currentLockedState = new Map<any, boolean>();
-        let unlockedCount = 0;
-
-        matches.forEach((item: any) => {
-            const key = item.match_id || item.id;
-            const isLocked = !!item.locked;
-            currentLockedState.set(key, isLocked);
-
-            if (
-                hasInitializedLockedState.current &&
-                previousLockedState.current.get(key) === true &&
-                isLocked === false
-            ) {
-                unlockedCount++;
-            }
-        });
-
-        previousLockedState.current = currentLockedState;
-
-        if (!hasInitializedLockedState.current) {
-            hasInitializedLockedState.current = true;
-            return;
-        }
-
-        if (unlockedCount > 0) {
-            Alert.alert(
-                'Success',
-                unlockedCount === 1
-                    ? 'Driver unlocked — you can now contact directly'
-                    : `${unlockedCount} drivers unlocked — you can now contact them`
-            );
-        }
-    }, [matches]);
 
     const onRefresh = () => {
         setRefreshing(true);
@@ -100,100 +91,69 @@ export default function MatchesScreen() {
 
     const handleStatusChange = async (matchId: any, newStatus: string) => {
         try {
-            let endpointSuffix = '';
-            if (newStatus === 'ACCEPTED') {
-                endpointSuffix = '/accept';
-            } else if (newStatus === 'DECLINED') {
-                Alert.alert('Error', 'Decline action is not supported by the server yet.');
-                return;
-            } else {
-                Alert.alert('Error', 'Unknown action');
+            const endpointSuffix = newStatus === 'ACCEPTED' ? '/accept' : '';
+            if (!endpointSuffix) {
+                Alert.alert('Error', newStatus === 'DECLINED' ? 'Decline action is not supported by the server yet.' : 'Unknown action');
                 return;
             }
-
             const resp = await fetch(`${API_URL}/matches/${matchId}${endpointSuffix}`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`
-                }
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
             });
-
             if (resp.ok) {
                 fetchMatches();
-            } else {
-                let errStr = 'Unknown error';
-                try {
-                    const err = await resp.json();
-                    errStr = err.error || 'Failed to update status';
-                } catch {
-                    errStr = `HTTP Error ${resp.status}`;
-                }
-                Alert.alert('Server Error', errStr);
+                return;
             }
-        } catch (e: any) {
-            Alert.alert('Network Failure', `Details: ${e.message}`);
+            try {
+                const err = await resp.json();
+                Alert.alert('Server Error', err.error || 'Failed to update status');
+            } catch {
+                Alert.alert('Server Error', `HTTP Error ${resp.status}`);
+            }
+        } catch (error: any) {
+            Alert.alert('Network Failure', `Details: ${error.message}`);
         }
     };
 
     const handleConfirmShare = async (matchId: any) => {
-        // Legal Consent Text
         const legalText = user?.type === 'driver'
-            ? "By confirming, you authorize sharing your email and phone number with the company for work contact purposes. This action is irreversible."
-            : "By confirming, you authorize sharing your contact info with the driver and accept the charges for the information exchange.";
+            ? 'By confirming, you authorize sharing your email and phone number with the company for work contact purposes. This action is irreversible.'
+            : 'By confirming, you authorize sharing your contact info with the driver. If payment is required for this match, the information exchange charges will be presented separately.';
 
-        Alert.alert(
-            'Legal Consent',
-            legalText,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Authorize',
-                    onPress: async () => {
-                        try {
-                            const endpoint = user?.type === 'driver' ? 'driver/confirm-share' : 'company/confirm-share';
-                            const resp = await fetch(`${API_URL}/matches/${matchId}/${endpoint}`, {
-                                method: 'POST',
-                                headers: { Authorization: `Bearer ${token}` }
-                            });
-
-                            if (resp.ok) {
-                                fetchMatches();
-                            } else {
-                                const error = await resp.json();
-                                if (error?.error === 'driver_locked') {
-                                    Alert.alert(
-                                        "Profile Temporarily Unavailable",
-                                        `You are currently in an evaluation period with another company.\n\nYou won’t be able to share your information with a new company until this period ends.\n\n⏳ Available again: ${error.exclusive_until || 'soon'}`
-                                    );
-                                    return;
-                                }
-                                if (error?.error === 'requires_payment_method' || error?.code === 'requires_payment_method') {
-                                    Alert.alert(
-                                        'Payment Method Required',
-                                        'This company must add a payment method before contact sharing can continue.'
-                                    );
-                                    return;
-                                }
-                                Alert.alert(error?.error || 'Error', error?.message || 'Failed to process consent');
-                            }
-                        } catch {
-                            Alert.alert('Error', 'Network Failure');
+        Alert.alert('Legal Consent', legalText, [
+            { text: 'Cancel', style: 'cancel' },
+            {
+                text: 'Authorize',
+                onPress: async () => {
+                    try {
+                        const endpoint = user?.type === 'driver' ? 'driver/confirm-share' : 'company/confirm-share';
+                        const resp = await fetch(`${API_URL}/matches/${matchId}/${endpoint}`, {
+                            method: 'POST',
+                            headers: { Authorization: `Bearer ${token}` }
+                        });
+                        if (resp.ok) {
+                            fetchMatches();
+                            return;
                         }
+                        const error = await resp.json();
+                        if (error?.error === 'driver_locked') {
+                            Alert.alert('Profile Temporarily Unavailable', `You are currently in an evaluation period with another company.\n\n⏳ Available again: ${error.exclusive_until || 'soon'}`);
+                            return;
+                        }
+                        Alert.alert(error?.error || 'Error', error?.message || 'Failed to process consent');
+                    } catch {
+                        Alert.alert('Error', 'Network Failure');
                     }
                 }
-            ]
-        );
+            }
+        ]);
     };
 
     const handleResolveMatch = async (matchId: any, resolution: string) => {
         try {
             const resp = await fetch(`${API_URL}/api/matches/${matchId}/resolve`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`
-                },
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                 body: JSON.stringify({ resolution })
             });
             const data = await resp.json();
@@ -208,260 +168,151 @@ export default function MatchesScreen() {
         }
     };
 
-    const handleUnlockDriver = async (item: any) => {
-        if (!token || !item?.ticket_id || unlockingMatchId === (item.match_id || item.id)) return;
+    const handlePayAndShare = async (item: any) => {
+        const matchId = item.match_id || item.id;
+        if (!token || payingMatchId === matchId || pendingPaymentMatchId === matchId) return;
+        if (item.status !== 'PAYMENT_REQUIRED') {
+            await fetchMatches({ silent: true });
+            return;
+        }
 
-        const targetMatchId = item.match_id || item.id;
-        setUnlockingMatchId(targetMatchId);
-
+        let pinLockSuppressed = false;
+        setPayingMatchId(matchId);
         try {
-            const session = await createCheckoutSession(token, item.ticket_id);
-
-            if (!session?.ok) {
-                const backendError = session?.data || {};
-                if (session?.error === 'payment_required' || backendError?.error === 'payment_required') {
-                    Alert.alert('Payment Method Required', 'Payment method required before continuing');
-                    return;
+            const response = await postPayAndShare(matchId, token);
+            if (!response.ok || !response.data) {
+                const errorCode = response.error || 'unknown_error';
+                if (errorCode === 'stripe_unavailable' || errorCode === 'stripe_publishable_key_missing') {
+                    Alert.alert('Payments Unavailable', 'Payment processing is temporarily unavailable. Please try again shortly.');
+                } else if (response.status === 409 || errorCode === 'already_paid' || errorCode === 'invalid_state') {
+                    await fetchMatches({ silent: true });
+                } else {
+                    Alert.alert('Error', response.error || 'Could not initiate payment.');
                 }
-                Alert.alert('Error', backendError?.message || session?.error || 'Failed to create checkout session');
                 return;
             }
 
-            const checkoutUrl = session?.data?.url;
-            if (!checkoutUrl) {
-                Alert.alert('Error', 'Failed to create checkout session');
+            const { publishable_key: publishableKey, client_secret: clientSecret } = response.data;
+            if (!publishableKey || !clientSecret) {
+                Alert.alert('Payments Unavailable', 'Payment initialization data is missing. Please try again shortly.');
+                return;
+            }
+
+            await initStripe({
+                publishableKey,
+                urlScheme: STRIPE_URL_SCHEME,
+                setReturnUrlSchemeOnAndroid: true
+            });
+
+            const paymentSheet = await initPaymentSheet({
+                merchantDisplayName: 'DriverFlow',
+                paymentIntentClientSecret: clientSecret,
+                returnURL: STRIPE_RETURN_URL
+            });
+            if (paymentSheet.error) {
+                Alert.alert('Payment Error', paymentSheet.error.message || 'Unable to initialize payment sheet.');
                 return;
             }
 
             suppressPinLock();
-            shouldRefreshOnFocus.current = true;
-            await Linking.openURL(checkoutUrl);
-        } catch (e: any) {
-            resumePinLock();
-            const message = String(e?.message || '');
-            if (message.includes('payment_required')) {
-                Alert.alert('Payment Method Required', 'Payment method required before continuing');
+            pinLockSuppressed = true;
+            const paymentResult = await presentPaymentSheet();
+            if (paymentResult.error) {
+                if (paymentResult.error.code === 'Canceled') return;
+                Alert.alert('Payment Error', paymentResult.error.message || 'Unable to complete payment.');
                 return;
             }
-            Alert.alert('Error', 'Unable to start payment.');
+
+            Alert.alert('Payment received', 'Payment received. Unlocking contact info...');
+            setPendingPaymentMatchId(matchId);
+            const unlocked = await refreshMatchesUntilUnlocked(matchId);
+            if (!unlocked) {
+                Alert.alert('Payment processing', 'We are waiting for the backend to confirm payment. Pull to refresh if contact info is still locked.');
+            }
+        } catch {
+            Alert.alert('Error', 'Unable to start payment. Check your connection.');
         } finally {
-            setUnlockingMatchId(null);
+            if (pinLockSuppressed) {
+                resumePinLock();
+            }
+            setPayingMatchId(null);
+            setPendingPaymentMatchId((current: any) => current === matchId ? null : current);
         }
     };
 
     const printDriverProfile = async (item: any) => {
-        try {
-            const safeArr = (val: any) => {
-                if (Array.isArray(val)) return val;
-                if (typeof val === 'string') { try { const p = JSON.parse(val); return Array.isArray(p) ? p : []; } catch { return []; } }
-                return [];
-            };
-            const trailers = safeArr(item.trailer_experience);
-            const endors = safeArr(item.endorsements);
-
-            let photoHtml = item.profile_photo_base64
-                ? `<img src="${item.profile_photo_base64}" class="photo" />`
-                : '<div class="photo-placeholder">👤</div>';
-
-            let bioHtml = item.driver_bio ? `
-                <div class="section">
-                    <div class="section-title">📝 Professional Bio</div>
-                    <div class="bio">${item.driver_bio}</div>
-                </div>
-            ` : '';
-
-            let cdlDocsHtml = (item.license_front_base64 || item.license_back_base64) ? `
-                <div class="section">
-                    <div class="section-title">📸 CDL Documents</div>
-                    <div class="license-images">
-                        ${item.license_front_base64 ? `<img src="${item.license_front_base64}" class="license-img" />` : ''}
-                        ${item.license_back_base64 ? `<img src="${item.license_back_base64}" class="license-img" />` : ''}
-                    </div>
-                </div>
-            ` : '';
-
-            const html = `
-                <html>
-                <head>
-                    <style>
-                        body { font-family: 'Helvetica', sans-serif; color: #333; padding: 20px; }
-                        .header { display: flex; align-items: center; border-bottom: 2px solid #007bff; padding-bottom: 20px; margin-bottom: 20px; }
-                        .photo { width: 120px; height: 120px; border-radius: 60px; object-fit: cover; border: 3px solid #eee; margin-right: 20px; }
-                        .photo-placeholder { width: 120px; height: 120px; border-radius: 60px; background: #eee; display: flex; align-items: center; justify-content: center; font-size: 40px; margin-right: 20px; }
-                        .title-section { flex: 1; }
-                        .name { font-size: 28px; font-weight: bold; margin: 0; }
-                        .location { color: #666; font-size: 18px; margin-top: 5px; }
-                        .badge { display: inline-block; background: #007bff; color: white; padding: 4px 12px; border-radius: 12px; font-size: 14px; margin-top: 8px; }
-                        .section { margin-bottom: 25px; }
-                        .section-title { font-size: 20px; font-weight: bold; color: #007bff; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 12px; }
-                        .grid { display: flex; flex-wrap: wrap; gap: 20px; }
-                        .field { width: 45%; margin-bottom: 8px; font-size: 15px; }
-                        .label { font-weight: bold; color: #555; }
-                        .bio { line-height: 1.6; font-size: 15px; white-space: pre-wrap; background: #f9f9f9; padding: 15px; border-radius: 8px; }
-                        .license-images { display: flex; gap: 20px; margin-top: 20px; }
-                        .license-img { width: 300px; height: 200px; object-fit: contain; border: 1px solid #ddd; border-radius: 8px; }
-                        .footer { margin-top: 40px; font-size: 12px; color: #999; border-top: 1px solid #eee; padding-top: 10px; }
-                    </style>
-                </head>
-                <body>
-                    <div class="header">
-                        ${photoHtml}
-                        <div class="title-section">
-                            <h1 class="name">${item.driver_name || item.display_name || 'Driver Profile'}</h1>
-                            <p class="location">📍 ${[item.driver_city, item.driver_state].filter(Boolean).join(', ') || 'Location not specified'}</p>
-                            <span class="badge">${item.experience_years || 0} years experience</span>
-                        </div>
-                    </div>
-
-                    <div class="section">
-                        <div class="section-title">🪪 License & Verification</div>
-                        <div class="grid">
-                            <div class="field"><span class="label">CDL:</span> ${item.has_cdl ? 'Yes' : 'No'}</div>
-                            <div class="field"><span class="label">License Tag:</span> ${item.driver_license || 'N/A'}</div>
-                            <div class="field"><span class="label">Endorsements:</span> ${endors.join(', ') || 'None'}</div>
-                        </div>
-                    </div>
-
-                    <div class="section">
-                        <div class="section-title">🚛 Work Experience</div>
-                        <div class="grid">
-                            <div class="field"><span class="label">Weekly Miles:</span> ${item.weekly_miles || 'N/A'}</div>
-                            <div class="field"><span class="label">Longest OTR:</span> ${item.longest_otr || 'N/A'}</div>
-                            <div class="field"><span class="label">Trailers:</span> ${trailers.join(', ') || 'None'}</div>
-                        </div>
-                    </div>
-
-                    <div class="section">
-                        <div class="section-title">🛡️ Safety Record (Last 3 Years)</div>
-                        <div class="grid">
-                            <div class="field"><span class="label">Accidents:</span> ${item.accidents_3y ?? 0}</div>
-                            <div class="field"><span class="label">Tickets:</span> ${item.tickets_3y ?? 0}</div>
-                        </div>
-                    </div>
-
-                    <div class="section">
-                        <div class="section-title">⚙️ Preferences & Availability</div>
-                        <div class="grid">
-                            <div class="field"><span class="label">Home Time:</span> ${item.home_time || 'N/A'}</div>
-                            <div class="field"><span class="label">Preferred Freight:</span> ${item.preferred_freight || 'N/A'}</div>
-                            <div class="field"><span class="label">Preferred Region:</span> ${item.preferred_region || 'N/A'}</div>
-                            <div class="field"><span class="label">Availability:</span> ${item.availability || 'N/A'}</div>
-                        </div>
-                    </div>
-
-                    ${bioHtml}
-
-                    ${cdlDocsHtml}
-
-                    <div class="footer">
-                        Generated by DriverFlow on ${new Date().toLocaleString()}
-                    </div>
+        const html = `
+            <html>
+                <body style="font-family: Helvetica, Arial, sans-serif; padding: 24px; color: #333;">
+                    <h1>${item.driver_name || item.display_name || 'Driver Profile'}</h1>
+                    <p>${[item.driver_city, item.driver_state].filter(Boolean).join(', ') || 'Location not specified'}</p>
+                    <p><strong>Experience:</strong> ${item.experience_years || 0} years</p>
+                    <p><strong>CDL:</strong> ${item.has_cdl ? 'Yes' : 'No'}</p>
+                    <p><strong>Endorsements:</strong> ${parseList(item.endorsements).join(', ') || 'None'}</p>
+                    <p><strong>Trailers:</strong> ${parseList(item.trailer_experience).join(', ') || 'None'}</p>
+                    <p><strong>Weekly Miles:</strong> ${item.weekly_miles || 'N/A'}</p>
+                    <p><strong>Longest OTR:</strong> ${item.longest_otr || 'N/A'}</p>
+                    <p><strong>Home Time:</strong> ${item.home_time || 'N/A'}</p>
+                    <p><strong>Availability:</strong> ${item.availability || 'N/A'}</p>
+                    ${item.driver_bio ? `<div><strong>Bio:</strong><p>${item.driver_bio}</p></div>` : ''}
                 </body>
-                </html>
-            `;
+            </html>
+        `;
 
-            console.log("[PRINT] PRINT FLOW START");
-            suppressPinLock(); // Prevent PIN screen while print preview is open
-            console.log("[PRINT] PRINT SHEET OPENING...");
-
+        try {
+            suppressPinLock();
             await RNPrint.print({ html });
-
-            console.log("[PRINT] PRINT FLOW END");
-        } catch (e: any) {
-            console.error('[PRINT] PRINT FLOW ERROR:', e);
+        } catch (error) {
+            console.error('[PRINT] PRINT FLOW ERROR:', error);
             Alert.alert('Error', 'Failed to generate PDF');
         } finally {
             resumePinLock();
         }
     };
-
-    const renderProfessionalProfile = (item: any, isAnonymized: boolean = false) => {
-        const driverId = item.driver_id || item.id;
-        const shortId = typeof driverId === 'string' ? driverId.slice(-4).toUpperCase() : String(driverId);
-
-        const displayName = isAnonymized ? `Driver #${shortId}` : (item.driver_name || item.display_name || 'Driver Candidate');
-        const displayLocation = isAnonymized ? "Location Hidden" : ([item.driver_city, item.driver_state].filter(Boolean).join(', ') || 'TBD');
-
-        const parseJSON = (val: any) => {
-            if (!val) return [];
-            if (Array.isArray(val)) return val;
-            try {
-                const parsed = JSON.parse(val);
-                return Array.isArray(parsed) ? parsed : [];
-            } catch {
-                return [];
-            }
-        };
-
-        const endors = parseJSON(item.endorsements);
-        const lTypes = parseJSON(item.license_summ || item.license_types);
-        const oTypes = parseJSON(item.op_types || item.operation_types);
-        const trailers = parseJSON(item.trailer_experience);
+    const renderProfilePreview = (item: any, anonymized: boolean) => {
+        const isCompanyView = user?.type === 'driver';
+        const tags = isCompanyView ? parseList(item.op_types) : parseList(item.op_types || item.operation_types);
+        const secondaryTags = isCompanyView ? parseList(item.modalities) : parseList(item.endorsements);
+        const title = anonymized
+            ? (isCompanyView ? 'Verified Company' : `Driver #${String(item.driver_id || item.id).slice(-4).toUpperCase()}`)
+            : (isCompanyView ? (item.company_name || item.display_name || 'Verified Company') : (item.driver_name || item.display_name || 'Driver Candidate'));
+        const subtitle = anonymized
+            ? 'Location Hidden'
+            : (isCompanyView ? (item.ubicacion || [item.city, item.address_state].filter(Boolean).join(', ') || 'TBD') : ([item.driver_city, item.driver_state].filter(Boolean).join(', ') || 'TBD'));
 
         return (
-            <View style={pStyles.card}>
-                <Text style={pStyles.cardTitle}>📋 Professional Driver Profile</Text>
-
-                <View style={pStyles.headerRow}>
-                    {!isAnonymized ? (
-                        item.profile_photo_base64 ? (
-                            <Image source={{ uri: item.profile_photo_base64 }} style={pStyles.avatar} />
-                        ) : (
-                            <View style={[pStyles.avatar, pStyles.avatarPlaceholder, pStyles.avatarPlaceholderLight]}>
-                                <Text style={pStyles.noPhotoIcon}>👤</Text>
-                                <Text style={pStyles.noPhotoText}>No photo provided</Text>
-                            </View>
-                        )
+            <View style={styles.previewCard}>
+                <View style={styles.previewHeader}>
+                    {item.profile_photo_base64 && !anonymized && !isCompanyView ? (
+                        <Image source={{ uri: item.profile_photo_base64 }} style={styles.previewAvatar} />
+                    ) : item.company_logo && !anonymized && isCompanyView ? (
+                        <Image source={{ uri: item.company_logo }} style={styles.previewAvatar} />
                     ) : (
-                        <View style={[pStyles.avatar, pStyles.avatarPlaceholder]}>
-                            <Text style={pStyles.placeholderIcon}>👤</Text>
+                        <View style={[styles.previewAvatar, styles.previewAvatarPlaceholder]}>
+                            <Text style={styles.previewAvatarText}>{isCompanyView ? '🏢' : '👤'}</Text>
                         </View>
                     )}
-                    <View style={pStyles.headerTextWrap}>
-                        <Text style={pStyles.driverName}>{displayName}</Text>
-                        <Text style={pStyles.location}>📍 {displayLocation}</Text>
-                        <Text style={pStyles.expBadge}>🏷️ {item.experience_years || 0} yrs experience</Text>
+                    <View style={styles.previewHeaderText}>
+                        <Text style={styles.cardTitle}>{title}</Text>
+                        <Text style={styles.cardSubtitle}>{subtitle}</Text>
+                        {!isCompanyView && <Text style={styles.previewMeta}>{item.experience_years || 0} yrs experience</Text>}
                     </View>
                 </View>
 
-                <View style={pStyles.section}>
-                    <Text style={pStyles.sectionTitle}>🪪 License Verification</Text>
-                    <Text style={pStyles.field}>CDL: {item.has_cdl ? '✅ Yes' : '❌ No'}</Text>
-                    {lTypes.length > 0 && <Text style={pStyles.field}>Types: {lTypes.join(', ')}</Text>}
-                    {endors.length > 0 && <Text style={pStyles.field}>Endorsements: {endors.join(', ')}</Text>}
-                </View>
-
-                <View style={pStyles.section}>
-                    <Text style={pStyles.sectionTitle}>🚛 Experience</Text>
-                    {item.weekly_miles && <Text style={pStyles.field}>Weekly Miles: ~{item.weekly_miles}</Text>}
-                    {item.longest_otr && <Text style={pStyles.field}>Longest OTR: {item.longest_otr}</Text>}
-                    {oTypes.length > 0 && <Text style={pStyles.field}>Operation: {oTypes.join(', ')}</Text>}
-                    {trailers.length > 0 && <Text style={pStyles.field}>Trailers: {trailers.join(', ')}</Text>}
-                </View>
-
-                <View style={pStyles.section}>
-                    <Text style={pStyles.sectionTitle}>🛡️ Safety Record</Text>
-                    <Text style={pStyles.field}>Accidents: {item.accidents_3y ?? 0} | Tickets: {item.tickets_3y ?? 0}</Text>
-                </View>
-
-                <View style={pStyles.section}>
-                    <Text style={pStyles.sectionTitle}>⚙️ Availability</Text>
-                    <Text style={pStyles.field}>Start: {item.availability || 'TBD'}</Text>
-                    {item.home_time && <Text style={pStyles.field}>Home Time: {item.home_time}</Text>}
-                </View>
-
-                {item.driver_bio && (
-                    <View style={pStyles.section}>
-                        <Text style={pStyles.sectionTitle}>📝 About</Text>
-                        <Text style={pStyles.bio}>{item.driver_bio}</Text>
+                {tags.length > 0 && (
+                    <View style={styles.tagRow}>
+                        {tags.slice(0, 4).map((tag: string) => (
+                            <View key={tag} style={styles.tagChip}><Text style={styles.tagText}>{tag}</Text></View>
+                        ))}
                     </View>
                 )}
 
-                {!isAnonymized && (
-                    <TouchableOpacity
-                        style={[styles.button, styles.printButton]}
-                        onPress={() => printDriverProfile(item)}
-                    >
+                {secondaryTags.length > 0 && <Text style={styles.previewLine}>{secondaryTags.slice(0, 4).join(', ')}</Text>}
+                {!isCompanyView && <Text style={styles.previewLine}>Availability: {item.availability || 'TBD'}</Text>}
+                {isCompanyView && <Text style={styles.previewLine}>Freight: {item.offered_freight_types || 'N/A'}</Text>}
+
+                {!anonymized && !isCompanyView && (
+                    <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={() => printDriverProfile(item)}>
                         <Text style={styles.buttonText}>🖨️ Print / Export PDF</Text>
                     </TouchableOpacity>
                 )}
@@ -469,103 +320,200 @@ export default function MatchesScreen() {
         );
     };
 
-    const renderCompanyHero = (item: any, isAnonymized: boolean = false) => {
-        const payMin = item.pay_per_mile_min;
-        const payMax = item.pay_per_mile_max;
-        const hasPay = payMin || payMax;
-
-        const displayName = isAnonymized ? 'Verified Company' : (item.company_name || item.display_name || 'Verified Company');
-        const displayLocation = isAnonymized ? "Location Hidden" : (item.ubicacion || [item.city, item.address_state].filter(Boolean).join(', ') || 'TBD');
-
-        const parseJSON = (val: any) => {
-            if (!val) return [];
-            if (Array.isArray(val)) return val;
-            try {
-                const parsed = JSON.parse(val);
-                return Array.isArray(parsed) ? parsed : [];
-            } catch {
-                return [];
-            }
-        };
-
-        const opTypes = parseJSON(item.op_types);
-        const payMethods = parseJSON(item.pay_methods);
-        const modalities = parseJSON(item.modalities);
-        const endorsements = parseJSON(item.endorsements);
-
+    const renderContactActions = (item: any) => {
+        const email = user?.type === 'empresa' ? item.driver_email : item.company_email;
+        const phone = user?.type === 'empresa' ? item.driver_phone : item.contact_phone;
         return (
-            <View style={[pStyles.card, pStyles.companyCard]}>
-                {/* Hero Header: Pay Range */}
-                {hasPay && (
-                    <View style={cHStyles.heroBanner}>
-                        <Text style={cHStyles.heroLabel}>💰 Est. Pay per Mile</Text>
-                        <Text style={cHStyles.heroValue}>${payMin || '0.00'} – ${payMax || '0.00'}</Text>
-                    </View>
-                )}
+            <View style={styles.contactActions}>
+                <TouchableOpacity style={[styles.actionButton, styles.actionPrimary]} onPress={() => email && Linking.openURL(`mailto:${email}`)}>
+                    <Text style={styles.actionButtonText}>Email</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.actionButton, styles.actionMuted]} onPress={() => { if (email) { Clipboard.setString(email); Alert.alert('Copied'); } }}>
+                    <Text style={styles.actionButtonText}>Copy</Text>
+                </TouchableOpacity>
+                {phone ? (
+                    <TouchableOpacity style={[styles.actionButton, styles.actionSuccess]} onPress={() => Linking.openURL(`tel:${phone}`)}>
+                        <Text style={styles.actionButtonText}>Call</Text>
+                    </TouchableOpacity>
+                ) : null}
+            </View>
+        );
+    };
 
-                <View style={pStyles.headerRow}>
-                    {item.company_logo && !isAnonymized ? (
-                        <Image source={{ uri: item.company_logo }} style={pStyles.avatar} />
-                    ) : (
-                        <View style={[pStyles.avatar, pStyles.avatarPlaceholder]}>
-                            <Text style={pStyles.placeholderIcon}>🏢</Text>
+    const renderExpandedContent = (item: any) => {
+        const matchId = item.match_id || item.id;
+        const myAcceptDate = user?.type === 'empresa' ? item.company_step1_accepted_at : item.driver_step1_accepted_at;
+        const otherAcceptDate = user?.type === 'empresa' ? item.driver_step1_accepted_at : item.company_step1_accepted_at;
+        const myConsentDate = user?.type === 'empresa' ? item.company_share_consent_at : item.driver_share_consent_at;
+        const isPaymentRequired = item.status === 'PAYMENT_REQUIRED';
+        const isPaying = payingMatchId === matchId;
+        const isPendingPayment = pendingPaymentMatchId === matchId;
+
+        if (item.status === 'INFO_SHARED' || item.status === 'HIRED') {
+            const consentDate = item.driver_share_consent_at ? new Date(item.driver_share_consent_at) : null;
+            const extensionHours = item.exclusivity_extension_hours || 0;
+            const expirationDate = consentDate ? new Date(consentDate.getTime() + ((72 + extensionHours) * 60 * 60 * 1000)) : null;
+            const isExpired = expirationDate ? new Date() > expirationDate : false;
+            const isMaxExtension = extensionHours >= 432;
+            const myResolution = user?.type === 'empresa' ? item.resolution_company : item.resolution_driver;
+
+            return (
+                <View style={styles.sharedBlock}>
+                    {item.billing_status === 'free_share' && (
+                        <View style={styles.freeShareBanner}>
+                            <Text style={styles.freeShareBannerText}>🎁 First contact unlocked for free</Text>
                         </View>
                     )}
-                    <View style={pStyles.headerTextWrap}>
-                        <Text style={pStyles.driverName}>{displayName}</Text>
-                        <Text style={pStyles.location}>📍 {displayLocation}</Text>
-                        <View style={cHStyles.verifiedRow}>
-                            <Text style={cHStyles.verifiedText}>✅ Verified Profile</Text>
-                        </View>
-                    </View>
-                </View>
+                    <Text style={styles.sharedTitle}>{item.status === 'HIRED' ? '🎉 Driver Hired!' : '✅ Contact Shared'}</Text>
+                    <Text style={styles.sharedText}>{item.status === 'HIRED' ? 'This driver has been successfully hired.' : 'You can now contact the other party!'}</Text>
 
-                {item.company_bio && !isAnonymized ? (
-                    <View style={pStyles.section}>
-                        <Text style={pStyles.sectionTitle}>📝 About Us</Text>
-                        <Text style={pStyles.bio}>{item.company_bio}</Text>
+                    {user?.type === 'empresa' ? (
+                        <>
+                            <Text style={styles.contactLine}>{item.driver_email}</Text>
+                            {item.driver_phone ? <Text style={styles.contactLine}>{item.driver_phone}</Text> : null}
+                        </>
+                    ) : (
+                        <>
+                            {item.contact_person ? <Text style={styles.contactLine}>👤 {item.contact_person}</Text> : null}
+                            <Text style={styles.contactLine}>📧 {item.company_email}</Text>
+                            {item.contact_phone ? <Text style={styles.contactLine}>📞 {item.contact_phone}</Text> : null}
+                        </>
+                    )}
+
+                    {renderContactActions(item)}
+                    {renderProfilePreview(item, false)}
+
+                    {item.status === 'INFO_SHARED' && expirationDate && !myResolution && (isExpired || user?.type === 'empresa') ? (
+                        <View style={styles.resolutionBox}>
+                            <Text style={styles.stageTitle}>{isExpired ? 'Timer Expired' : 'Match Resolution'}</Text>
+                            <Text style={styles.stageText}>{isExpired ? 'Was the driver hired?' : 'Decide the outcome of this match:'}</Text>
+                            <TouchableOpacity style={[styles.button, styles.successButton]} onPress={() => handleResolveMatch(matchId, 'HIRED')}>
+                                <Text style={styles.buttonText}>Yes (Hired)</Text>
+                            </TouchableOpacity>
+                            {!isMaxExtension && (
+                                <TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={() => handleResolveMatch(matchId, 'IN_PROCESS')}>
+                                    <Text style={styles.buttonText}>Still in Process</Text>
+                                </TouchableOpacity>
+                            )}
+                            <TouchableOpacity style={[styles.button, styles.dangerButton]} onPress={() => handleResolveMatch(matchId, 'REJECTED')}>
+                                <Text style={styles.buttonText}>No (Closed)</Text>
+                            </TouchableOpacity>
+                        </View>
+                    ) : myResolution ? (
+                        <Text style={styles.mutedCentered}>Marked as: {myResolution}</Text>
+                    ) : expirationDate ? (
+                        <Text style={styles.mutedCentered}>Exclusivity ends: {expirationDate.toLocaleDateString()}</Text>
+                    ) : null}
+                </View>
+            );
+        }
+
+        return (
+            <View>
+                {renderProfilePreview(item, true)}
+
+                {isPaymentRequired ? (
+                    <View style={styles.paywallBox}>
+                        <Text style={styles.stageTitle}>🔒 Contact locked — payment required</Text>
+                        <Text style={styles.stageText}>No contact info is revealed until Stripe succeeds and the backend flips the match to INFO_SHARED.</Text>
+                        {user?.type === 'empresa' ? (
+                            <>
+                                <TouchableOpacity
+                                    style={[styles.button, styles.primaryButton, (isPaying || isPendingPayment) && styles.disabledButton]}
+                                    disabled={isPaying || isPendingPayment}
+                                    onPress={() => handlePayAndShare(item)}
+                                >
+                                    {isPaying || isPendingPayment ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Pay & Share</Text>}
+                                </TouchableOpacity>
+                                <Text style={styles.mutedCentered}>
+                                    {isPendingPayment ? 'Payment received. Unlocking contact info...' : 'DriverFlow will unlock contact info only after webhook confirmation.'}
+                                </Text>
+                            </>
+                        ) : (
+                            <Text style={styles.mutedCentered}>The company must complete payment before contact info can be shared.</Text>
+                        )}
                     </View>
                 ) : null}
 
-                <View style={pStyles.section}>
-                    <Text style={pStyles.sectionTitle}>🚛 Logistics Details</Text>
-
-                    {/* Operation & Modalities */}
-                    <View style={styles.optionContainer}>
-                        {opTypes.map((t: string) => (
-                            <View key={t} style={cHStyles.tag}><Text style={cHStyles.tagText}>{t}</Text></View>
-                        ))}
-                        {modalities.map((t: string) => (
-                            <View key={t} style={[cHStyles.tag, cHStyles.modalityTag]}><Text style={cHStyles.tagText}>{t}</Text></View>
-                        ))}
+                {!myAcceptDate ? (
+                    <View style={styles.stageBox}>
+                        <Text style={styles.stageTitle}>{otherAcceptDate ? 'Mutual Interest! They liked your profile.' : 'New Opportunity Detected'}</Text>
+                        <View style={styles.row}>
+                            <TouchableOpacity style={[styles.button, styles.successButton, styles.flexButton]} onPress={() => handleStatusChange(matchId, 'ACCEPTED')}>
+                                <Text style={styles.buttonText}>Accept Interest</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={[styles.button, styles.dangerButton, styles.flexButton]} onPress={() => handleStatusChange(matchId, 'DECLINED')}>
+                                <Text style={styles.buttonText}>Decline</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
-
-                    {/* Freight & Home Time */}
-                    <View style={cHStyles.logisticsMeta}>
-                        {item.offered_freight_types ? (
-                            <Text style={pStyles.field}>📦 Freight: {item.offered_freight_types}</Text>
-                        ) : null}
-                        {item.home_time ? (
-                            <Text style={pStyles.field}>🏠 Home time: {item.home_time}</Text>
-                        ) : null}
-                        {item.availability ? (
-                            <Text style={pStyles.field}>⚡ Start: {item.availability}</Text>
-                        ) : null}
-                        <Text style={pStyles.field}>✈️ Travel for interview: {item.requires_travel_interview ? 'Required' : 'Not Required'}</Text>
+                ) : !otherAcceptDate ? (
+                    <View style={styles.stageBox}>
+                        <Text style={styles.stageTitle}>⏳ Waiting for response...</Text>
+                        <Text style={styles.stageText}>The other party has been notified of your interest.</Text>
                     </View>
-
-                    {/* Payment & Endorsements */}
-                    <View style={[styles.optionContainer, cHStyles.paymentTagsContainer]}>
-                        {payMethods.map((m: string) => (
-                            <View key={m} style={[cHStyles.tag, cHStyles.payMethodTag]}><Text style={cHStyles.tagText}>{m}</Text></View>
-                        ))}
-                        {endorsements.map((e: string) => (
-                            <View key={e} style={[cHStyles.tag, cHStyles.endorsementTag]}><Text style={cHStyles.tagText}>{e} Endorsement</Text></View>
-                        ))}
+                ) : !myConsentDate ? (
+                    <View style={styles.stageBox}>
+                        <Text style={styles.stageTitle}>🤝 Mutual Interest Confirmed!</Text>
+                        <Text style={styles.stageText}>
+                            {user?.type === 'empresa'
+                                ? 'Review the profile and continue. If payment is required, contact info will remain locked until Stripe confirms payment.'
+                                : 'Authorize sharing your contact details with the company to proceed.'}
+                        </Text>
+                        <TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={() => handleConfirmShare(matchId)}>
+                            <Text style={styles.buttonText}>{user?.type === 'empresa' ? 'Continue' : '✅ Confirm Consent'}</Text>
+                        </TouchableOpacity>
                     </View>
-                </View>
+                ) : (
+                    <View style={styles.stageBox}>
+                        <Text style={styles.stageTitle}>🔓 Final Authorization Pending...</Text>
+                        <Text style={styles.stageText}>You have authorized the exchange. Waiting for the other party to confirm.</Text>
+                    </View>
+                )}
             </View>
         );
+    };
+
+    const filteredMatches = useMemo(() => {
+        const query = searchQuery.trim().toLowerCase();
+        const applySearch = (list: any[]) => {
+            if (!query) return list;
+            return list.filter(match =>
+                (match.driver_name && match.driver_name.toLowerCase().includes(query)) ||
+                (match.display_name && match.display_name.toLowerCase().includes(query)) ||
+                (match.company_name && match.company_name.toLowerCase().includes(query)) ||
+                (match.ubicacion && match.ubicacion.toLowerCase().includes(query)) ||
+                (match.driver_city && match.driver_city.toLowerCase().includes(query)) ||
+                (match.driver_state && match.driver_state.toLowerCase().includes(query))
+            );
+        };
+        return {
+            newMatches: applySearch(matches.filter(match => match.status === 'NEW')),
+            processMatches: applySearch(matches.filter(match => ['ACCEPTED', 'PREMATCH_READY', 'SHARE_PENDING_COMPANY', 'SHARE_PENDING_DRIVER', 'PAYMENT_REQUIRED'].includes(match.status))),
+            exclusiveMatches: applySearch(matches.filter(match => match.status === 'INFO_SHARED')),
+            hiredMatches: applySearch(matches.filter(match => match.status === 'HIRED'))
+        };
+    }, [matches, searchQuery]);
+
+    const displayMatches = activeTab === 'NUEVOS'
+        ? filteredMatches.newMatches
+        : activeTab === 'EN_PROCESO'
+            ? filteredMatches.processMatches
+            : activeTab === 'EXCLUSIVOS'
+                ? filteredMatches.exclusiveMatches
+                : filteredMatches.hiredMatches;
+
+    const renderEmptyState = () => {
+        if (activeTab === 'NUEVOS') {
+            return <View style={styles.emptyState}><Text style={styles.emptyTitle}>Your radar is on!</Text><Text style={styles.emptyText}>We are looking for the best opportunities for you. Swipe down to refresh.</Text></View>;
+        }
+        if (activeTab === 'EN_PROCESO') {
+            return <View style={styles.emptyState}><Text style={styles.emptyTitle}>Nothing in progress yet</Text><Text style={styles.emptyText}>Offers you accept will appear here while waiting for a final response.</Text></View>;
+        }
+        if (activeTab === 'EXCLUSIVOS') {
+            return <View style={styles.emptyState}><Text style={styles.emptyTitle}>No exclusive contracts</Text><Text style={styles.emptyText}>When you share your info with a company, it will appear here for 72 hours.</Text></View>;
+        }
+        return <View style={styles.emptyState}><Text style={styles.emptyTitle}>No hires yet</Text><Text style={styles.emptyText}>When a driver is hired through DriverFlow, the record will appear here.</Text></View>;
     };
 
     const renderItem = ({ item }: { item: any }) => {
@@ -573,329 +521,61 @@ export default function MatchesScreen() {
         const isExpanded = expandedCardId === matchId;
         const myAcceptDate = user?.type === 'empresa' ? item.company_step1_accepted_at : item.driver_step1_accepted_at;
         const otherAcceptDate = user?.type === 'empresa' ? item.driver_step1_accepted_at : item.company_step1_accepted_at;
-        const myConsentDate = user?.type === 'empresa' ? item.company_share_consent_at : item.driver_share_consent_at;
-
         const isAnonymized = item.status !== 'INFO_SHARED' && item.status !== 'HIRED';
-        const driverId = item.driver_id || item.id;
-        const companyId = item.company_id || item.id;
-        const driverShortId = typeof driverId === 'string' ? driverId.slice(-4).toUpperCase() : String(driverId);
-        const companyShortId = typeof companyId === 'string' ? companyId.slice(-4).toUpperCase() : String(companyId);
-
-        const displayName = isAnonymized 
-            ? (user?.type === 'empresa' ? `Driver #${driverShortId}` : `Company #${companyShortId}`) 
-            : (user?.type === 'empresa' 
-                ? (item.driver_name || item.display_name || 'Driver Candidate') 
-                : (item.company_name || item.display_name || 'Verified Company'));
-        const displayLocation = isAnonymized ? (user?.type === 'driver' ? "Logistics View" : "Location Hidden") : (item.ubicacion || [item.driver_city, item.driver_state].filter(Boolean).join(', ') || 'Available');
+        const driverShortId = String(item.driver_id || item.id).slice(-4).toUpperCase();
+        const companyShortId = String(item.company_id || item.id).slice(-4).toUpperCase();
+        const displayName = isAnonymized
+            ? (user?.type === 'empresa' ? `Driver #${driverShortId}` : `Company #${companyShortId}`)
+            : (user?.type === 'empresa' ? (item.driver_name || item.display_name || 'Driver Candidate') : (item.company_name || item.display_name || 'Verified Company'));
+        const displayLocation = isAnonymized
+            ? (user?.type === 'driver' ? 'Logistics View' : 'Location Hidden')
+            : (item.ubicacion || [item.driver_city, item.driver_state].filter(Boolean).join(', ') || 'Available');
+        const stageLabel = item.status === 'HIRED'
+            ? 'Driver Hired'
+            : item.status === 'INFO_SHARED'
+                ? 'Exclusive Evaluation'
+                : item.status === 'PAYMENT_REQUIRED'
+                    ? '💳 Payment Required'
+                    : (myAcceptDate && otherAcceptDate)
+                        ? 'Confirm Exchange'
+                        : myAcceptDate
+                            ? 'Waiting for response'
+                            : 'New Opportunity';
 
         return (
             <View style={styles.card}>
-                <TouchableOpacity
-                    activeOpacity={0.7}
-                    onPress={() => setExpandedCardId(isExpanded ? null : matchId)}
-                    style={styles.cardTouchableHeader}
-                >
-                    <View style={styles.headerRow}>
-                        <View style={styles.headerMainRow}>
-                            {!isAnonymized && user?.type === 'empresa' ? (
-                                item.profile_photo_base64 ? (
-                                    <Image source={{ uri: item.profile_photo_base64 }} style={styles.headerAvatar} />
-                                ) : (
-                                    <View style={[styles.headerAvatar, styles.headerAvatarPlaceholder]}>
-                                        <Text style={styles.headerAvatarIcon}>👤</Text>
-                                    </View>
-                                )
-                            ) : (
-                                <View style={[styles.headerAvatar, styles.headerAvatarPlaceholder]}>
-                                    <Text style={styles.headerAvatarIcon}>👤</Text>
-                                </View>
-                            )}
-                            <View style={styles.headerTextWrap}>
-                                <Text style={styles.title} numberOfLines={1}>
-                                    {displayName}
-                                </Text>
-                                <Text style={styles.headerSubtitle} numberOfLines={1}>
-                                    {displayLocation}
-                                </Text>
-                            </View>
+                <TouchableOpacity style={styles.cardHeader} onPress={() => setExpandedCardId(isExpanded ? null : matchId)} activeOpacity={0.8}>
+                    <View style={styles.row}>
+                        <View style={[styles.smallAvatar, styles.previewAvatarPlaceholder]}>
+                            <Text style={styles.previewAvatarText}>👤</Text>
                         </View>
-                        <View style={styles.headerBadgeWrap}>
-                            <View style={styles.badge}>
-                                <Text style={styles.badgeText}>{Math.round((item.match_score || 0.85) * 100)}% Match</Text>
-                            </View>
-                            <Text style={styles.expandIcon}>{isExpanded ? '▲' : '▼'}</Text>
+                        <View style={styles.flex}>
+                            <Text style={styles.cardTitle}>{displayName}</Text>
+                            <Text style={styles.cardSubtitle}>{displayLocation}</Text>
+                        </View>
+                        <View style={styles.scoreBadge}>
+                            <Text style={styles.scoreBadgeText}>{Math.round((item.match_score || 0.85) * 100)}% Match</Text>
+                            <Text style={styles.chevron}>{isExpanded ? '▲' : '▼'}</Text>
                         </View>
                     </View>
-
-                    {!isExpanded && (
-                        <View style={styles.collapsedBrief}>
-                            <Text style={styles.briefText}>
-                                Stage: {
-                                    item.status === 'HIRED' ? 'Driver Hired' :
-                                    item.status === 'INFO_SHARED' ? 'Exclusive Evaluation' :
-                                    (myAcceptDate && otherAcceptDate) ? 'Confirm Exchange' :
-                                    myAcceptDate ? 'Waiting for response' : 'New Opportunity'
-                                }
-                            </Text>
-                        </View>
-                    )}
+                    {!isExpanded && <Text style={styles.stageSummary}>Stage: {stageLabel}</Text>}
                 </TouchableOpacity>
 
-                {isExpanded && (
-                    <View style={styles.cardExpandedContent}>
-                        {/* 1. SHARED / HIRED PERSISTENT PROFILE */}
-                        {item.status === 'INFO_SHARED' || item.status === 'HIRED' ? (
-                            <View style={styles.sharedInfoBlock}>
-                                <Text style={styles.sharedTitle}>{item.status === 'HIRED' ? '🎉 Driver Hired!' : '✅ Contact Shared'}</Text>
-                                <Text style={styles.sharedText}>
-                                    {item.status === 'HIRED' ? 'This driver has been successfully hired.' : 'You can now contact the other party!'}
-                                </Text>
-
-                                {user?.type === 'empresa' ? (
-                                    <>
-                                        <Text style={styles.contactEmail}>{item.driver_email}</Text>
-                                        {item.driver_phone ? <Text style={styles.contactPhone}>{item.driver_phone}</Text> : null}
-                                    </>
-                                ) : (
-                                    <>
-                                        {item.contact_person ? <Text style={styles.contactEmail}>👤 {item.contact_person}</Text> : null}
-                                        <Text style={styles.contactEmail}>📧 {item.company_email}</Text>
-                                        {item.contact_phone ? <Text style={styles.contactPhone}>📞 {item.contact_phone}</Text> : null}
-                                    </>
-                                )}
-
-                                <View style={styles.contactActions}>
-                                    <TouchableOpacity style={[styles.actionBtn, styles.btnEmail]} onPress={() => { const email = user?.type === 'empresa' ? item.driver_email : item.company_email; if (email) Linking.openURL(`mailto:${email}`); }}>
-                                        <Text style={styles.actionBtnText}>Email</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity style={[styles.actionBtn, styles.btnCopy]} onPress={() => { const email = user?.type === 'empresa' ? item.driver_email : item.company_email; if (email) { Clipboard.setString(email); Alert.alert('Copied'); } }}>
-                                        <Text style={styles.actionBtnText}>Copy</Text>
-                                    </TouchableOpacity>
-                                    {(user?.type === 'empresa' ? item.driver_phone : item.contact_phone) ? (
-                                        <TouchableOpacity style={[styles.actionBtn, styles.btnCall]} onPress={() => { const phone = user?.type === 'empresa' ? item.driver_phone : item.contact_phone; if (phone) Linking.openURL(`tel:${phone}`); }}>
-                                            <Text style={styles.actionBtnText}>Call</Text>
-                                        </TouchableOpacity>
-                                    ) : null}
-                                </View>
-
-                                {user?.type === 'empresa' && renderProfessionalProfile(item, false)}
-                                {user?.type === 'driver' && renderCompanyHero(item, false)}
-
-                                {item.status === 'INFO_SHARED' && (() => {
-                                    const consentDate = item.driver_share_consent_at ? new Date(item.driver_share_consent_at) : null;
-                                    if (!consentDate) return null;
-                                    const extensionHours = item.exclusivity_extension_hours || 0;
-                                    const expirationDate = new Date(consentDate.getTime() + ((72 + extensionHours) * 60 * 60 * 1000));
-                                    const now = new Date();
-                                    const isExpired = now > expirationDate;
-                                    const isMaxExtension = extensionHours >= 432;
-
-                                    const myRes = user?.type === 'empresa' ? item.resolution_company : item.resolution_driver;
-                                    if (myRes) return <Text style={styles.resolutionMarked}>Marked as: {myRes}</Text>;
-
-                                    const showResolutionButtons = isExpired || user?.type === 'empresa';
-
-                                    if (showResolutionButtons) {
-                                        return (
-                                            <View style={[styles.resolutionBox, isExpired ? styles.resolutionBoxExpired : styles.resolutionBoxDefault]}>
-                                                <Text style={[styles.resolutionTitle, isExpired ? styles.resolutionTitleExpired : styles.resolutionTitleDefault]}>
-                                                    {isExpired ? 'Timer Expired' : 'Match Resolution'}
-                                                </Text>
-                                                <Text style={[styles.resolutionDescription, isExpired ? styles.resolutionDescriptionExpired : styles.resolutionDescriptionDefault]}>
-                                                    {isExpired ? 'Was the driver hired?' : 'Decide the outcome of this match:'}
-                                                </Text>
-                                                <View style={styles.resolutionButtons}>
-                                                    <TouchableOpacity style={[styles.button, styles.buttonGreen]} onPress={() => handleResolveMatch(matchId, 'HIRED')}>
-                                                        <Text style={styles.buttonText}>Yes (Hired)</Text>
-                                                    </TouchableOpacity>
-                                                    {!isMaxExtension && (
-                                                        <TouchableOpacity style={[styles.button, styles.buttonBlue]} onPress={() => handleResolveMatch(matchId, 'IN_PROCESS')}>
-                                                            <Text style={styles.buttonText}>Still in Process</Text>
-                                                        </TouchableOpacity>
-                                                    )}
-                                                    <TouchableOpacity style={[styles.button, styles.buttonRed]} onPress={() => handleResolveMatch(matchId, 'REJECTED')}>
-                                                        <Text style={styles.buttonText}>No (Closed)</Text>
-                                                    </TouchableOpacity>
-                                                </View>
-                                                {!isExpired && (
-                                                    <Text style={styles.exclusivityDateSmall}>
-                                                        Exclusivity ends: {expirationDate.toLocaleDateString()}
-                                                    </Text>
-                                                )}
-                                            </View>
-                                        );
-                                    }
-
-                                    return (
-                                        <Text style={styles.exclusivityDate}>
-                                            Exclusivity ends: {expirationDate.toLocaleDateString()}
-                                        </Text>
-                                    );
-                                })()}
-                            </View>
-                        ) : (
-                            /* 2. PROGRESSIVE ACTION AREA */
-                            <View>
-                                {user?.type === 'empresa' ? renderProfessionalProfile(item, true) : renderCompanyHero(item, true)}
-
-                                {user?.type === 'empresa' && item.locked ? (
-                                    <View style={styles.unlockStage}>
-                                        <Text style={styles.unlockTitle}>🔒 Unlock this driver to hire immediately</Text>
-                                        <Text style={styles.unlockBullet}>• Phone number</Text>
-                                        <Text style={styles.unlockBullet}>• Direct contact</Text>
-                                        <Text style={styles.unlockBullet}>• No intermediaries</Text>
-                                        <Text style={styles.unlockHint}>Most companies contact drivers immediately after unlocking</Text>
-                                        <Text style={styles.unlockBillingNote}>
-                                            This action will be billed to your company
-                                        </Text>
-                                        <TouchableOpacity
-                                            style={[
-                                                styles.button,
-                                                styles.buttonBlue,
-                                                styles.unlockButton,
-                                                (!item.ticket_id || unlockingMatchId === matchId) && styles.buttonDisabled
-                                            ]}
-                                            onPress={() => handleUnlockDriver(item)}
-                                            disabled={!item.ticket_id || unlockingMatchId === matchId}
-                                        >
-                                            {unlockingMatchId === matchId ? (
-                                                <ActivityIndicator color="#fff" />
-                                            ) : (
-                                                <Text style={styles.buttonText}>Unlock & Contact Driver</Text>
-                                            )}
-                                        </TouchableOpacity>
-                                    </View>
-                                ) : null}
-
-                                {/* STAGE 1: Accept/Decline */}
-                                {!myAcceptDate ? (
-                                    <View style={styles.stageSection}>
-                                        <Text style={[styles.consentPrompt, styles.consentPromptCentered]}>
-                                            {otherAcceptDate ? 'Mutual Interest! They liked your profile.' : 'New Opportunity Detected'}
-                                        </Text>
-                                        <View style={styles.actionsRow}>
-                                            <TouchableOpacity style={[styles.button, styles.buttonGreen, styles.buttonFlex]} onPress={() => handleStatusChange(matchId, 'ACCEPTED')}>
-                                                <Text style={styles.buttonText}>Accept Interest</Text>
-                                            </TouchableOpacity>
-                                            <TouchableOpacity style={[styles.button, styles.buttonRed, styles.buttonFlex]} onPress={() => handleStatusChange(matchId, 'DECLINED')}>
-                                                <Text style={styles.buttonText}>Decline</Text>
-                                            </TouchableOpacity>
-                                        </View>
-                                    </View>
-                                ) : /* STAGE 2: Waiting for other side */
-                                !otherAcceptDate ? (
-                                    <View style={styles.waitingStage}>
-                                        <Text style={styles.stageIcon}>⏳</Text>
-                                        <Text style={styles.waitingStageTitle}>Waiting for response...</Text>
-                                        <Text style={styles.stageDescription}>
-                                            The other party has been notified of your interest.
-                                        </Text>
-                                    </View>
-                                ) : /* STAGE 3: Final Consent / Pay */
-                                !myConsentDate ? (
-                                    <View style={styles.consentStage}>
-                                        <Text style={[styles.consentPrompt, styles.consentPromptAccent]}>🤝 Mutual Interest Confirmed!</Text>
-                                        <Text style={styles.consentDescription}>
-                                            {user?.type === 'empresa' 
-                                                ? 'Review the detailed profile and pay to unlock full contact information.' 
-                                                : 'Authorize sharing your contact details with the company to proceed.'}
-                                        </Text>
-                                        <TouchableOpacity style={[styles.button, styles.buttonBlue]} onPress={() => handleConfirmShare(matchId)}>
-                                            <Text style={styles.buttonText}>
-                                                {user?.type === 'empresa' ? '💰 Pay & View Contact' : '✅ Confirm Consent'}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                ) : (
-                                    /* STAGE 4: Waiting for other consent (SHARE_PENDING) */
-                                    <View style={styles.pendingStage}>
-                                        <Text style={styles.stageIcon}>🔓</Text>
-                                        <Text style={styles.pendingStageTitle}>Final Authorization Pending...</Text>
-                                        <Text style={styles.stageDescription}>
-                                            You have authorized the exchange. Waiting for the other party to confirm.
-                                        </Text>
-                                    </View>
-                                )}
-                            </View>
-                        )}
-                    </View>
-                )}
+                {isExpanded && <View style={styles.expandedBody}>{renderExpandedContent(item)}</View>}
             </View>
         );
     };
 
-    if (loading) return <ActivityIndicator style={styles.loadingIndicator} size="large" />;
-
-    const filterBySearch = (list: any[]) => {
-        if (!searchQuery) return list;
-        const q = searchQuery.toLowerCase();
-        return list.filter(m =>
-            (m.driver_name && m.driver_name.toLowerCase().includes(q)) ||
-            (m.display_name && m.display_name.toLowerCase().includes(q)) ||
-            (m.company_name && m.company_name.toLowerCase().includes(q)) ||
-            (m.ubicacion && m.ubicacion.toLowerCase().includes(q)) ||
-            (m.driver_city && m.driver_city.toLowerCase().includes(q)) ||
-            (m.driver_state && m.driver_state.toLowerCase().includes(q))
-        );
-    };
-
-    const newMatches = filterBySearch(matches.filter(m => m.status === 'NEW'));
-    const processMatches = filterBySearch(matches.filter(m => ['ACCEPTED', 'PREMATCH_READY', 'SHARE_PENDING_COMPANY', 'SHARE_PENDING_DRIVER'].includes(m.status)));
-    const exclusiveMatches = filterBySearch(matches.filter(m => m.status === 'INFO_SHARED'));
-    const hiredMatches = filterBySearch(matches.filter(m => m.status === 'HIRED'));
-
-    let displayMatches: any[] = [];
-    if (activeTab === 'NUEVOS') displayMatches = newMatches;
-    if (activeTab === 'EN_PROCESO') displayMatches = processMatches;
-    if (activeTab === 'EXCLUSIVOS') displayMatches = exclusiveMatches;
-    if (activeTab === 'HIRED') displayMatches = hiredMatches;
-
-    const renderEmptyState = () => {
-        if (activeTab === 'NUEVOS') {
-            return (
-                <View style={styles.empty}>
-                    <Text style={styles.emptyIcon}>📡</Text>
-                    <Text style={styles.emptyTitle}>Your radar is on!</Text>
-                    <Text style={styles.emptyText}>We are looking for the best opportunities for you. Swipe down to refresh.</Text>
-                </View>
-            );
-        }
-        if (activeTab === 'EN_PROCESO') {
-            return (
-                <View style={styles.empty}>
-                    <Text style={styles.emptyIcon}>⏳</Text>
-                    <Text style={styles.emptyTitle}>Nothing in progress yet</Text>
-                    <Text style={styles.emptyText}>Offers you accept will appear here while waiting for a final response.</Text>
-                </View>
-            );
-        }
-        if (activeTab === 'EXCLUSIVOS') {
-            return (
-                <View style={styles.empty}>
-                    <Text style={styles.emptyIcon}>🤝</Text>
-                    <Text style={styles.emptyTitle}>No exclusive contracts</Text>
-                    <Text style={styles.emptyText}>When you share your info with a company, it will appear here for 72 hours.</Text>
-                </View>
-            );
-        }
-        if (activeTab === 'HIRED') {
-            return (
-                <View style={styles.empty}>
-                    <Text style={styles.emptyIcon}>🎉</Text>
-                    <Text style={styles.emptyTitle}>No hires yet</Text>
-                    <Text style={styles.emptyText}>When a driver is hired through DriverFlow, the record will appear here.</Text>
-                </View>
-            );
-        }
-        return null;
-    };
+    if (loading) {
+        return <ActivityIndicator style={styles.loading} size="large" />;
+    }
 
     return (
         <View style={styles.container}>
-            <Text style={styles.pageTitle}>Matches Dashboard</Text>
+            <Text style={styles.pageHeading}>Matches Dashboard</Text>
 
             {user?.type === 'empresa' && (
-                <View style={styles.searchContainer}>
+                <View style={styles.searchWrap}>
                     <TextInput
                         style={styles.searchInput}
                         placeholder="Search driver name, city or state..."
@@ -903,46 +583,27 @@ export default function MatchesScreen() {
                         onChangeText={setSearchQuery}
                         clearButtonMode="while-editing"
                     />
-                    <Text style={styles.searchIcon}>🔍</Text>
                 </View>
             )}
 
-            <View style={styles.tabContainer}>
-                <TouchableOpacity style={[styles.tab, activeTab === 'NUEVOS' && styles.activeTab]} onPress={() => setActiveTab('NUEVOS')}>
-                    <View style={styles.tabContentRow}>
-                        <Text style={[styles.tabText, activeTab === 'NUEVOS' && styles.activeTabText]}>New</Text>
-                        {newMatches.length > 0 && <View style={[styles.badgeDot, styles.badgeDotNew]}><Text style={styles.badgeCount}>{newMatches.length}</Text></View>}
-                    </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={[styles.tab, activeTab === 'EN_PROCESO' && styles.activeTab]} onPress={() => setActiveTab('EN_PROCESO')}>
-                    <View style={styles.tabContentRow}>
-                        <Text style={[styles.tabText, activeTab === 'EN_PROCESO' && styles.activeTabText]}>In Progress</Text>
-                        {processMatches.length > 0 && <View style={[styles.badgeDot, styles.badgeDotProcess]}><Text style={styles.badgeCount}>{processMatches.length}</Text></View>}
-                    </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={[styles.tab, activeTab === 'EXCLUSIVOS' && styles.activeTab]} onPress={() => setActiveTab('EXCLUSIVOS')}>
-                    <View style={styles.tabContentRow}>
-                        <Text style={[styles.tabText, activeTab === 'EXCLUSIVOS' && styles.activeTabText]}>Exclusive</Text>
-                        {exclusiveMatches.length > 0 && <View style={[styles.badgeDot, styles.badgeDotExclusive]}><Text style={styles.badgeCount}>{exclusiveMatches.length}</Text></View>}
-                    </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={[styles.tab, activeTab === 'HIRED' && styles.activeTab]} onPress={() => setActiveTab('HIRED')}>
-                    <View style={styles.tabContentRow}>
-                        <Text style={[styles.tabText, activeTab === 'HIRED' && styles.activeTabText]}>Hired</Text>
-                        {hiredMatches.length > 0 && <View style={[styles.badgeDot, styles.badgeDotHired]}><Text style={styles.badgeCount}>{hiredMatches.length}</Text></View>}
-                    </View>
-                </TouchableOpacity>
+            <View style={styles.tabs}>
+                {[
+                    { key: 'NUEVOS', label: 'New', count: filteredMatches.newMatches.length },
+                    { key: 'EN_PROCESO', label: 'In Progress', count: filteredMatches.processMatches.length },
+                    { key: 'EXCLUSIVOS', label: 'Exclusive', count: filteredMatches.exclusiveMatches.length },
+                    { key: 'HIRED', label: 'Hired', count: filteredMatches.hiredMatches.length }
+                ].map(tab => (
+                    <TouchableOpacity key={tab.key} style={[styles.tab, activeTab === tab.key && styles.activeTab]} onPress={() => setActiveTab(tab.key)}>
+                        <Text style={[styles.tabText, activeTab === tab.key && styles.activeTabText]}>{tab.label}</Text>
+                        {tab.count > 0 && <View style={styles.tabCount}><Text style={styles.tabCountText}>{tab.count}</Text></View>}
+                    </TouchableOpacity>
+                ))}
             </View>
 
-            {displayMatches.length === 0 ? (
-                renderEmptyState()
-            ) : (
+            {displayMatches.length === 0 ? renderEmptyState() : (
                 <FlatList
                     data={displayMatches}
-                    keyExtractor={(item) => String(item.match_id || item.id)}
+                    keyExtractor={item => String(item.match_id || item.id)}
                     renderItem={renderItem}
                     contentContainerStyle={styles.listContent}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -954,227 +615,68 @@ export default function MatchesScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, padding: 20, backgroundColor: '#fcfcfc' },
-    pageTitle: { fontSize: 24, fontWeight: 'bold', marginBottom: 15, color: '#333' },
-
-    tabContainer: { flexDirection: 'row', marginBottom: 15, borderBottomWidth: 1, borderBottomColor: '#ddd' },
-    tab: { flex: 1, paddingVertical: 12, alignItems: 'center', borderBottomWidth: 3, borderBottomColor: 'transparent' },
+    loading: { flex: 1 },
+    pageHeading: { fontSize: 24, fontWeight: 'bold', color: '#222', marginBottom: 16 },
+    searchWrap: { marginBottom: 16 },
+    searchInput: { backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: '#ddd', paddingHorizontal: 14, paddingVertical: 10 },
+    tabs: { flexDirection: 'row', marginBottom: 16, borderBottomWidth: 1, borderBottomColor: '#ddd' },
+    tab: { flex: 1, alignItems: 'center', paddingVertical: 12, borderBottomWidth: 3, borderBottomColor: 'transparent', flexDirection: 'row', justifyContent: 'center', gap: 6 },
     activeTab: { borderBottomColor: '#007bff' },
-    tabText: { fontSize: 13, color: '#666', fontWeight: 'bold' },
+    tabText: { fontSize: 13, fontWeight: '700', color: '#666' },
     activeTabText: { color: '#007bff' },
-    tabContentRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-    badgeDot: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-    badgeDotNew: { backgroundColor: '#dc3545' },
-    badgeDotProcess: { backgroundColor: '#007bff' },
-    badgeDotExclusive: { backgroundColor: '#28a745' },
-    badgeDotHired: { backgroundColor: '#6f42c1' },
-    badgeCount: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
-
-    card: { backgroundColor: '#fff', padding: 15, borderRadius: 10, marginBottom: 15, elevation: 1, borderWidth: 1, borderColor: '#eee' },
-    headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-    headerMainRow: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-    headerTextWrap: { marginLeft: 10, flex: 1 },
-    headerBadgeWrap: { alignItems: 'flex-end' },
-    title: { fontSize: 18, fontWeight: 'bold', flex: 1, paddingRight: 10, color: '#333' },
-
-    badge: { backgroundColor: '#4CAF50', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
-    badgeText: { color: '#fff', fontWeight: 'bold', fontSize: 12 },
-
-    detail: { fontSize: 14, color: '#666', marginBottom: 5 },
-    status: { fontWeight: 'bold', color: '#007bff' },
-
-    actionsRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, flexWrap: 'wrap', gap: 8 },
-
-    button: { paddingVertical: 12, paddingHorizontal: 15, borderRadius: 8, alignItems: 'center', marginTop: 6, minWidth: 120 },
-    buttonText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
-
-    buttonGreen: { backgroundColor: '#28a745' },
-    buttonRed: { backgroundColor: '#dc3545' },
-    buttonBlue: { backgroundColor: '#007bff' },
-    buttonFlex: { flex: 1 },
-    printButton: { backgroundColor: '#6c757d', marginTop: 15 },
-
-    sharedInfoBlock: { backgroundColor: '#e8f5e9', padding: 12, borderRadius: 10, width: '100%', borderWidth: 1, borderColor: '#c8e6c9' },
-    sharedTitle: { color: '#2e7d32', fontWeight: 'bold', fontSize: 16, marginBottom: 4 },
-    sharedText: { color: '#444', marginBottom: 12, fontSize: 13 },
-
-    contactEmail: { fontSize: 15, color: '#333', fontWeight: 'bold', marginBottom: 4 },
-    contactPhone: { fontSize: 15, color: '#333', marginBottom: 10 },
-    contactActions: { flexDirection: 'row', gap: 8, marginTop: 5 },
-    actionBtn: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 6, flex: 1, alignItems: 'center' },
-    actionBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 12 },
-    btnEmail: { backgroundColor: '#007bff' },
-    btnCopy: { backgroundColor: '#6c757d' },
-    btnCall: { backgroundColor: '#28a745' },
-
-    waitingText: { color: '#007bff', fontStyle: 'italic', marginTop: 8, fontSize: 13 },
-    consentPrompt: { fontSize: 14, color: '#333', fontWeight: 'bold' },
-    consentPromptCentered: { textAlign: 'center', marginBottom: 5 },
-    consentPromptAccent: { color: '#4338ca' },
-    consentSub: { fontSize: 12, color: '#666' },
-    consentDescription: { color: '#666', fontSize: 13, marginTop: 4, marginBottom: 15 },
-    stageSection: { marginTop: 15 },
-    waitingStage: { marginTop: 20, alignItems: 'center', padding: 15, backgroundColor: '#f0f7ff', borderRadius: 8 },
-    consentStage: { marginTop: 20, padding: 15, backgroundColor: '#eef2ff', borderRadius: 10, borderWidth: 1, borderColor: '#c7d2fe' },
-    pendingStage: { marginTop: 20, alignItems: 'center', padding: 15, backgroundColor: '#fff7ed', borderRadius: 8 },
-    unlockStage: { marginTop: 16, padding: 15, backgroundColor: '#fff7ed', borderRadius: 10, borderWidth: 1, borderColor: '#fed7aa' },
-    unlockTitle: { fontWeight: 'bold', color: '#9a3412', marginBottom: 10, textAlign: 'center' },
-    unlockBullet: { color: '#7c2d12', fontSize: 13, marginBottom: 4 },
-    unlockHint: { color: '#9a3412', fontSize: 12, fontWeight: '600', marginTop: 10, marginBottom: 10, textAlign: 'center' },
-    unlockBillingNote: { fontSize: 12, color: '#92400e', textAlign: 'center', marginBottom: 10 },
-    unlockButton: { marginTop: 0 },
-    buttonDisabled: { opacity: 0.6 },
-    stageIcon: { fontSize: 24, marginBottom: 5 },
-    waitingStageTitle: { fontWeight: 'bold', color: '#0056b3' },
-    pendingStageTitle: { fontWeight: 'bold', color: '#9a3412' },
-    stageDescription: { color: '#666', textAlign: 'center', marginTop: 4, fontSize: 13 },
-    resolutionMarked: { marginTop: 15, color: '#666', fontStyle: 'italic', textAlign: 'center' },
-    resolutionBox: { marginTop: 20, padding: 15, borderRadius: 8, borderWidth: 1 },
-    resolutionBoxDefault: { backgroundColor: '#f8f9fa', borderColor: '#dee2e6' },
-    resolutionBoxExpired: { backgroundColor: '#fff3cd', borderColor: '#ffeeba' },
-    resolutionTitle: { fontWeight: 'bold', marginBottom: 5 },
-    resolutionTitleDefault: { color: '#333' },
-    resolutionTitleExpired: { color: '#856404' },
-    resolutionDescription: { marginBottom: 15 },
-    resolutionDescriptionDefault: { color: '#666' },
-    resolutionDescriptionExpired: { color: '#856404' },
-    resolutionButtons: { gap: 10 },
-    exclusivityDateSmall: { marginTop: 15, color: '#0056b3', fontSize: 12, textAlign: 'center' },
-    exclusivityDate: { marginTop: 15, color: '#0056b3', fontSize: 13, textAlign: 'center' },
-
-    empty: { alignItems: 'center', marginTop: 50, paddingHorizontal: 20 },
-    emptyIcon: { fontSize: 40, marginBottom: 10 },
-    emptyTitle: { fontSize: 20, fontWeight: 'bold', color: '#000', marginBottom: 5 },
-    emptyText: { fontSize: 16, color: '#666', textAlign: 'center', paddingHorizontal: 30 },
-    searchContainer: { marginBottom: 15, paddingHorizontal: 2, position: 'relative' },
-    searchInput: { backgroundColor: '#fff', borderRadius: 10, paddingVertical: 10, paddingHorizontal: 15, borderWidth: 1, borderColor: '#ddd', fontSize: 15, color: '#333' },
-    searchIcon: { position: 'absolute', right: 25, top: 10, fontSize: 18, color: '#999' },
-
-    cardTouchableHeader: { padding: 5 },
-    headerAvatar: { width: 44, height: 44, borderRadius: 22 },
-    headerAvatarPlaceholder: { backgroundColor: '#eee', justifyContent: 'center', alignItems: 'center' },
-    headerAvatarIcon: { fontSize: 16 },
-    headerSubtitle: { fontSize: 13, color: '#666', marginTop: 1 },
-    expandIcon: { fontSize: 18, color: '#999', marginTop: 2 },
-    collapsedBrief: { marginTop: 8, paddingLeft: 54, borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingTop: 6 },
-    briefText: { fontSize: 12, color: '#777', fontStyle: 'italic' },
-    cardExpandedContent: { marginTop: 10, borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 10 },
-    optionContainer: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 },
-    listContent: { paddingBottom: 20 },
-    loadingIndicator: { flex: 1 },
-});
-
-const cHStyles = StyleSheet.create({
-    heroBanner: {
-        backgroundColor: '#000',
-        borderRadius: 8,
-        padding: 12,
-        alignItems: 'center',
-        marginBottom: 15
-    },
-    heroLabel: {
-        color: '#94a3b8',
-        fontSize: 12,
-        fontWeight: 'bold',
-        textTransform: 'uppercase',
-        letterSpacing: 1
-    },
-    heroValue: {
-        color: '#fff',
-        fontSize: 24,
-        fontWeight: '900',
-        marginTop: 2
-    },
-    verifiedRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 4
-    },
-    verifiedText: {
-        color: '#10b981',
-        fontSize: 12,
-        fontWeight: '600'
-    },
-    tag: {
-        backgroundColor: '#f1f5f9',
-        paddingVertical: 4,
-        paddingHorizontal: 10,
-        borderRadius: 12,
-        marginRight: 6,
-        marginBottom: 6,
-        borderWidth: 1,
-        borderColor: '#e2e8f0'
-    },
-    tagText: {
-        fontSize: 11,
-        color: '#475569',
-        fontWeight: '600'
-    },
-    modalityTag: {
-        backgroundColor: '#eef2ff'
-    },
-    logisticsMeta: {
-        marginTop: 8
-    },
-    paymentTagsContainer: {
-        marginTop: 12
-    },
-    payMethodTag: {
-        backgroundColor: '#e2f3f5'
-    },
-    endorsementTag: {
-        backgroundColor: '#fff7ed'
-    }
-});
-
-// Phase 6: Professional Driver Card Styles
-const pStyles = StyleSheet.create({
-    card: {
-        marginTop: 15, backgroundColor: '#f8f9fa', borderRadius: 10,
-        padding: 15, borderWidth: 1, borderColor: '#dee2e6'
-    },
-    cardTitle: {
-        fontSize: 16, fontWeight: 'bold', color: '#1a202c',
-        marginBottom: 12, borderBottomWidth: 1, borderBottomColor: '#e2e8f0', paddingBottom: 8
-    },
-    headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-    avatar: { width: 64, height: 64, borderRadius: 32, borderWidth: 2, borderColor: '#cbd5e0' },
-    avatarPlaceholder: {
-        backgroundColor: '#e2e8f0', justifyContent: 'center', alignItems: 'center'
-    },
-    avatarPlaceholderLight: {
-        backgroundColor: '#f0f0f0'
-    },
-    noPhotoIcon: {
-        fontSize: 24,
-        marginBottom: 4
-    },
-    noPhotoText: {
-        fontSize: 10,
-        color: '#999',
-        textAlign: 'center'
-    },
-    placeholderIcon: {
-        fontSize: 28
-    },
-    headerTextWrap: {
-        flex: 1,
-        marginLeft: 12
-    },
-    driverName: { fontSize: 18, fontWeight: 'bold', color: '#1a202c' },
-    location: { fontSize: 14, color: '#4a5568', marginTop: 2 },
-    expBadge: { fontSize: 13, color: '#2b6cb0', marginTop: 4, fontWeight: '600' },
-    companyCard: {
-        borderLeftWidth: 5,
-        borderLeftColor: '#000'
-    },
-    section: {
-        marginTop: 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#e2e8f0'
-    },
-    sectionTitle: { fontSize: 14, fontWeight: 'bold', color: '#2d3748', marginBottom: 6 },
-    field: { fontSize: 13, color: '#4a5568', marginBottom: 3 },
-    bio: { fontSize: 13, color: '#4a5568', fontStyle: 'italic', lineHeight: 18 },
-    licenseImg: {
-        width: '100%', height: 160, borderRadius: 8, marginTop: 8,
-        resizeMode: 'cover', borderWidth: 1, borderColor: '#cbd5e0'
-    },
+    tabCount: { backgroundColor: '#007bff', borderRadius: 12, paddingHorizontal: 6, paddingVertical: 2 },
+    tabCountText: { color: '#fff', fontSize: 10, fontWeight: '700' },
+    listContent: { paddingBottom: 24 },
+    emptyState: { alignItems: 'center', padding: 28, marginTop: 32 },
+    emptyTitle: { fontSize: 20, fontWeight: '700', color: '#222', marginBottom: 8, textAlign: 'center' },
+    emptyText: { fontSize: 15, color: '#666', textAlign: 'center' },
+    card: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#eee', borderRadius: 12, marginBottom: 16, padding: 14 },
+    cardHeader: { gap: 8 },
+    expandedBody: { marginTop: 12, borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 12 },
+    row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    flex: { flex: 1 },
+    flexButton: { flex: 1 },
+    smallAvatar: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+    previewAvatar: { width: 64, height: 64, borderRadius: 32 },
+    previewAvatarPlaceholder: { backgroundColor: '#e5e7eb' },
+    previewAvatarText: { fontSize: 24 },
+    scoreBadge: { alignItems: 'flex-end', gap: 4 },
+    scoreBadgeText: { backgroundColor: '#28a745', color: '#fff', fontSize: 12, fontWeight: '700', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
+    chevron: { color: '#999' },
+    cardTitle: { fontSize: 18, fontWeight: '700', color: '#222' },
+    cardSubtitle: { color: '#666', fontSize: 13 },
+    stageSummary: { fontSize: 12, color: '#777', fontStyle: 'italic', paddingLeft: 54 },
+    previewCard: { backgroundColor: '#f8fafc', borderRadius: 10, borderWidth: 1, borderColor: '#e2e8f0', padding: 14, gap: 8 },
+    previewHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    previewHeaderText: { flex: 1 },
+    previewMeta: { color: '#2563eb', fontWeight: '600', marginTop: 4 },
+    previewLine: { color: '#475569', fontSize: 13 },
+    tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+    tagChip: { backgroundColor: '#eef2ff', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 },
+    tagText: { color: '#4338ca', fontSize: 11, fontWeight: '600' },
+    sharedBlock: { backgroundColor: '#e8f5e9', borderRadius: 10, borderWidth: 1, borderColor: '#c8e6c9', padding: 14, gap: 10 },
+    freeShareBanner: { backgroundColor: '#fff7cc', borderRadius: 8, paddingVertical: 8, paddingHorizontal: 10, borderWidth: 1, borderColor: '#ffe58f' },
+    freeShareBannerText: { color: '#7a5600', fontWeight: '600', fontSize: 13 },
+    sharedTitle: { color: '#2e7d32', fontWeight: '700', fontSize: 16 },
+    sharedText: { color: '#444', fontSize: 13 },
+    contactLine: { fontSize: 15, color: '#333', fontWeight: '600' },
+    contactActions: { flexDirection: 'row', gap: 8 },
+    actionButton: { flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center' },
+    actionButtonText: { color: '#fff', fontWeight: '700', fontSize: 12 },
+    actionPrimary: { backgroundColor: '#007bff' },
+    actionMuted: { backgroundColor: '#6c757d' },
+    actionSuccess: { backgroundColor: '#28a745' },
+    paywallBox: { backgroundColor: '#fff7ed', borderRadius: 10, borderWidth: 1, borderColor: '#fed7aa', padding: 14, marginTop: 14, gap: 8 },
+    stageBox: { backgroundColor: '#f8fafc', borderRadius: 10, padding: 14, marginTop: 14, gap: 8, borderWidth: 1, borderColor: '#e2e8f0' },
+    resolutionBox: { backgroundColor: '#fff', borderRadius: 10, padding: 14, gap: 8, borderWidth: 1, borderColor: '#cbd5e1' },
+    stageTitle: { fontWeight: '700', color: '#1f2937', textAlign: 'center' },
+    stageText: { color: '#64748b', textAlign: 'center', fontSize: 13 },
+    mutedCentered: { color: '#64748b', fontSize: 12, textAlign: 'center' },
+    button: { paddingVertical: 12, paddingHorizontal: 14, borderRadius: 8, alignItems: 'center' },
+    primaryButton: { backgroundColor: '#007bff' },
+    successButton: { backgroundColor: '#28a745' },
+    dangerButton: { backgroundColor: '#dc3545' },
+    secondaryButton: { backgroundColor: '#6c757d' },
+    disabledButton: { opacity: 0.6 },
+    buttonText: { color: '#fff', fontWeight: '700' }
 });

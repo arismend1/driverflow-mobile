@@ -22,8 +22,8 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
 
-        versionCode 55
-        versionName "55"
+        versionCode 58
+        versionName "58"
     }
 
     signingConfigs {

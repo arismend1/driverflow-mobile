@@ -43,8 +43,6 @@ export const request = async <T = any>(
         if (token) headers.Authorization = `Bearer ${token}`;
 
         const fullUrl = `${API_URL}${endpoint}`;
-        // console.log("[REQ] URL", fullUrl); 
-        // console.log("[REQ] METHOD", method);
 
         const response = await fetch(fullUrl, {
             method,
@@ -68,7 +66,7 @@ export const request = async <T = any>(
                 if (!response.ok) {
                     console.error(`[REQUEST] failure ${status} on ${endpoint}:`, text);
                 }
-                console.warn("[REQ] NON_JSON_RESPONSE on", endpoint);
+                console.warn('[REQ] NON_JSON_RESPONSE on', endpoint);
                 const snippet = text.replace(/\n|\r/g, ' ').trim().slice(0, 200);
 
                 DiagnosticsState.lastError = {
@@ -95,7 +93,6 @@ export const request = async <T = any>(
             const isLegalGate = status === 403 && data?.requires_legal_acceptance === true;
 
             if (isLegalGate) {
-                // Silence RedBox for legal gate (it's an expected flow, not a system failure)
                 console.log(`[REQUEST] legal gate ${status} on ${endpoint}`);
             } else {
                 console.error(`[REQUEST] failure ${status} on ${endpoint}:`, text);
@@ -403,15 +400,32 @@ export const voidTicket = async (
     }
 };
 
-// --- BILLING / STRIPE ---
-export const createCheckoutSession = async (token: string, ticketId: number) => {
-    return request(`/billing/tickets/${ticketId}/checkout`, 'POST', undefined, token);
-};
-
 export const createInvoiceCheckoutSession = async (token: string, invoiceId: number) => {
     const res = await request(`/api/billing/invoices/${invoiceId}/checkout`, 'POST', undefined, token);
     if (!res.ok) throw new Error(res.error || 'Failed to create checkout session');
     return res.data;
+};
+
+// --- PAYWALL: Pay & Share ---
+// Calls POST /matches/:id/pay-and-share
+// Returns { ok, success, client_secret, publishable_key, match_id, status, invoice_id, ticket_id, amount_cents }
+export interface PayAndShareResponse {
+    ok?: boolean;
+    success: boolean;
+    client_secret: string;
+    publishable_key: string;
+    match_id: number;
+    status: 'PAYMENT_REQUIRED' | string;
+    invoice_id: number;
+    ticket_id: number;
+    amount_cents: number;
+}
+
+export const postPayAndShare = async (
+    matchId: number | string,
+    token: string
+): Promise<ApiResponse<PayAndShareResponse>> => {
+    return request<PayAndShareResponse>(`/matches/${matchId}/pay-and-share`, 'POST', {}, token);
 };
 
 // Helper to map error codes to user-friendly messages
