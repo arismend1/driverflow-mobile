@@ -157,6 +157,14 @@ export default function DriverProfileFormScreen() {
     const saveProfile = async () => {
         setSaving(true);
         try {
+            if ((profilePhoto || licenseFront || licenseBack) && !photoConsent) {
+                Alert.alert(
+                    'Photo Consent Required',
+                    'Please confirm photo consent before saving your profile photos or license images.'
+                );
+                return;
+            }
+
             let finalExp = 0;
             if (expYearsExact) {
                 finalExp = parseInt(expYearsExact, 10);
@@ -191,12 +199,13 @@ export default function DriverProfileFormScreen() {
                 driver_bio: driverBio || null,
             };
 
-            // Only include photos if consent is given
+            if (profilePhoto) {
+                payload.profile_photo_base64 = profilePhoto;
+                console.log(`[SAVE_PROFILE] profile_photo length: ${profilePhoto.length} chars`);
+            }
+
+            // Only include license photos if consent is given
             if (photoConsent) {
-                if (profilePhoto) {
-                    payload.profile_photo_base64 = profilePhoto;
-                    console.log(`[SAVE_PROFILE] profile_photo length: ${profilePhoto.length} chars`);
-                }
                 if (licenseFront) {
                     payload.license_front_base64 = licenseFront;
                     console.log(`[SAVE_PROFILE] license_front length: ${licenseFront.length} chars`);
@@ -287,6 +296,7 @@ export default function DriverProfileFormScreen() {
             const uri = `data:${asset.type || 'image/jpeg'};base64,${asset.base64}`;
             console.log(`[PHOTO_PICKER] ${source} Success. URI Length:`, uri.length, "Prefix:", uri.substring(0, 30));
             setter(uri);
+            setPhotoConsent(true);
         } else {
             console.warn(`[PHOTO_PICKER] ${source} -> No base64 found in asset`);
             Alert.alert('Error', 'Image data missing. Please try again.');
