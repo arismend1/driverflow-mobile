@@ -13,6 +13,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { initPaymentSheet, initStripe, presentPaymentSheet } from '@stripe/stripe-react-native';
 import RNPrint from 'react-native-print';
 import { API_URL } from '../api/config';
@@ -71,6 +72,12 @@ export default function MatchesScreen() {
     useEffect(() => {
         fetchMatches();
     }, [fetchMatches]);
+
+    useFocusEffect(
+        React.useCallback(() => {
+            fetchMatches({ silent: true });
+        }, [])
+    );
 
     const refreshMatchesUntilUnlocked = useCallback(async (matchId: any) => {
         for (let attempt = 0; attempt < PAYMENT_POLL_MAX_RETRIES; attempt++) {
@@ -180,6 +187,7 @@ export default function MatchesScreen() {
         setPayingMatchId(matchId);
         try {
             const response = await postPayAndShare(matchId, token);
+            console.log("[PAYWALL DEBUG] response.data:", JSON.stringify(response.data));
             if (!response.ok || !response.data) {
                 const errorCode = response.error || 'unknown_error';
                 if (errorCode === 'stripe_unavailable' || errorCode === 'stripe_publishable_key_missing') {
@@ -209,15 +217,26 @@ export default function MatchesScreen() {
                 paymentIntentClientSecret: clientSecret,
                 returnURL: STRIPE_RETURN_URL
             });
+            console.log("[PAYWALL DEBUG] initPaymentSheet result:", JSON.stringify(paymentSheet));
             if (paymentSheet.error) {
-                Alert.alert('Payment Error', paymentSheet.error.message || 'Unable to initialize payment sheet.');
+                console.log("[PAYWALL ERROR] initPaymentSheet code:", paymentSheet.error.code);
+                console.log("[PAYWALL ERROR] initPaymentSheet message:", paymentSheet.error.message);
+
+                Alert.alert(
+                    'Payment Error',
+                    paymentSheet.error.message || 'Unable to initialize payment sheet.'
+                );
                 return;
             }
 
             suppressPinLock();
             pinLockSuppressed = true;
             const paymentResult = await presentPaymentSheet();
+            console.log("[PAYWALL DEBUG] presentPaymentSheet result:", JSON.stringify(paymentResult));
             if (paymentResult.error) {
+                console.log("[PAYWALL ERROR] presentPaymentSheet code:", paymentResult.error.code);
+                console.log("[PAYWALL ERROR] presentPaymentSheet message:", paymentResult.error.message);
+
                 if (paymentResult.error.code === 'Canceled') return;
                 Alert.alert('Payment Error', paymentResult.error.message || 'Unable to complete payment.');
                 return;
@@ -241,20 +260,105 @@ export default function MatchesScreen() {
     };
 
     const printDriverProfile = async (item: any) => {
+        const reportDate = new Date().toLocaleDateString();
+        const sectionTitleStyle = 'font-size: 15px; letter-spacing: 0.08em; color: #0f172a; margin: 0 0 12px; padding-bottom: 8px; border-bottom: 1px solid #dbe4ee;';
+        const itemRowStyle = 'margin: 0 0 8px; font-size: 13px; color: #334155;';
+        const cardStyle = 'margin-bottom: 20px; padding: 18px 20px; border: 1px solid #dbe4ee; border-radius: 14px; background: #ffffff;';
+        const snapshotCardStyle = 'flex: 1; min-width: 140px; padding: 14px; border-radius: 12px; background: #eff6ff; border: 1px solid #bfdbfe;';
+        const profilePhoto = item.profile_photo_base64
+            ? `<img src="${item.profile_photo_base64}" style="width: 96px; height: 96px; object-fit: cover; border-radius: 12px; border: 1px solid #cbd5e1;" />`
+            : '';
+
+        const driverName = item.driver_name || item.display_name || 'Driver Profile';
+        const location = [item.driver_city, item.driver_state].filter(Boolean).join(', ');
+        const licenseTypes = parseList(item.license_summ).join(', ');
+        const endorsements = parseList(item.endorsements).join(', ');
+        const operationTypes = parseList(item.op_types).join(', ');
+        const trailerExperience = parseList(item.trailer_experience).join(', ');
+        const paymentMethods = parseList(item.pay_methods).join(', ');
+
+        const qualificationsSection = [
+            `<p style="${itemRowStyle}"><strong>CDL:</strong> ${item.has_cdl ? 'Yes' : 'No'}</p>`,
+            licenseTypes ? `<p style="${itemRowStyle}"><strong>License Types:</strong> ${licenseTypes}</p>` : '',
+            endorsements ? `<p style="${itemRowStyle}"><strong>Endorsements:</strong> ${endorsements}</p>` : '',
+            operationTypes ? `<p style="${itemRowStyle}"><strong>Operation Types:</strong> ${operationTypes}</p>` : '',
+            trailerExperience ? `<p style="${itemRowStyle}"><strong>Trailer Experience:</strong> ${trailerExperience}</p>` : ''
+        ].filter(Boolean).join('');
+
+        const experienceSection = [
+            item.experience_years !== undefined && item.experience_years !== null ? `<p style="${itemRowStyle}"><strong>Experience Years:</strong> ${item.experience_years}</p>` : '',
+            item.weekly_miles !== undefined && item.weekly_miles !== null ? `<p style="${itemRowStyle}"><strong>Weekly Miles:</strong> ${item.weekly_miles}</p>` : '',
+            item.longest_otr ? `<p style="${itemRowStyle}"><strong>Longest OTR:</strong> ${item.longest_otr}</p>` : '',
+            item.home_time ? `<p style="${itemRowStyle}"><strong>Home Time:</strong> ${item.home_time}</p>` : '',
+            item.availability ? `<p style="${itemRowStyle}"><strong>Availability:</strong> ${item.availability}</p>` : ''
+        ].filter(Boolean).join('');
+
+        const accidentsValue = item.accidents_3y !== undefined && item.accidents_3y !== null ? Number(item.accidents_3y) : null;
+        const drivingRecordSection = [
+            accidentsValue !== null
+                ? `<p style="${itemRowStyle}; color: ${accidentsValue === 0 ? '#15803d' : '#334155'};"><strong>Accidents (3y):</strong> ${accidentsValue}</p>`
+                : '',
+            item.tickets_3y !== undefined && item.tickets_3y !== null ? `<p style="${itemRowStyle}"><strong>Tickets (3y):</strong> ${item.tickets_3y}</p>` : ''
+        ].filter(Boolean).join('');
+
+        const preferenceSection = [
+            item.preferred_freight ? `<p style="${itemRowStyle}"><strong>Preferred Freight:</strong> ${item.preferred_freight}</p>` : '',
+            item.preferred_region ? `<p style="${itemRowStyle}"><strong>Preferred Region:</strong> ${item.preferred_region}</p>` : '',
+            paymentMethods ? `<p style="${itemRowStyle}"><strong>Payment Methods:</strong> ${paymentMethods}</p>` : '',
+            item.willing_to_relocate !== undefined && item.willing_to_relocate !== null
+                ? `<p style="${itemRowStyle}"><strong>Willing to Relocate:</strong> ${item.willing_to_relocate ? 'Yes' : 'No'}</p>`
+                : ''
+        ].filter(Boolean).join('');
+
+        const documentSection = [
+            item.license_front_base64 ? `
+                <div style="margin-bottom: 16px;">
+                    <h4 style="margin: 0 0 8px; font-size: 13px; color: #1e293b;">License Front</h4>
+                    <img src="${item.license_front_base64}" style="max-width: 100%; height: auto; border-radius: 8px; border: 1px solid #d1d5db;" />
+                </div>` : '',
+            item.license_back_base64 ? `
+                <div style="margin-bottom: 16px;">
+                    <h4 style="margin: 0 0 8px; font-size: 13px; color: #1e293b;">License Back</h4>
+                    <img src="${item.license_back_base64}" style="max-width: 100%; height: auto; border-radius: 8px; border: 1px solid #d1d5db;" />
+                </div>` : ''
+        ].filter(Boolean).join('');
+
         const html = `
             <html>
-                <body style="font-family: Helvetica, Arial, sans-serif; padding: 24px; color: #333;">
-                    <h1>${item.driver_name || item.display_name || 'Driver Profile'}</h1>
-                    <p>${[item.driver_city, item.driver_state].filter(Boolean).join(', ') || 'Location not specified'}</p>
-                    <p><strong>Experience:</strong> ${item.experience_years || 0} years</p>
-                    <p><strong>CDL:</strong> ${item.has_cdl ? 'Yes' : 'No'}</p>
-                    <p><strong>Endorsements:</strong> ${parseList(item.endorsements).join(', ') || 'None'}</p>
-                    <p><strong>Trailers:</strong> ${parseList(item.trailer_experience).join(', ') || 'None'}</p>
-                    <p><strong>Weekly Miles:</strong> ${item.weekly_miles || 'N/A'}</p>
-                    <p><strong>Longest OTR:</strong> ${item.longest_otr || 'N/A'}</p>
-                    <p><strong>Home Time:</strong> ${item.home_time || 'N/A'}</p>
-                    <p><strong>Availability:</strong> ${item.availability || 'N/A'}</p>
-                    ${item.driver_bio ? `<div><strong>Bio:</strong><p>${item.driver_bio}</p></div>` : ''}
+                <body style="font-family: Helvetica, Arial, sans-serif; padding: 28px; color: #0f172a; background: #f8fafc;">
+                    <div style="margin-bottom: 24px; padding: 22px 24px; border: 1px solid #cbd5e1; border-radius: 16px; background: #ffffff;">
+                        <div style="display: flex; align-items: flex-start; gap: 20px;">
+                            ${profilePhoto}
+                            <div style="flex: 1;">
+                                <p style="margin: 0 0 6px; font-size: 12px; letter-spacing: 0.12em; color: #475569;">Driver Resume</p>
+                                <h1 style="margin: 0 0 10px; font-size: 28px; color: #0f172a;">${driverName}</h1>
+                                <p style="margin: 0 0 8px; font-size: 14px; color: #334155; font-weight: 600;">Professional commercial driver available for hire</p>
+                                ${location ? `<p style="margin: 0 0 4px; font-size: 13px; color: #475569;"><strong>Location:</strong> ${location}</p>` : ''}
+                                ${item.status ? `<p style="margin: 0 0 4px; font-size: 13px; color: #475569;"><strong>Status:</strong> ${item.status}</p>` : ''}
+                                <p style="margin: 0 0 10px; font-size: 13px; color: #475569;"><strong>Generated:</strong> ${reportDate}</p>
+                                <p style="margin: 0; font-size: 12px; color: #1d4ed8; font-weight: 600;">Full contact details are available only inside DriverFlow after successful match confirmation.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <section style="${cardStyle}">
+                        <h2 style="${sectionTitleStyle}">PROFILE SNAPSHOT</h2>
+                        <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+                            ${item.experience_years !== undefined && item.experience_years !== null ? `<div style="${snapshotCardStyle}"><p style="margin: 0 0 6px; font-size: 11px; letter-spacing: 0.08em; color: #475569;">YEARS OF EXPERIENCE</p><p style="margin: 0; font-size: 20px; font-weight: 700; color: #0f172a;">${item.experience_years} yrs</p></div>` : ''}
+                            <div style="${snapshotCardStyle}"><p style="margin: 0 0 6px; font-size: 11px; letter-spacing: 0.08em; color: #475569;">CDL</p><p style="margin: 0; font-size: 20px; font-weight: 700; color: #0f172a;">${item.has_cdl ? 'Yes' : 'No'}</p></div>
+                            ${operationTypes ? `<div style="${snapshotCardStyle}"><p style="margin: 0 0 6px; font-size: 11px; letter-spacing: 0.08em; color: #475569;">OPERATION TYPES</p><p style="margin: 0; font-size: 14px; font-weight: 700; color: #0f172a;">${operationTypes}</p></div>` : ''}
+                            ${trailerExperience ? `<div style="${snapshotCardStyle}"><p style="margin: 0 0 6px; font-size: 11px; letter-spacing: 0.08em; color: #475569;">TRAILER EXPERIENCE</p><p style="margin: 0; font-size: 14px; font-weight: 700; color: #0f172a;">${trailerExperience}</p></div>` : ''}
+                        </div>
+                    </section>
+
+                    ${qualificationsSection ? `<section style="${cardStyle}"><h2 style="${sectionTitleStyle}">DRIVING QUALIFICATIONS</h2>${qualificationsSection}</section>` : ''}
+                    ${experienceSection ? `<section style="${cardStyle}"><h2 style="${sectionTitleStyle}">EXPERIENCE & AVAILABILITY</h2>${experienceSection}</section>` : ''}
+                    ${preferenceSection ? `<section style="${cardStyle}"><h2 style="${sectionTitleStyle}">PREFERENCES</h2>${preferenceSection}</section>` : ''}
+                    ${drivingRecordSection ? `<section style="${cardStyle}"><h2 style="${sectionTitleStyle}">DRIVING RECORD</h2>${drivingRecordSection}</section>` : ''}
+                    ${documentSection ? `<section style="${cardStyle}"><h2 style="${sectionTitleStyle}">LICENSE DOCUMENTS</h2><p style="margin: 0 0 12px; font-size: 12px; color: #64748b;">Driver-provided license images available after match confirmation</p>${documentSection}</section>` : ''}
+                    <p style="margin: 24px 4px 0; font-size: 11px; color: #64748b; text-align: center;">
+                        This driver profile is shared through DriverFlow. Direct contact information is only available within the platform after successful match confirmation.
+                    </p>
                 </body>
             </html>
         `;
