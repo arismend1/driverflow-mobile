@@ -41,6 +41,7 @@ export default function MatchesScreen() {
     const [matches, setMatches] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState('NUEVOS');
     const [searchQuery, setSearchQuery] = useState('');
     const [expandedCardId, setExpandedCardId] = useState<any>(null);
@@ -49,6 +50,7 @@ export default function MatchesScreen() {
 
     const fetchMatches = useCallback(async (options: { silent?: boolean } = {}) => {
         try {
+            setError(null);
             const endpoint = user?.type === 'driver' ? 'matches/opportunities' : 'matches/candidates';
             const resp = await fetch(`${API_URL}/${endpoint}`, {
                 headers: { Authorization: `Bearer ${token}` }
@@ -66,19 +68,21 @@ export default function MatchesScreen() {
                 const message = typeof data === 'object' && data
                     ? data.message || data.error || `Failed to load results (${resp.status})`
                     : `Failed to load results (${resp.status})`;
-                console.error('Fetch Matches Error:', { status: resp.status, endpoint, data });
-                if (!options.silent) {
-                    Alert.alert('Error', message);
-                }
-                return [];
+                console.error('[MATCHES][ERROR]', resp.status, rawBody);
+                throw new Error(String(message));
             }
-            const nextMatches = Array.isArray(data) ? data : [];
-            setMatches(nextMatches);
-            return nextMatches;
+            if (!Array.isArray(data)) {
+                console.error('[MATCHES][INVALID_RESPONSE]', data);
+                throw new Error('Invalid matches response');
+            }
+            setMatches(data);
+            return data;
         } catch (error) {
-            console.error('Fetch Matches Error:', error);
+            const message = error instanceof Error ? error.message : 'Failed to load matches';
+            console.error('[MATCHES][ERROR]', error);
+            setError(message);
             if (!options.silent) {
-                Alert.alert('Error', 'Failed to load results');
+                Alert.alert('Error', message);
             }
             return [];
         } finally {
@@ -686,6 +690,17 @@ export default function MatchesScreen() {
 
     if (loading) {
         return <ActivityIndicator style={styles.loading} size="large" />;
+    }
+
+    if (error) {
+        return (
+            <View style={styles.container}>
+                <View style={styles.emptyState}>
+                    <Text style={styles.emptyTitle}>Error loading matches</Text>
+                    <Text style={styles.emptyText}>{error}</Text>
+                </View>
+            </View>
+        );
     }
 
     return (
