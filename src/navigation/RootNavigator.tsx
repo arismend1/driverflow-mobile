@@ -19,7 +19,6 @@ import CompanyReactivationRequestsScreen from '../screens/CompanyReactivationReq
 import CompanyProfileFormScreen from '../screens/CompanyProfileFormScreen';
 import CompanyRequirementsScreen from '../screens/CompanyRequirementsScreen';
 import DriverProfileFormScreen from '../screens/DriverProfileFormScreen';
-import DriverProfileScreen from '../screens/DriverProfileScreen';
 import { DriverTicketsScreen } from '../screens/DriverTicketsScreen';
 import MatchesScreen from '../screens/MatchesScreen';
 import { NotificationsScreen } from '../screens/NotificationsScreen';
@@ -88,7 +87,6 @@ export default function RootNavigator() {
                         <Stack.Screen name="CompanyProfileForm" component={CompanyProfileFormScreen} />
                         <Stack.Screen name="CompanyRequirements" component={CompanyRequirementsScreen} />
                         <Stack.Screen name="DriverProfileForm" component={DriverProfileFormScreen} />
-                        <Stack.Screen name="DriverProfile" component={DriverProfileScreen} />
                         <Stack.Screen name="DriverTickets" component={DriverTicketsScreen} />
                         <Stack.Screen name="Matches" component={MatchesScreen} />
                         <Stack.Screen name="Notifications" component={NotificationsScreen} />
