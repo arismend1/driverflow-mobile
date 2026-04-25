@@ -1,4 +1,4 @@
-import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useContext, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -53,7 +53,25 @@ export default function MatchesScreen() {
             const resp = await fetch(`${API_URL}/${endpoint}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            const data = await resp.json();
+            const rawBody = await resp.text();
+            let data: any = null;
+            if (rawBody) {
+                try {
+                    data = JSON.parse(rawBody);
+                } catch {
+                    data = rawBody;
+                }
+            }
+            if (!resp.ok) {
+                const message = typeof data === 'object' && data
+                    ? data.message || data.error || `Failed to load results (${resp.status})`
+                    : `Failed to load results (${resp.status})`;
+                console.error('Fetch Matches Error:', { status: resp.status, endpoint, data });
+                if (!options.silent) {
+                    Alert.alert('Error', message);
+                }
+                return [];
+            }
             const nextMatches = Array.isArray(data) ? data : [];
             setMatches(nextMatches);
             return nextMatches;
@@ -69,14 +87,10 @@ export default function MatchesScreen() {
         }
     }, [token, user?.type]);
 
-    useEffect(() => {
-        fetchMatches();
-    }, [fetchMatches]);
-
     useFocusEffect(
-        React.useCallback(() => {
+        useCallback(() => {
             fetchMatches({ silent: true });
-        }, [])
+        }, [fetchMatches])
     );
 
     const refreshMatchesUntilUnlocked = useCallback(async (matchId: any) => {
