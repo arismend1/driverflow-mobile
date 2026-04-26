@@ -36,6 +36,14 @@ const parseList = (value: any) => {
     }
 };
 
+const getLockedDriverName = (item: any) => item.first_name || 'Driver';
+
+const getLockedDriverLocation = (item: any) => (
+    item.city && item.state
+        ? `${item.city}, ${item.state}`
+        : 'Location not specified'
+);
+
 export default function MatchesScreen() {
     const { userInfo: user, token, suppressPinLock, resumePinLock } = useContext(AuthContext);
     const [matches, setMatches] = useState<any[]>([]);
@@ -393,13 +401,14 @@ export default function MatchesScreen() {
     };
     const renderProfilePreview = (item: any, anonymized: boolean) => {
         const isCompanyView = user?.type === 'driver';
-        const tags = isCompanyView ? parseList(item.op_types) : parseList(item.op_types || item.operation_types);
+        const tags = isCompanyView ? parseList(item.op_types) : parseList(item.operation_types || item.op_types);
+        const licenseTypes = isCompanyView ? [] : parseList(item.license_types || item.license_summ);
         const secondaryTags = isCompanyView ? parseList(item.modalities) : parseList(item.endorsements);
         const title = anonymized
-            ? (isCompanyView ? 'Verified Company' : `Driver #${String(item.driver_id || item.id).slice(-4).toUpperCase()}`)
+            ? (isCompanyView ? 'Verified Company' : getLockedDriverName(item))
             : (isCompanyView ? (item.company_name || item.display_name || 'Verified Company') : (item.driver_name || item.display_name || 'Driver Candidate'));
         const subtitle = anonymized
-            ? 'Location Hidden'
+            ? (isCompanyView ? 'Logistics View' : getLockedDriverLocation(item))
             : (isCompanyView ? (item.ubicacion || [item.city, item.address_state].filter(Boolean).join(', ') || 'TBD') : ([item.driver_city, item.driver_state].filter(Boolean).join(', ') || 'TBD'));
 
         return (
@@ -430,6 +439,7 @@ export default function MatchesScreen() {
                 )}
 
                 {secondaryTags.length > 0 && <Text style={styles.previewLine}>{secondaryTags.slice(0, 4).join(', ')}</Text>}
+                {licenseTypes.length > 0 && <Text style={styles.previewLine}>License: {licenseTypes.slice(0, 4).join(', ')}</Text>}
                 {!isCompanyView && <Text style={styles.previewLine}>Availability: {item.availability || 'TBD'}</Text>}
                 {isCompanyView && <Text style={styles.previewLine}>Freight: {item.offered_freight_types || 'N/A'}</Text>}
 
@@ -598,10 +608,13 @@ export default function MatchesScreen() {
         const applySearch = (list: any[]) => {
             if (!query) return list;
             return list.filter(match =>
+                (match.first_name && match.first_name.toLowerCase().includes(query)) ||
                 (match.driver_name && match.driver_name.toLowerCase().includes(query)) ||
                 (match.display_name && match.display_name.toLowerCase().includes(query)) ||
                 (match.company_name && match.company_name.toLowerCase().includes(query)) ||
                 (match.ubicacion && match.ubicacion.toLowerCase().includes(query)) ||
+                (match.city && match.city.toLowerCase().includes(query)) ||
+                (match.state && match.state.toLowerCase().includes(query)) ||
                 (match.driver_city && match.driver_city.toLowerCase().includes(query)) ||
                 (match.driver_state && match.driver_state.toLowerCase().includes(query))
             );
@@ -641,13 +654,12 @@ export default function MatchesScreen() {
         const myAcceptDate = user?.type === 'empresa' ? item.company_step1_accepted_at : item.driver_step1_accepted_at;
         const otherAcceptDate = user?.type === 'empresa' ? item.driver_step1_accepted_at : item.company_step1_accepted_at;
         const isAnonymized = item.status !== 'INFO_SHARED' && item.status !== 'HIRED';
-        const driverShortId = String(item.driver_id || item.id).slice(-4).toUpperCase();
         const companyShortId = String(item.company_id || item.id).slice(-4).toUpperCase();
         const displayName = isAnonymized
-            ? (user?.type === 'empresa' ? `Driver #${driverShortId}` : `Company #${companyShortId}`)
+            ? (user?.type === 'empresa' ? getLockedDriverName(item) : `Company #${companyShortId}`)
             : (user?.type === 'empresa' ? (item.driver_name || item.display_name || 'Driver Candidate') : (item.company_name || item.display_name || 'Verified Company'));
         const displayLocation = isAnonymized
-            ? (user?.type === 'driver' ? 'Logistics View' : 'Location Hidden')
+            ? (user?.type === 'driver' ? 'Logistics View' : getLockedDriverLocation(item))
             : (item.ubicacion || [item.driver_city, item.driver_state].filter(Boolean).join(', ') || 'Available');
         const stageLabel = item.status === 'HIRED'
             ? 'Driver Hired'
