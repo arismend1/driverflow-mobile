@@ -307,12 +307,13 @@ export const getBillingSummary = async (token: string): Promise<BillingSummary> 
     let paidCents = 0;
 
     invoices.forEach((inv: any) => {
+        const amount = Number(inv.total_cents ?? inv.amount_cents ?? 0) || 0;
         if (inv.status === 'charged' || inv.status === 'paid') {
             paidCount++;
-            paidCents += inv.amount_cents || 0;
+            paidCents += amount;
         } else if (inv.status === 'pending') {
             pendingCount++;
-            pendingCents += inv.amount_cents || 0;
+            pendingCents += amount;
         }
     });
 
