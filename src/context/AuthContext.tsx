@@ -270,7 +270,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             
             // 4. Get token
             const fcmToken = await messenger.getToken();
-            console.log("[PUSH] TOKEN:", fcmToken);
+            console.log("[PUSH] TOKEN:", fcmToken ? `${fcmToken.slice(0, 10)}...` : 'missing');
 
             if (fcmToken) {
                 console.log("[PUSH] Sending POST /api/push/register...");
@@ -294,7 +294,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         if (!messenger) return;
 
         const unsubscribe = messenger.onTokenRefresh(async fcmToken => {
-            console.log("[PUSH] TOKEN REFRESH:", fcmToken);
+            console.log("[PUSH] TOKEN REFRESH:", fcmToken ? `${fcmToken.slice(0, 10)}...` : 'missing');
             if (userToken) {
                 try {
                     const res = await request('/api/push/register', 'POST', { token: fcmToken, platform: 'android' }, userToken);
