@@ -118,7 +118,7 @@ export default function MatchesScreen() {
         try {
             const endpointSuffix = newStatus === 'ACCEPTED' ? '/accept' : '';
             if (!endpointSuffix) {
-                Alert.alert('Error', newStatus === 'DECLINED' ? 'Decline action is not supported by the server yet.' : 'Unknown action');
+                Alert.alert('Error', 'Unknown action');
                 return;
             }
             const resp = await fetch(`${API_URL}/matches/${matchId}${endpointSuffix}`, {
@@ -563,9 +563,6 @@ export default function MatchesScreen() {
                         <View style={styles.row}>
                             <TouchableOpacity style={[styles.button, styles.successButton, styles.flexButton]} onPress={() => handleStatusChange(matchId, 'ACCEPTED')}>
                                 <Text style={styles.buttonText}>Accept Interest</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={[styles.button, styles.dangerButton, styles.flexButton]} onPress={() => handleStatusChange(matchId, 'DECLINED')}>
-                                <Text style={styles.buttonText}>Decline</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
