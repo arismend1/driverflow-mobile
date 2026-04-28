@@ -31,16 +31,16 @@ function RadioYesNo({ label, value, onChange }: any) {
             <Text style={styles.label}>{label}</Text>
             <View style={styles.radioRow}>
                 <TouchableOpacity
-                    style={[styles.radioButton, value && styles.radioSelected]}
+                    style={[styles.radioButton, value === true && styles.radioSelected]}
                     onPress={() => onChange(true)}
                 >
-                    <Text style={[styles.radioText, value && styles.radioTextSelected]}>Yes</Text>
+                    <Text style={[styles.radioText, value === true && styles.radioTextSelected]}>Yes</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                    style={[styles.radioButton, !value && styles.radioSelected]}
+                    style={[styles.radioButton, value === false && styles.radioSelected]}
                     onPress={() => onChange(false)}
                 >
-                    <Text style={[styles.radioText, !value && styles.radioTextSelected]}>No</Text>
+                    <Text style={[styles.radioText, value === false && styles.radioTextSelected]}>No</Text>
                 </TouchableOpacity>
             </View>
         </View>
@@ -54,7 +54,7 @@ export default function DriverProfileFormScreen() {
     const [saving, setSaving] = useState(false);
 
     // ================= EXISTING FIELDS (1-10) =================
-    const [hasCdl, setHasCdl] = useState(false);
+    const [hasCdl, setHasCdl] = useState<boolean | null>(null);
     const [licenseTypes, setLicenseTypes] = useState<string[]>([]);
     const [endorsements, setEndorsements] = useState<string[]>([]);
     const [opsTypes, setOpsTypes] = useState<string[]>([]);
@@ -104,7 +104,13 @@ export default function DriverProfileFormScreen() {
                 const data = res.data;
                 if (data.id) {
                     // Existing fields
-                    setHasCdl(!!data.has_cdl);
+                    setHasCdl(
+                        data.has_cdl === true || data.has_cdl === 1
+                            ? true
+                            : data.has_cdl === false || data.has_cdl === 0
+                                ? false
+                                : null
+                    );
                     setLicenseTypes(data.license_types || []);
                     setEndorsements(data.endorsements || []);
                     setOpsTypes(data.operation_types || []);
@@ -155,20 +161,42 @@ export default function DriverProfileFormScreen() {
     }, [loadProfile]);
 
     const saveProfile = async () => {
+        if ((profilePhoto || licenseFront || licenseBack) && !photoConsent) {
+            Alert.alert(
+                'Photo Consent Required',
+                'Please confirm photo consent before saving your profile photos or license images.'
+            );
+            return;
+        }
+
+        const normalizedCity = city.trim();
+        const normalizedState = state.trim();
+        const normalizedAvailability = availability.trim();
+        const normalizedHomeTime = homeTime.trim();
+        const hasValidExp = expYearsExact.trim() !== '' && !Number.isNaN(parseInt(expYearsExact, 10)) && parseInt(expYearsExact, 10) >= 0;
+        const parsedAccidents = parseInt(accidents3y, 10);
+        const parsedTickets = parseInt(tickets3y, 10);
+        const hasValidSafety = !Number.isNaN(parsedAccidents) && parsedAccidents >= 0 && !Number.isNaN(parsedTickets) && parsedTickets >= 0;
+
+        if (
+            !normalizedCity ||
+            !normalizedState ||
+            !hasValidExp ||
+            hasCdl === null ||
+            licenseTypes.length === 0 ||
+            opsTypes.length === 0 ||
+            !normalizedAvailability ||
+            trailerExperience.length === 0 ||
+            !normalizedHomeTime ||
+            !hasValidSafety
+        ) {
+            Alert.alert('Incomplete Profile', 'Please complete the required profile fields before saving.');
+            return;
+        }
+
         setSaving(true);
         try {
-            if ((profilePhoto || licenseFront || licenseBack) && !photoConsent) {
-                Alert.alert(
-                    'Photo Consent Required',
-                    'Please confirm photo consent before saving your profile photos or license images.'
-                );
-                return;
-            }
-
-            let finalExp = 0;
-            if (expYearsExact) {
-                finalExp = parseInt(expYearsExact, 10);
-            }
+            const finalExp = parseInt(expYearsExact, 10);
 
             const payload: any = {
                 // Existing fields
@@ -185,13 +213,14 @@ export default function DriverProfileFormScreen() {
                 availability: availability,
 
                 // Phase 6 fields
-                city, state,
+                city: normalizedCity,
+                state: normalizedState,
                 weekly_miles: weeklyMiles ? parseInt(weeklyMiles, 10) : null,
                 longest_otr: longestOtr || null,
                 trailer_experience: trailerExperience,
-                accidents_3y: parseInt(accidents3y, 10) || 0,
-                tickets_3y: parseInt(tickets3y, 10) || 0,
-                home_time: homeTime || null,
+                accidents_3y: parsedAccidents,
+                tickets_3y: parsedTickets,
+                home_time: normalizedHomeTime,
                 preferred_freight: preferredFreight || null,
                 preferred_region: preferredRegion || null,
                 willing_to_relocate: willingToRelocate,

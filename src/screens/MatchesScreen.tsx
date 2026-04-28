@@ -44,6 +44,8 @@ const getLockedDriverLocation = (item: any) => (
         : 'Location not specified'
 );
 
+const hasPreviewValue = (value: any) => value !== null && value !== undefined && value !== '';
+
 export default function MatchesScreen() {
     const { userInfo: user, token, suppressPinLock, resumePinLock } = useContext(AuthContext);
     const [matches, setMatches] = useState<any[]>([]);
@@ -404,12 +406,33 @@ export default function MatchesScreen() {
         const tags = isCompanyView ? parseList(item.op_types) : parseList(item.operation_types || item.op_types);
         const licenseTypes = isCompanyView ? [] : parseList(item.license_types || item.license_summ);
         const secondaryTags = isCompanyView ? parseList(item.modalities) : parseList(item.endorsements);
+        const trailerExperience = isCompanyView ? [] : parseList(item.trailer_experience);
+        const jobPreferences = isCompanyView ? [] : parseList(item.job_preferences);
+        const paymentMethods = isCompanyView ? [] : parseList(item.payment_methods || item.pay_methods);
+        const workRelationships = isCompanyView ? [] : parseList(item.work_relationships);
+        const showLockedDriverDetails = anonymized && !isCompanyView;
         const title = anonymized
             ? (isCompanyView ? 'Verified Company' : getLockedDriverName(item))
             : (isCompanyView ? (item.company_name || item.display_name || 'Verified Company') : (item.driver_name || item.display_name || 'Driver Candidate'));
         const subtitle = anonymized
             ? (isCompanyView ? 'Logistics View' : getLockedDriverLocation(item))
             : (isCompanyView ? (item.ubicacion || [item.city, item.address_state].filter(Boolean).join(', ') || 'TBD') : ([item.driver_city, item.driver_state].filter(Boolean).join(', ') || 'TBD'));
+        const renderPreviewLine = (label: string, value: any) => {
+            if (!hasPreviewValue(value)) return null;
+            return <Text style={styles.previewLine}>{label}: {value}</Text>;
+        };
+        const renderPreviewSection = (title: string, lines: Array<React.ReactNode | null>) => {
+            const visibleLines = lines.filter(Boolean);
+            if (visibleLines.length === 0) return null;
+            return (
+                <View style={styles.previewSection}>
+                    <Text style={styles.previewSectionTitle}>{title}</Text>
+                    {visibleLines.map((line, index) => (
+                        <React.Fragment key={`${title}-${index}`}>{line}</React.Fragment>
+                    ))}
+                </View>
+            );
+        };
 
         return (
             <View style={styles.previewCard}>
@@ -426,11 +449,11 @@ export default function MatchesScreen() {
                     <View style={styles.previewHeaderText}>
                         <Text style={styles.cardTitle}>{title}</Text>
                         <Text style={styles.cardSubtitle}>{subtitle}</Text>
-                        {!isCompanyView && <Text style={styles.previewMeta}>{item.experience_years || 0} yrs experience</Text>}
+                        {!isCompanyView && !showLockedDriverDetails && <Text style={styles.previewMeta}>{item.experience_years || 0} yrs experience</Text>}
                     </View>
                 </View>
 
-                {tags.length > 0 && (
+                {!showLockedDriverDetails && tags.length > 0 && (
                     <View style={styles.tagRow}>
                         {tags.slice(0, 4).map((tag: string) => (
                             <View key={tag} style={styles.tagChip}><Text style={styles.tagText}>{tag}</Text></View>
@@ -438,10 +461,44 @@ export default function MatchesScreen() {
                     </View>
                 )}
 
-                {secondaryTags.length > 0 && <Text style={styles.previewLine}>{secondaryTags.slice(0, 4).join(', ')}</Text>}
-                {licenseTypes.length > 0 && <Text style={styles.previewLine}>License: {licenseTypes.slice(0, 4).join(', ')}</Text>}
-                {!isCompanyView && <Text style={styles.previewLine}>Availability: {item.availability || 'TBD'}</Text>}
+                {!showLockedDriverDetails && secondaryTags.length > 0 && <Text style={styles.previewLine}>{secondaryTags.slice(0, 4).join(', ')}</Text>}
+                {!showLockedDriverDetails && licenseTypes.length > 0 && <Text style={styles.previewLine}>License: {licenseTypes.slice(0, 4).join(', ')}</Text>}
+                {!isCompanyView && !showLockedDriverDetails && <Text style={styles.previewLine}>Availability: {item.availability || 'TBD'}</Text>}
                 {isCompanyView && <Text style={styles.previewLine}>Freight: {item.offered_freight_types || 'N/A'}</Text>}
+                {showLockedDriverDetails && (
+                    <>
+                        {renderPreviewSection('Qualifications', [
+                            renderPreviewLine('CDL', item.has_cdl !== undefined && item.has_cdl !== null ? (item.has_cdl ? 'Yes' : 'No') : null),
+                            renderPreviewLine('License', licenseTypes.length > 0 ? licenseTypes.slice(0, 4).join(', ') : null),
+                            renderPreviewLine('Endorsements', secondaryTags.length > 0 ? secondaryTags.slice(0, 4).join(', ') : null),
+                            renderPreviewLine('Trailer experience', trailerExperience.length > 0 ? trailerExperience.slice(0, 4).join(', ') : null)
+                        ])}
+                        {renderPreviewSection('Experience', [
+                            renderPreviewLine('Experience years', item.experience_years !== undefined && item.experience_years !== null ? `${item.experience_years}` : null),
+                            renderPreviewLine('Operation types', tags.length > 0 ? tags.slice(0, 4).join(', ') : null),
+                            renderPreviewLine('Weekly miles', item.weekly_miles),
+                            renderPreviewLine('Longest OTR', item.longest_otr)
+                        ])}
+                        {renderPreviewSection('Availability & Preferences', [
+                            renderPreviewLine('Availability', item.availability || null),
+                            renderPreviewLine('Home time', item.home_time),
+                            renderPreviewLine('Job preferences', jobPreferences.length > 0 ? jobPreferences.slice(0, 4).join(', ') : null),
+                            renderPreviewLine('Preferred freight', item.preferred_freight),
+                            renderPreviewLine('Preferred region', item.preferred_region)
+                        ])}
+                        {renderPreviewSection('Work Terms', [
+                            renderPreviewLine('Payment methods', paymentMethods.length > 0 ? paymentMethods.slice(0, 4).join(', ') : null),
+                            renderPreviewLine('Work relationships', workRelationships.length > 0 ? workRelationships.slice(0, 4).join(', ') : null),
+                            renderPreviewLine('Willing to relocate', item.willing_to_relocate !== undefined && item.willing_to_relocate !== null ? (item.willing_to_relocate ? 'Yes' : 'No') : null),
+                            renderPreviewLine('Willing to travel/interview', item.willing_travel_interview !== undefined && item.willing_travel_interview !== null ? (item.willing_travel_interview ? 'Yes' : 'No') : null),
+                            renderPreviewLine('Has truck', item.has_truck !== undefined && item.has_truck !== null ? (item.has_truck ? 'Yes' : 'No') : null)
+                        ])}
+                        {renderPreviewSection('Safety', [
+                            renderPreviewLine('Accidents 3y', item.accidents_3y !== undefined && item.accidents_3y !== null ? String(item.accidents_3y) : null),
+                            renderPreviewLine('Tickets 3y', item.tickets_3y !== undefined && item.tickets_3y !== null ? String(item.tickets_3y) : null)
+                        ])}
+                    </>
+                )}
 
                 {!anonymized && !isCompanyView && (
                     <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={() => printDriverProfile(item)}>
@@ -793,6 +850,8 @@ const styles = StyleSheet.create({
     previewHeaderText: { flex: 1 },
     previewMeta: { color: '#2563eb', fontWeight: '600', marginTop: 4 },
     previewLine: { color: '#475569', fontSize: 13 },
+    previewSection: { marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#e2e8f0', gap: 4 },
+    previewSectionTitle: { color: '#0f172a', fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4 },
     tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
     tagChip: { backgroundColor: '#eef2ff', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 },
     tagText: { color: '#4338ca', fontSize: 11, fontWeight: '600' },
