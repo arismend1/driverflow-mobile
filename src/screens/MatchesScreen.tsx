@@ -45,6 +45,8 @@ const getLockedDriverLocation = (item: any) => (
 );
 
 const hasPreviewValue = (value: any) => value !== null && value !== undefined && value !== '';
+const canAcceptInterest = (item: any, myAcceptDate: any) =>
+    ['NEW', 'VIEWED', 'CONTACTED'].includes(item?.status) && !myAcceptDate;
 
 export default function MatchesScreen() {
     const { userInfo: user, token, suppressPinLock, resumePinLock } = useContext(AuthContext);
@@ -537,6 +539,17 @@ export default function MatchesScreen() {
         const isPaymentRequired = item.status === 'PAYMENT_REQUIRED';
         const isPaying = payingMatchId === matchId;
         const isPendingPayment = pendingPaymentMatchId === matchId;
+        const showAcceptInterest = canAcceptInterest(item, myAcceptDate);
+        const isWaitingForAcceptance = item.status === 'ACCEPTED' && !!myAcceptDate && !otherAcceptDate;
+        const canConfirmShareNow = (
+            item.status === 'PREMATCH_READY' ||
+            (item.status === 'SHARE_PENDING_COMPANY' && user?.type === 'empresa') ||
+            (item.status === 'SHARE_PENDING_DRIVER' && user?.type === 'driver')
+        ) && !myConsentDate;
+        const isWaitingForOtherConsent =
+            item.status === 'SHARE_PENDING_COMPANY' ||
+            item.status === 'SHARE_PENDING_DRIVER' ||
+            (item.status === 'PREMATCH_READY' && !!myConsentDate);
 
         if (item.status === 'INFO_SHARED' || item.status === 'HIRED') {
             const consentDate = item.driver_share_consent_at ? new Date(item.driver_share_consent_at) : null;
@@ -624,7 +637,7 @@ export default function MatchesScreen() {
                     </View>
                 ) : null}
 
-                {!myAcceptDate ? (
+                {showAcceptInterest ? (
                     <View style={styles.stageBox}>
                         <Text style={styles.stageTitle}>{otherAcceptDate ? 'Mutual Interest! They liked your profile.' : 'New Opportunity Detected'}</Text>
                         <View style={styles.row}>
@@ -633,12 +646,12 @@ export default function MatchesScreen() {
                             </TouchableOpacity>
                         </View>
                     </View>
-                ) : !otherAcceptDate ? (
+                ) : isWaitingForAcceptance ? (
                     <View style={styles.stageBox}>
                         <Text style={styles.stageTitle}>⏳ Waiting for response...</Text>
                         <Text style={styles.stageText}>The other party has been notified of your interest.</Text>
                     </View>
-                ) : !myConsentDate ? (
+                ) : canConfirmShareNow ? (
                     <View style={styles.stageBox}>
                         <Text style={styles.stageTitle}>🤝 Mutual Interest Confirmed!</Text>
                         <Text style={styles.stageText}>
@@ -650,12 +663,12 @@ export default function MatchesScreen() {
                             <Text style={styles.buttonText}>{user?.type === 'empresa' ? 'Continue' : '✅ Confirm Consent'}</Text>
                         </TouchableOpacity>
                     </View>
-                ) : (
+                ) : isWaitingForOtherConsent ? (
                     <View style={styles.stageBox}>
                         <Text style={styles.stageTitle}>🔓 Final Authorization Pending...</Text>
                         <Text style={styles.stageText}>You have authorized the exchange. Waiting for the other party to confirm.</Text>
                     </View>
-                )}
+                ) : null}
             </View>
         );
     };
