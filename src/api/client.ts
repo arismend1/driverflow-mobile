@@ -64,7 +64,7 @@ export const request = async <T = any>(
             } catch {
                 // Non-JSON response (HTML error page, proxy page, etc.)
                 if (!response.ok) {
-                    console.error(`[REQUEST] failure ${status} on ${endpoint}:`, text);
+                    console.error(`[REQUEST] failure ${status} on ${endpoint}`);
                 }
                 console.warn('[REQ] NON_JSON_RESPONSE on', endpoint);
                 const snippet = text.replace(/\n|\r/g, ' ').trim().slice(0, 200);
@@ -95,7 +95,7 @@ export const request = async <T = any>(
             if (isLegalGate) {
                 console.log(`[REQUEST] legal gate ${status} on ${endpoint}`);
             } else {
-                console.error(`[REQUEST] failure ${status} on ${endpoint}:`, text);
+                console.error(`[REQUEST] failure ${status} on ${endpoint}`);
             }
 
             // GLOBAL LEGAL INTERCEPTOR CHECK
