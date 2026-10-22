@@ -81,3 +81,11 @@ node_modules_corrupt/
 android/app/google-services.json
 android/app/build.stable.gradle
 package.stable.json
+
+# Never commit upload signing keys or local environment overrides.
+*.jks
+*.pem
+*.p12
+*.pfx
+.env.*
+!.env.example
