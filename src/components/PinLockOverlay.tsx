@@ -1,11 +1,53 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, StyleProp, ViewStyle } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const PIN_FAILURE_KEY = 'pin_failed_attempts';
+const PIN_LOCK_UNTIL_KEY = 'pin_lock_until';
+const MAX_PIN_ATTEMPTS = 5;
+const PIN_LOCK_MS = 30_000;
 
 export default function PinLockOverlay() {
     const { verifyPinAndLogin, unlockApp, userInfo, clearSavedCredentials, logout } = useAuth();
     const [pin, setPin] = useState<string>('');
     const [isError, setIsError] = useState(false);
+    const [failedAttempts, setFailedAttempts] = useState(0);
+    const [lockUntil, setLockUntil] = useState(0);
+    const [secondsRemaining, setSecondsRemaining] = useState(0);
+
+    useEffect(() => {
+        const restorePinProtection = async () => {
+            const [attemptsRaw, lockRaw] = await Promise.all([
+                AsyncStorage.getItem(PIN_FAILURE_KEY),
+                AsyncStorage.getItem(PIN_LOCK_UNTIL_KEY),
+            ]);
+            const attempts = Number(attemptsRaw || 0);
+            const until = Number(lockRaw || 0);
+            setFailedAttempts(Number.isFinite(attempts) ? attempts : 0);
+            setLockUntil(Number.isFinite(until) ? until : 0);
+        };
+        restorePinProtection().catch(() => {});
+    }, []);
+
+    useEffect(() => {
+        if (lockUntil <= Date.now()) {
+            setSecondsRemaining(0);
+            return;
+        }
+        const updateCountdown = () => {
+            const remaining = Math.max(0, Math.ceil((lockUntil - Date.now()) / 1000));
+            setSecondsRemaining(remaining);
+            if (remaining === 0) {
+                setLockUntil(0);
+                setFailedAttempts(0);
+                AsyncStorage.multiRemove([PIN_FAILURE_KEY, PIN_LOCK_UNTIL_KEY]).catch(() => {});
+            }
+        };
+        updateCountdown();
+        const timer = setInterval(updateCountdown, 1000);
+        return () => clearInterval(timer);
+    }, [lockUntil]);
 
     useEffect(() => {
         if (pin.length === 4) {
@@ -15,16 +57,34 @@ export default function PinLockOverlay() {
     }, [pin]);
 
     const handlePinComplete = async (enteredPin: string) => {
-        console.log(`[PIN_LOCK] Verifying PIN for lock overlay...`);
+        if (lockUntil > Date.now()) {
+            setPin('');
+            return;
+        }
+
         const success = await verifyPinAndLogin(enteredPin);
 
         if (!success) {
-            console.log(`[PIN_LOCK] PIN FAILED`);
+            const nextAttempts = failedAttempts + 1;
+            if (nextAttempts >= MAX_PIN_ATTEMPTS) {
+                const until = Date.now() + PIN_LOCK_MS;
+                setFailedAttempts(nextAttempts);
+                setLockUntil(until);
+                await AsyncStorage.multiSet([
+                    [PIN_FAILURE_KEY, String(nextAttempts)],
+                    [PIN_LOCK_UNTIL_KEY, String(until)],
+                ]);
+            } else {
+                setFailedAttempts(nextAttempts);
+                await AsyncStorage.setItem(PIN_FAILURE_KEY, String(nextAttempts));
+            }
             triggerError();
             return;
         }
 
-        console.log(`[PIN_LOCK] PIN OK — Unlocking app`);
+        await AsyncStorage.multiRemove([PIN_FAILURE_KEY, PIN_LOCK_UNTIL_KEY]);
+        setFailedAttempts(0);
+        setLockUntil(0);
         unlockApp();
         setPin('');
     };
@@ -36,10 +96,12 @@ export default function PinLockOverlay() {
     };
 
     const handleKeyPress = (num: string) => {
-        if (pin.length < 4) setPin(prev => prev + num);
+        if (lockUntil <= Date.now() && pin.length < 4) setPin(prev => prev + num);
     };
 
-    const handleBackspace = () => setPin(prev => prev.slice(0, -1));
+    const handleBackspace = () => {
+        if (lockUntil <= Date.now()) setPin(prev => prev.slice(0, -1));
+    };
 
     const renderDots = () => {
         const dots = [];
@@ -60,7 +122,11 @@ export default function PinLockOverlay() {
             <View style={styles.header}>
                 <Text style={styles.title}>Unlock DriverFlow</Text>
                 {userInfo?.name ? <Text style={styles.subtitle}>Hello, {userInfo.name}</Text> : null}
-                {isError ? <Text style={styles.errorText}>Incorrect PIN. Try again.</Text> : null}
+                {secondsRemaining > 0
+                    ? <Text style={styles.errorText}>Too many attempts. Try again in {secondsRemaining}s.</Text>
+                    : isError
+                        ? <Text style={styles.errorText}>Incorrect PIN. Try again.</Text>
+                        : null}
             </View>
 
             {renderDots()}
@@ -72,7 +138,7 @@ export default function PinLockOverlay() {
                     </TouchableOpacity>
                 ))}
 
-                <TouchableOpacity style={styles.numKey} onPress={() => setPin('')}>
+                <TouchableOpacity style={styles.numKey} onPress={() => { if (lockUntil <= Date.now()) setPin(''); }}>
                     <Text style={styles.actionText}>Clear</Text>
                 </TouchableOpacity>
 
