@@ -88,7 +88,6 @@ export const CompanyBillingScreen = () => {
             }
 
             const data = await createInvoiceCheckoutSession(token, item.id);
-            console.log("[BILLING] checkout response", JSON.stringify(data));
             const url = data?.url || data?.checkout_url;
 
             if (!url) {
