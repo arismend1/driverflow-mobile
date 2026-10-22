@@ -27,6 +27,8 @@ export const setSecureAuthValue = async (key: SecureAuthKey, value: string): Pro
 
 export const removeSecureAuthValue = async (key: SecureAuthKey): Promise<void> => {
   await Keychain.resetGenericPassword({ service: serviceFor(key) });
+  // Also clear a possible pre-migration plaintext copy.
+  await AsyncStorage.removeItem(key);
 };
 
 export const migrateLegacyAuthValue = async (key: SecureAuthKey): Promise<string | null> => {
