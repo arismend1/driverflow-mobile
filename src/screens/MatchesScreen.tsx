@@ -80,11 +80,11 @@ export default function MatchesScreen() {
                 const message = typeof data === 'object' && data
                     ? data.message || data.error || `Failed to load results (${resp.status})`
                     : `Failed to load results (${resp.status})`;
-                console.error('[MATCHES][ERROR]', resp.status, rawBody);
+                console.error('[MATCHES][ERROR]', resp.status);
                 throw new Error(String(message));
             }
             if (!Array.isArray(data)) {
-                console.error('[MATCHES][INVALID_RESPONSE]', data);
+                console.error('[MATCHES][INVALID_RESPONSE]');
                 throw new Error('Invalid matches response');
             }
             setMatches(data);
