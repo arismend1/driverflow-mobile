@@ -6,6 +6,13 @@
 import React, { createContext, useContext, useEffect, useState, useRef, useCallback, ReactNode } from 'react';
 import { AppState, PermissionsAndroid, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+    clearSecureAuthValues,
+    getSecureAuthValue,
+    migrateLegacyAuthValue,
+    removeSecureAuthValue,
+    setSecureAuthValue,
+} from '../security/secureAuthStorage';
 import messaging from '@react-native-firebase/messaging';
 import notifee, { AndroidImportance } from '@notifee/react-native';
 import { login as apiLogin, register as apiRegister, request, setLegalAcceptanceInterceptor } from '../api/client';
@@ -131,7 +138,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             console.log("[AUTH GLOBAL] 403 Legal Intercepted. Raising gate.");
             setNeedsLegalAccept(true);
             setRestrictedToken(restrictedJwt);
-            if (restrictedJwt) await AsyncStorage.setItem(STORAGE_KEYS.restrictedToken, restrictedJwt);
+            if (restrictedJwt) await setSecureAuthValue(STORAGE_KEYS.restrictedToken, restrictedJwt);
         });
     }, []);
 
@@ -140,19 +147,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             setIsLoading(true);
             try {
                 // 1) Estado PIN
-                const pin = await AsyncStorage.getItem(STORAGE_KEYS.savedPin);
-                const email = await AsyncStorage.getItem(STORAGE_KEYS.savedEmail);
-                const password = await AsyncStorage.getItem(STORAGE_KEYS.savedPassword);
-                const type = await AsyncStorage.getItem(STORAGE_KEYS.savedType);
+                const pin = await migrateLegacyAuthValue(STORAGE_KEYS.savedPin);
+                const email = await migrateLegacyAuthValue(STORAGE_KEYS.savedEmail);
+                const password = await migrateLegacyAuthValue(STORAGE_KEYS.savedPassword);
+                const type = await migrateLegacyAuthValue(STORAGE_KEYS.savedType);
 
                 const hasStoredPin = !!pin;
                 const hasRememberedCredentials = !!(email && password && type);
                 setHasPin(hasStoredPin);
 
                 // 2) Restaurar sesión (TOKEN + USERINFO)
-                const token = await AsyncStorage.getItem(STORAGE_KEYS.token);
+                const token = await migrateLegacyAuthValue(STORAGE_KEYS.token);
                 const userInfoRaw = await AsyncStorage.getItem(STORAGE_KEYS.userInfo);
-                const restricted = await AsyncStorage.getItem(STORAGE_KEYS.restrictedToken);
+                const restricted = await migrateLegacyAuthValue(STORAGE_KEYS.restrictedToken);
                 setPinReady(hasStoredPin);
 
                 if (userInfoRaw) {
@@ -388,7 +395,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             type: finalType, 
             search_status: data.search_status || 'ON' 
         };
-        await AsyncStorage.setItem(STORAGE_KEYS.restrictedToken, rt);
+        await setSecureAuthValue(STORAGE_KEYS.restrictedToken, rt);
         await AsyncStorage.setItem(STORAGE_KEYS.userInfo, JSON.stringify(info));
         setRestrictedToken(rt);
         setUserInfo(info);
@@ -410,10 +417,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 if (rt) {
                     await seedPendingLegalSession(rt, res.data, type);
                     if (remember) {
-                        await AsyncStorage.setItem(STORAGE_KEYS.savedEmail, contacto);
-                        await AsyncStorage.setItem(STORAGE_KEYS.savedPassword, password);
-                        await AsyncStorage.setItem(STORAGE_KEYS.savedType, res.data.type || type);
-                        const existingPin = await AsyncStorage.getItem(STORAGE_KEYS.savedPin);
+                        await setSecureAuthValue(STORAGE_KEYS.savedEmail, contacto);
+                        await setSecureAuthValue(STORAGE_KEYS.savedPassword, password);
+                        await setSecureAuthValue(STORAGE_KEYS.savedType, res.data.type || type);
+                        const existingPin = await getSecureAuthValue(STORAGE_KEYS.savedPin);
                         setPinGate(existingPin ? 'enter' : 'create');
                         setHasPin(!!existingPin);
                         setPinReady(!!existingPin);
@@ -432,11 +439,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             const info: UserInfo = { id, name, type: finalType, search_status: search_status || 'ON' };
 
             // GUARDAR EN ASYNCSTORAGE PRIMERO
-            await AsyncStorage.setItem('auth_token', token);
+            await setSecureAuthValue(STORAGE_KEYS.token, token);
             await AsyncStorage.setItem('auth_user_info', JSON.stringify(info));
 
             // VALIDAR
-            const saved = await AsyncStorage.getItem('auth_token');
+            const saved = await getSecureAuthValue(STORAGE_KEYS.token);
 
             if (!saved || saved !== token) throw new Error("TOKEN_NOT_PERSISTED");
 
@@ -449,16 +456,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 registerPushToken(token).catch(() => {});
             }, 1000);
 
-            const existingPin = await AsyncStorage.getItem(STORAGE_KEYS.savedPin);
+            const existingPin = await getSecureAuthValue(STORAGE_KEYS.savedPin);
             setHasPin(!!existingPin);
             if (remember) {
-                await AsyncStorage.setItem(STORAGE_KEYS.savedEmail, contacto);
-                await AsyncStorage.setItem(STORAGE_KEYS.savedPassword, password);
-                await AsyncStorage.setItem(STORAGE_KEYS.savedType, finalType);
+                await setSecureAuthValue(STORAGE_KEYS.savedEmail, contacto);
+                await setSecureAuthValue(STORAGE_KEYS.savedPassword, password);
+                await setSecureAuthValue(STORAGE_KEYS.savedType, finalType);
             } else {
-                await AsyncStorage.removeItem(STORAGE_KEYS.savedEmail);
-                await AsyncStorage.removeItem(STORAGE_KEYS.savedPassword);
-                await AsyncStorage.removeItem(STORAGE_KEYS.savedType);
+                await removeSecureAuthValue(STORAGE_KEYS.savedEmail);
+                await removeSecureAuthValue(STORAGE_KEYS.savedPassword);
+                await removeSecureAuthValue(STORAGE_KEYS.savedType);
             }
             setPinGate(existingPin ? 'enter' : 'create');
             setPinReady(!!existingPin);
@@ -476,7 +483,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     const savePin = async (pin: string) => {
         // console.log("[PIN] saving pin len", pin?.length);
-        await AsyncStorage.setItem(STORAGE_KEYS.savedPin, pin);
+        await setSecureAuthValue(STORAGE_KEYS.savedPin, pin);
         setHasPin(true);
         setPinReady(true);
     };
@@ -484,7 +491,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const verifyPinAndLogin = async (enteredPin: string): Promise<boolean> => {
         setIsLoading(true);
         try {
-            const savedPin = await AsyncStorage.getItem(STORAGE_KEYS.savedPin);
+            const savedPin = await getSecureAuthValue(STORAGE_KEYS.savedPin);
 
             if (savedPin === null) {
                 // FAIL-OPEN: no PIN saved — treat as unlock, redirect handled by navigator
@@ -496,9 +503,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             if (!pinMatch) return false;
 
             // PIN matches — check if we have saved credentials for re-login
-            const email = await AsyncStorage.getItem(STORAGE_KEYS.savedEmail);
-            const password = await AsyncStorage.getItem(STORAGE_KEYS.savedPassword);
-            const type = (await AsyncStorage.getItem(STORAGE_KEYS.savedType)) as 'driver' | 'empresa' | null;
+            const email = await getSecureAuthValue(STORAGE_KEYS.savedEmail);
+            const password = await getSecureAuthValue(STORAGE_KEYS.savedPassword);
+            const type = (await getSecureAuthValue(STORAGE_KEYS.savedType)) as 'driver' | 'empresa' | null;
 
 
             if (!email || !password || !type) {
@@ -530,10 +537,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             const finalType: 'driver' | 'empresa' = (serverType || type) as any;
             const info: UserInfo = { id, name, type: finalType, search_status: res.data.search_status || 'ON' };
 
-            await AsyncStorage.setItem('auth_token', token);
+            await setSecureAuthValue(STORAGE_KEYS.token, token);
             await AsyncStorage.setItem('auth_user_info', JSON.stringify(info));
 
-            const saved = await AsyncStorage.getItem('auth_token');
+            const saved = await getSecureAuthValue(STORAGE_KEYS.token);
             if (!saved || saved !== token) throw new Error("TOKEN_NOT_PERSISTED");
 
             setUserToken(token);
@@ -582,13 +589,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             setPinReady(false);
             setPinGate(null);
 
-            await AsyncStorage.removeItem(STORAGE_KEYS.token);
-            await AsyncStorage.removeItem(STORAGE_KEYS.restrictedToken);
+            await clearSecureAuthValues([
+                STORAGE_KEYS.token,
+                STORAGE_KEYS.restrictedToken,
+                STORAGE_KEYS.savedEmail,
+                STORAGE_KEYS.savedPassword,
+                STORAGE_KEYS.savedType,
+                STORAGE_KEYS.savedPin,
+            ]);
             await AsyncStorage.removeItem(STORAGE_KEYS.userInfo);
-            await AsyncStorage.removeItem(STORAGE_KEYS.savedEmail);
-            await AsyncStorage.removeItem(STORAGE_KEYS.savedPassword);
-            await AsyncStorage.removeItem(STORAGE_KEYS.savedType);
-            await AsyncStorage.removeItem(STORAGE_KEYS.savedPin);
         } catch {
             // ignore
         } finally {
@@ -599,10 +608,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const clearSavedCredentials = async () => {
         setIsLoading(true);
         try {
-            await AsyncStorage.removeItem(STORAGE_KEYS.savedEmail);
-            await AsyncStorage.removeItem(STORAGE_KEYS.savedPassword);
-            await AsyncStorage.removeItem(STORAGE_KEYS.savedType);
-            await AsyncStorage.removeItem(STORAGE_KEYS.savedPin);
+            await removeSecureAuthValue(STORAGE_KEYS.savedEmail);
+            await removeSecureAuthValue(STORAGE_KEYS.savedPassword);
+            await removeSecureAuthValue(STORAGE_KEYS.savedType);
+            await removeSecureAuthValue(STORAGE_KEYS.savedPin);
             setHasPin(false);
             setPinReady(false);
             setPinGate(null);
@@ -655,8 +664,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 }
             }
 
-            await AsyncStorage.setItem(STORAGE_KEYS.token, unlockedToken);
-            await AsyncStorage.removeItem(STORAGE_KEYS.restrictedToken);
+            await setSecureAuthValue(STORAGE_KEYS.token, unlockedToken);
+            await removeSecureAuthValue(STORAGE_KEYS.restrictedToken);
             setUserToken(unlockedToken);
             setNeedsLegalAccept(false);
             setRestrictedToken(null);
