@@ -101,7 +101,7 @@ const STORAGE_KEYS = {
     savedPassword: 'saved_password',
     savedType: 'saved_type',
     restrictedToken: 'restricted_token',
-};
+} as const;
 
 const getSafeMessaging = () => {
     try {
