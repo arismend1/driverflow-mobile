@@ -315,7 +315,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
         const unsubscribe = messenger.onMessage(async remoteMessage => {
             console.log('[PUSH] FOREGROUND callback fired');
-            console.log('[PUSH] FOREGROUND:', remoteMessage);
+            console.log('[PUSH] FOREGROUND message received');
 
             try {
                 // Create a channel (required for Android)
@@ -352,7 +352,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         if (!messenger) return;
 
         const unsubscribe = messenger.onNotificationOpenedApp(remoteMessage => {
-            console.log('[PUSH] OPENED FROM BACKGROUND:', remoteMessage);
+            console.log('[PUSH] Notification opened from background');
         });
 
         return unsubscribe;
@@ -370,7 +370,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             .then(remoteMessage => {
                 if (remoteMessage) {
                     console.log('[PUSH] QUIT message found');
-                    console.log('[PUSH] OPENED FROM QUIT:', remoteMessage);
+                    console.log('[PUSH] Notification opened from quit state');
                 } else {
                     console.log('[PUSH] QUIT no message');
                 }
