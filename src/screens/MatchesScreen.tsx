@@ -217,7 +217,6 @@ export default function MatchesScreen() {
         setPayingMatchId(matchId);
         try {
             const response = await postPayAndShare(matchId, token);
-            console.log("[PAYWALL DEBUG] response.data:", JSON.stringify(response.data));
             if (!response.ok || !response.data) {
                 const errorCode = response.error || 'unknown_error';
                 if (errorCode === 'stripe_unavailable' || errorCode === 'stripe_publishable_key_missing') {
@@ -247,7 +246,6 @@ export default function MatchesScreen() {
                 paymentIntentClientSecret: clientSecret,
                 returnURL: STRIPE_RETURN_URL
             });
-            console.log("[PAYWALL DEBUG] initPaymentSheet result:", JSON.stringify(paymentSheet));
             if (paymentSheet.error) {
                 console.log("[PAYWALL ERROR] initPaymentSheet code:", paymentSheet.error.code);
                 console.log("[PAYWALL ERROR] initPaymentSheet message:", paymentSheet.error.message);
@@ -262,7 +260,6 @@ export default function MatchesScreen() {
             suppressPinLock();
             pinLockSuppressed = true;
             const paymentResult = await presentPaymentSheet();
-            console.log("[PAYWALL DEBUG] presentPaymentSheet result:", JSON.stringify(paymentResult));
             if (paymentResult.error) {
                 console.log("[PAYWALL ERROR] presentPaymentSheet code:", paymentResult.error.code);
                 console.log("[PAYWALL ERROR] presentPaymentSheet message:", paymentResult.error.message);
