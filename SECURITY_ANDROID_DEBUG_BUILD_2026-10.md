@@ -39,6 +39,16 @@ are changed by this build job.
 - Produces **debug** only; checks that `app-debug.apk` exists but does not
   upload it, publish it or install it on a device.
 
+## Verified Android API 36 debug compilation — October 23, 2026
+
+**Confirmed successful:** [GitHub Actions run 39946934796](https://github.com/arismend1/driverflow-mobile/actions/runs/39946934796), job `Compile isolated Android debug APK`, checked out commit `138aa3e`. The complete job passed. The real Gradle log includes `:app:assembleDebug` and `BUILD SUCCESSFUL in 7m 13s`, followed by a successful non-empty-file test of `android/app/build/outputs/apk/debug/app-debug.apk`. No release signing, APK upload or device install took place.
+
+The debug build uses a dummy Firebase configuration created only inside the ephemeral CI runner; it must not be distributed as a usable application. Java 17, Android compile/target API 36 and ARM64 debug compilation passed under the runner environment. This does **not** test an actual phone, login against production, notification delivery, Stripe or user flows.
+
+Also verified separately: the actual [mobile Jest run 39946361299](https://github.com/arismend1/driverflow-mobile/actions/runs/39946361299) passed **10/10 match acceptance helper unit tests**, zero failures. The backend companion [security run 39947822432](https://github.com/arismend1/driverflow-backend/actions/runs/39947822432) passed **116 active isolated checks**, including locked company-candidate state compatibility checks that preserve acceptance/consent dates while keeping contacts and driver documents masked.
+
+The earlier pending status below is historical and superseded by this verified outcome. **No production deployment or publishing was performed.**
+
 ## Execution / evidence
 
 The first new build run, `39946834110` (commit `b190695`), failed before
