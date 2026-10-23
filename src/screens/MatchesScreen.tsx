@@ -1,4 +1,4 @@
-import React, { useCallback, useContext, useMemo, useState } from 'react';
+import React, { useCallback, useContext, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -19,6 +19,7 @@ import RNPrint from 'react-native-print';
 import { API_URL } from '../api/config';
 import { postPayAndShare } from '../api/client';
 import { AuthContext } from '../context/AuthContext';
+import { hasRecordedOwnAcceptance, isRecoverableAcceptanceConflict } from '../utils/matchAcceptance';
 
 const PAYMENT_POLL_INTERVAL_MS = 2500;
 const PAYMENT_POLL_MAX_RETRIES = 3;
@@ -59,6 +60,8 @@ export default function MatchesScreen() {
     const [expandedCardId, setExpandedCardId] = useState<any>(null);
     const [payingMatchId, setPayingMatchId] = useState<any>(null);
     const [pendingPaymentMatchId, setPendingPaymentMatchId] = useState<any>(null);
+    const [acceptingMatchId, setAcceptingMatchId] = useState<string | null>(null);
+    const acceptingMatchRequests = useRef(new Set<string>());
 
     const fetchMatches = useCallback(async (options: { silent?: boolean } = {}) => {
         try {
@@ -127,28 +130,49 @@ export default function MatchesScreen() {
     };
 
     const handleStatusChange = async (matchId: any, newStatus: string) => {
+        if (newStatus !== 'ACCEPTED') {
+            Alert.alert('Error', 'Unknown action');
+            return;
+        }
+        const requestKey = String(matchId);
+        // Ref guard prevents two fast taps before React has rendered disabled state.
+        if (acceptingMatchRequests.current.has(requestKey)) return;
+        acceptingMatchRequests.current.add(requestKey);
+        setAcceptingMatchId(requestKey);
+
         try {
-            const endpointSuffix = newStatus === 'ACCEPTED' ? '/accept' : '';
-            if (!endpointSuffix) {
-                Alert.alert('Error', 'Unknown action');
-                return;
-            }
-            const resp = await fetch(`${API_URL}/matches/${matchId}${endpointSuffix}`, {
+            const resp = await fetch(`${API_URL}/matches/${matchId}/accept`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
             });
             if (resp.ok) {
-                fetchMatches();
+                await fetchMatches({ silent: true });
                 return;
             }
+
+            let err: any = null;
             try {
-                const err = await resp.json();
-                Alert.alert('Server Error', err.error || 'Failed to update status');
+                err = await resp.json();
             } catch {
-                Alert.alert('Server Error', `HTTP Error ${resp.status}`);
+                // Preserve the HTTP failure when the response is not JSON.
             }
+
+            if (isRecoverableAcceptanceConflict(resp.status, err?.error)) {
+                // Never treat 409 as consent or payment success by itself.
+                // Re-read the owner's match; only the actor's own persisted
+                // acceptance timestamp on that exact match clears the conflict.
+                const latestMatches = await fetchMatches({ silent: true });
+                if (latestMatches.some(item =>
+                    hasRecordedOwnAcceptance(item, requestKey, user?.type)
+                )) return;
+            }
+
+            Alert.alert('Server Error', err?.error || `HTTP Error ${resp.status}`);
         } catch (error: any) {
             Alert.alert('Network Failure', `Details: ${error.message}`);
+        } finally {
+            acceptingMatchRequests.current.delete(requestKey);
+            setAcceptingMatchId(current => current === requestKey ? null : current);
         }
     };
 
@@ -638,8 +662,14 @@ export default function MatchesScreen() {
                     <View style={styles.stageBox}>
                         <Text style={styles.stageTitle}>{otherAcceptDate ? 'Mutual Interest! They liked your profile.' : 'New Opportunity Detected'}</Text>
                         <View style={styles.row}>
-                            <TouchableOpacity style={[styles.button, styles.successButton, styles.flexButton]} onPress={() => handleStatusChange(matchId, 'ACCEPTED')}>
-                                <Text style={styles.buttonText}>Accept Interest</Text>
+                            <TouchableOpacity
+                                style={[styles.button, styles.successButton, styles.flexButton, acceptingMatchId === String(matchId) && styles.disabledButton]}
+                                disabled={acceptingMatchId === String(matchId)}
+                                onPress={() => handleStatusChange(matchId, 'ACCEPTED')}
+                            >
+                                {acceptingMatchId === String(matchId)
+                                    ? <ActivityIndicator color="#fff" />
+                                    : <Text style={styles.buttonText}>Accept Interest</Text>}
                             </TouchableOpacity>
                         </View>
                     </View>
