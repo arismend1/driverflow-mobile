@@ -1,0 +1,32 @@
+name: DriverFlow mobile match-acceptance checks
+
+on:
+  push:
+    branches:
+      - security-mobile-phase1-2026-10
+    paths:
+      - 'src/screens/MatchesScreen.tsx'
+      - 'src/utils/matchAcceptance.ts'
+      - '__tests__/matchAcceptance.test.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/mobile-match-acceptance-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mobile-match-acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install CI dependencies without package scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Run isolated mobile conflict-reconciliation tests
+        run: npx jest __tests__/matchAcceptance.test.ts --runInBand
