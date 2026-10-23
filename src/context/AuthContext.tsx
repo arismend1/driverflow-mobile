@@ -509,10 +509,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
 
             if (!email || !password || !type) {
-                // UNLOCK-ONLY: PIN matched but no stored credentials.
-                // User is already logged in (userToken exists from the session).
-                // Just unlock — do NOT return false.
-                return true;
+                // A matching PIN alone must never grant access without a session.
+                // The stored token is checked as well as the in-memory session.
+                const persistedToken = await getSecureAuthValue(STORAGE_KEYS.token);
+                return !!(userToken && persistedToken && userToken === persistedToken);
             }
 
             // Full re-login with saved credentials
