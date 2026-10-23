@@ -54,5 +54,10 @@ export const migrateLegacyAuthValue = async (key: SecureAuthKey): Promise<string
 };
 
 export const clearSecureAuthValues = async (keys: SecureAuthKey[]): Promise<void> => {
-  await Promise.all(keys.map(removeSecureAuthValue));
+  // Attempt every deletion, even when a different key fails.
+  const results = await Promise.allSettled(keys.map(removeSecureAuthValue));
+  if (results.some(result => result.status === 'rejected')) {
+    // Never include credential values in the error.
+    throw new Error('SECURE_AUTH_CLEAR_INCOMPLETE');
+  }
 };
