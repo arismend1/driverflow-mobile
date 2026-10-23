@@ -43,3 +43,24 @@ export const hasRecordedOwnAcceptance = (
         : match.company_step1_accepted_at;
     return typeof acceptance === 'string' && acceptance.trim().length > 0;
 };
+
+
+export const confirmRecordedAcceptanceAfterConflict = async (
+    httpStatus: number,
+    errorCode: string | null | undefined,
+    requestedMatchId: string | number,
+    actorType: MatchActorType,
+    fetchLatestMatches: () => Promise<MatchAcceptanceSnapshot[] | null | undefined>
+): Promise<boolean> => {
+    if (!isRecoverableAcceptanceConflict(httpStatus, errorCode)) return false;
+    if (actorType !== 'driver' && actorType !== 'empresa') return false;
+    try {
+        const refreshed = await fetchLatestMatches();
+        return Array.isArray(refreshed) && refreshed.some(item =>
+            hasRecordedOwnAcceptance(item, requestedMatchId, actorType)
+        );
+    } catch {
+        // A failed refresh must never turn an HTTP 409 into a success.
+        return false;
+    }
+};
