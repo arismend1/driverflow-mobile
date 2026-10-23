@@ -4,7 +4,7 @@
  * Any modification must be explicitly approved.
  */
 import React, { createContext, useContext, useEffect, useState, useRef, useCallback, ReactNode } from 'react';
-import { AppState, PermissionsAndroid, Platform } from 'react-native';
+import { Alert, AppState, PermissionsAndroid, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
     clearSecureAuthValues,
@@ -589,17 +589,28 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             setPinReady(false);
             setPinGate(null);
 
-            await clearSecureAuthValues([
-                STORAGE_KEYS.token,
-                STORAGE_KEYS.restrictedToken,
-                STORAGE_KEYS.savedEmail,
-                STORAGE_KEYS.savedPassword,
-                STORAGE_KEYS.savedType,
-                STORAGE_KEYS.savedPin,
+            // Run both storage cleanups even if one of them fails.
+            const cleanupResults = await Promise.allSettled([
+                clearSecureAuthValues([
+                    STORAGE_KEYS.token,
+                    STORAGE_KEYS.restrictedToken,
+                    STORAGE_KEYS.savedEmail,
+                    STORAGE_KEYS.savedPassword,
+                    STORAGE_KEYS.savedType,
+                    STORAGE_KEYS.savedPin,
+                ]),
+                AsyncStorage.removeItem(STORAGE_KEYS.userInfo),
             ]);
-            await AsyncStorage.removeItem(STORAGE_KEYS.userInfo);
+            if (cleanupResults.some(result => result.status === 'rejected')) {
+                throw new Error('AUTH_LOGOUT_CLEANUP_INCOMPLETE');
+            }
         } catch {
-            // ignore
+            // Never log tokens or credentials. Warn because storage may still hold a session.
+            console.error('[AUTH] Logout cleanup incomplete; saved sign-in data may remain');
+            Alert.alert(
+                'Sign out incomplete',
+                'Some saved sign-in data could not be removed. Please try switching accounts again before sharing this device.',
+            );
         } finally {
             setIsLoading(false);
         }
