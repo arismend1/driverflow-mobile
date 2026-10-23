@@ -1,4 +1,5 @@
 import {
+    confirmRecordedAcceptanceAfterConflict,
     hasRecordedOwnAcceptance,
     isRecoverableAcceptanceConflict,
 } from '../src/utils/matchAcceptance';
@@ -63,5 +64,50 @@ describe('match acceptance conflict reconciliation', () => {
         ]) {
             expect(hasRecordedOwnAcceptance({ ...match, status }, 700, 'empresa')).toBe(true);
         }
+    });
+});
+
+describe('fresh API check after an acceptance conflict', () => {
+    it('reconciles only a 409 with confirmed own consent on the correct match', async () => {
+        const load = jest.fn(async () => [match]);
+        expect(await confirmRecordedAcceptanceAfterConflict(
+            409, 'match_update_conflict', 700, 'empresa', load
+        )).toBe(true);
+        expect(load).toHaveBeenCalledTimes(1);
+    });
+
+    it('never fetches for unrelated HTTP errors or unauthenticated actors', async () => {
+        const load = jest.fn(async () => [match]);
+        expect(await confirmRecordedAcceptanceAfterConflict(
+            403, 'match_update_conflict', 700, 'empresa', load
+        )).toBe(false);
+        expect(await confirmRecordedAcceptanceAfterConflict(
+            409, 'invalid_match_state', 700, null, load
+        )).toBe(false);
+        expect(load).not.toHaveBeenCalled();
+    });
+
+    it('does not treat a missing row, different match or wrong actor consent as success', async () => {
+        for (const rows of [
+            [],
+            [{ ...match, match_id: 702 }],
+            [{ ...match, company_step1_accepted_at: null }],
+            [{ ...match, status: 'ACCEPTED' }],
+        ]) {
+            expect(await confirmRecordedAcceptanceAfterConflict(
+                409, 'invalid_match_state', 700, 'empresa', async () => rows
+            )).toBe(false);
+        }
+    });
+
+    it('fails closed when refresh throws, or fails to return a list', async () => {
+        expect(await confirmRecordedAcceptanceAfterConflict(
+            409, 'match_update_conflict', 700, 'driver', async () => {
+                throw new Error('offline');
+            }
+        )).toBe(false);
+        expect(await confirmRecordedAcceptanceAfterConflict(
+            409, 'match_update_conflict', 700, 'driver', async () => null
+        )).toBe(false);
     });
 });
