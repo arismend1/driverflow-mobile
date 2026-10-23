@@ -26,6 +26,14 @@ Release status: **SECURITY BRANCH ONLY — NOT PUBLISHED OR DEPLOYED**
 
 The decision logic lives in `src/utils/matchAcceptance.ts` and is covered by `__tests__/matchAcceptance.test.ts` (ten unit cases as of this report). The screen's full native UI and real-device flows have not been exercised here.
 
+## Verified mobile unit test result — October 23, 2026
+
+**GitHub Actions run #5 passed**, on code commit `24c5286e57fe4bc22485516e7d33c610d76f63a1`: [View successful mobile run](https://github.com/arismend1/driverflow-mobile/actions/runs/39946361299). The actual job logs show `PASS __tests__/matchAcceptance.test.ts`, **1 Jest suite passed and 10 of 10 unit tests passed, zero failed**. The dependency-install step also passed after using `npm ci --ignore-scripts --legacy-peer-deps --no-audit --no-fund`.
+
+GitHub commit comparison between the successfully tested commit and the following audit-report commit `fb4036e` showed **only this Markdown document changed**. No UI, acceptance helper, test or dependency files changed after the successful run.
+
+**Coverage and limitation:** these tests cover pure reconciliation decisions for error codes, matching IDs, actor-specific acceptance timestamps, completed match states, missing records, unauthorized actors, and failed refreshes. They do *not* render the React Native screen or replace Android/iOS builds, end-to-end mobile tests, complete TypeScript validation or real-device testing. The guard against repeated quick taps was reviewed in the screen source but not exercised by these ten pure-function tests.
+
 ## Isolated CI
 
 `.github/workflows/mobile-match-acceptance-tests.yml` runs only in the mobile security branch (or by manual workflow dispatch), installs dependencies without package lifecycle scripts, and executes:
