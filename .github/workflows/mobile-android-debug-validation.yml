@@ -1,0 +1,70 @@
+name: DriverFlow Android debug build validation
+
+on:
+  push:
+    branches:
+      - security-mobile-phase1-2026-10
+    paths:
+      - 'src/screens/MatchesScreen.tsx'
+      - 'src/utils/matchAcceptance.ts'
+      - '__tests__/matchAcceptance.test.ts'
+      - 'android/app/build.gradle'
+      - '.github/workflows/mobile-android-debug-validation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android-debug:
+    name: Compile isolated Android debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android 36 toolchain
+        run: |
+          sdkmanager --install "platforms;android-36" "build-tools;36.0.0" "ndk;27.1.12297006" "cmake;3.22.1"
+      - name: Install npm dependencies without package scripts
+        run: npm ci --ignore-scripts --legacy-peer-deps --no-audit --no-fund
+      - name: Generate dummy Firebase config for compile-only validation
+        run: |
+          cat > android/app/google-services.json <<'EOF'
+          {
+            "project_info": {
+              "project_number": "123456789012",
+              "project_id": "driverflow-ci-debug-only",
+              "storage_bucket": "driverflow-ci-debug-only.invalid"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:123456789012:android:abcdef123456abcdef123456",
+                  "android_client_info": {"package_name": "com.driverflow.official"}
+                },
+                "oauth_client": [],
+                "api_key": [{"current_key": "CI_DUMMY_DO_NOT_USE"}],
+                "services": {"appinvite_service": {"other_platform_oauth_client": []}}
+              }
+            ],
+            "configuration_version": "1"
+          }
+          EOF
+      - name: Compile Android debug without release signing or publishing
+        working-directory: android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :app:assembleDebug --no-daemon --stacktrace -PreactNativeArchitectures=arm64-v8a
+      - name: Verify debug APK generated
+        run: test -s android/app/build/outputs/apk/debug/app-debug.apk
