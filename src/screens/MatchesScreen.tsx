@@ -19,7 +19,7 @@ import RNPrint from 'react-native-print';
 import { API_URL } from '../api/config';
 import { postPayAndShare } from '../api/client';
 import { AuthContext } from '../context/AuthContext';
-import { hasRecordedOwnAcceptance, isRecoverableAcceptanceConflict } from '../utils/matchAcceptance';
+import { confirmRecordedAcceptanceAfterConflict } from '../utils/matchAcceptance';
 
 const PAYMENT_POLL_INTERVAL_MS = 2500;
 const PAYMENT_POLL_MAX_RETRIES = 3;
@@ -157,15 +157,13 @@ export default function MatchesScreen() {
                 // Preserve the HTTP failure when the response is not JSON.
             }
 
-            if (isRecoverableAcceptanceConflict(resp.status, err?.error)) {
-                // Never treat 409 as consent or payment success by itself.
-                // Re-read the owner's match; only the actor's own persisted
-                // acceptance timestamp on that exact match clears the conflict.
-                const latestMatches = await fetchMatches({ silent: true });
-                if (latestMatches.some(item =>
-                    hasRecordedOwnAcceptance(item, requestKey, user?.type)
-                )) return;
-            }
+            // Only a fresh match belonging to this actor, with their own
+            // persisted acceptance, may reconcile a conflicting response.
+            // An unavailable refresh stays an error, never assumed success.
+            if (await confirmRecordedAcceptanceAfterConflict(
+                resp.status, err?.error, requestKey, user?.type,
+                () => fetchMatches({ silent: true })
+            )) return;
 
             Alert.alert('Server Error', err?.error || `HTTP Error ${resp.status}`);
         } catch (error: any) {
