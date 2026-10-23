@@ -41,5 +41,5 @@ export const hasRecordedOwnAcceptance = (
     const acceptance = actorType === 'driver'
         ? match.driver_step1_accepted_at
         : match.company_step1_accepted_at;
-    return typeof acceptance === 'string' && acceptance.length > 0;
+    return typeof acceptance === 'string' && acceptance.trim().length > 0;
 };
