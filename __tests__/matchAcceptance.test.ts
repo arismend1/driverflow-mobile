@@ -42,7 +42,7 @@ describe('match acceptance conflict reconciliation', () => {
         }, 700, 'empresa')).toBe(false);
         expect(hasRecordedOwnAcceptance({
             ...match, driver_step1_accepted_at: '   ',
-        }, 700, 'driver')).toBe(true);
+        }, 700, 'driver')).toBe(false);
     });
 
     it('rejects closed, declined, stale or pre-confirmation match states', () => {
