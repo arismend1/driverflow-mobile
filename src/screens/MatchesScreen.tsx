@@ -19,7 +19,7 @@ import RNPrint from 'react-native-print';
 import { API_URL } from '../api/config';
 import { postPayAndShare } from '../api/client';
 import { AuthContext } from '../context/AuthContext';
-import { confirmRecordedAcceptanceAfterConflict, parseMatchActionError } from '../utils/matchAcceptance';
+import { acquireMatchAction, confirmRecordedAcceptanceAfterConflict, parseMatchActionError, releaseMatchAction } from '../utils/matchAcceptance';
 import { getMatchViewTab, isWaitingForOtherAcceptance } from '../utils/matchStages';
 
 const PAYMENT_POLL_INTERVAL_MS = 2500;
@@ -63,6 +63,7 @@ export default function MatchesScreen() {
     const [pendingPaymentMatchId, setPendingPaymentMatchId] = useState<any>(null);
     const [acceptingMatchId, setAcceptingMatchId] = useState<string | null>(null);
     const acceptingMatchRequests = useRef(new Set<string>());
+    const confirmingMatchRequests = useRef(new Set<string>());
 
     const fetchMatches = useCallback(async (options: { silent?: boolean } = {}) => {
         try {
@@ -185,6 +186,7 @@ export default function MatchesScreen() {
             {
                 text: 'Authorize',
                 onPress: async () => {
+                    if (!acquireMatchAction(confirmingMatchRequests.current, matchId)) return;
                     try {
                         const endpoint = user?.type === 'driver' ? 'driver/confirm-share' : 'company/confirm-share';
                         const resp = await fetch(`${API_URL}/matches/${matchId}/${endpoint}`, {
@@ -203,6 +205,8 @@ export default function MatchesScreen() {
                         Alert.alert(error?.error || 'Error', error?.message || 'Failed to process consent');
                     } catch {
                         Alert.alert('Error', 'Network Failure');
+                    } finally {
+                        releaseMatchAction(confirmingMatchRequests.current, matchId);
                     }
                 }
             }
