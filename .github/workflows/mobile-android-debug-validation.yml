@@ -7,6 +7,8 @@ on:
     paths:
       - 'src/screens/MatchesScreen.tsx'
       - 'src/utils/matchAcceptance.ts'
+      - 'src/api/config.ts'
+      - 'src/api/apiMode.ts'
       - '__tests__/matchAcceptance.test.ts'
       - 'android/app/build.gradle'
       - '.github/workflows/mobile-android-debug-validation.yml'
