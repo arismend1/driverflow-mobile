@@ -21,6 +21,7 @@ import { postPayAndShare } from '../api/client';
 import { AuthContext } from '../context/AuthContext';
 import { acquireMatchAction, confirmRecordedAcceptanceAfterConflict, parseMatchActionError, releaseMatchAction } from '../utils/matchAcceptance';
 import { getMatchViewTab, isWaitingForOtherAcceptance } from '../utils/matchStages';
+import { sanitizeMatchForDisplay } from '../utils/matchPrivacy';
 
 const PAYMENT_POLL_INTERVAL_MS = 2500;
 const PAYMENT_POLL_MAX_RETRIES = 3;
@@ -92,8 +93,9 @@ export default function MatchesScreen() {
                 console.error('[MATCHES][INVALID_RESPONSE]');
                 throw new Error('Invalid matches response');
             }
-            setMatches(data);
-            return data;
+            const safeMatches = data.map(sanitizeMatchForDisplay);
+            setMatches(safeMatches);
+            return safeMatches;
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Failed to load matches';
             console.error('[MATCHES][ERROR]', error);
