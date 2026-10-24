@@ -20,6 +20,7 @@ import { API_URL } from '../api/config';
 import { postPayAndShare } from '../api/client';
 import { AuthContext } from '../context/AuthContext';
 import { confirmRecordedAcceptanceAfterConflict } from '../utils/matchAcceptance';
+import { getMatchViewTab, isWaitingForOtherAcceptance } from '../utils/matchStages';
 
 const PAYMENT_POLL_INTERVAL_MS = 2500;
 const PAYMENT_POLL_MAX_RETRIES = 3;
@@ -559,7 +560,7 @@ export default function MatchesScreen() {
         const isPaying = payingMatchId === matchId;
         const isPendingPayment = pendingPaymentMatchId === matchId;
         const showAcceptInterest = canAcceptInterest(item, myAcceptDate);
-        const isWaitingForAcceptance = item.status === 'ACCEPTED' && !!myAcceptDate && !otherAcceptDate;
+        const isWaitingForAcceptance = isWaitingForOtherAcceptance(item, user?.type);
         const canConfirmShareNow = (
             item.status === 'PREMATCH_READY' ||
             (item.status === 'SHARE_PENDING_COMPANY' && user?.type === 'empresa') ||
@@ -715,12 +716,12 @@ export default function MatchesScreen() {
             );
         };
         return {
-            newMatches: applySearch(matches.filter(match => match.status === 'NEW')),
-            processMatches: applySearch(matches.filter(match => ['ACCEPTED', 'PREMATCH_READY', 'SHARE_PENDING_COMPANY', 'SHARE_PENDING_DRIVER', 'PAYMENT_REQUIRED'].includes(match.status))),
-            exclusiveMatches: applySearch(matches.filter(match => match.status === 'INFO_SHARED')),
-            hiredMatches: applySearch(matches.filter(match => match.status === 'HIRED'))
+            newMatches: applySearch(matches.filter(match => getMatchViewTab(match, user?.type) === 'NUEVOS')),
+            processMatches: applySearch(matches.filter(match => getMatchViewTab(match, user?.type) === 'EN_PROCESO')),
+            exclusiveMatches: applySearch(matches.filter(match => getMatchViewTab(match, user?.type) === 'EXCLUSIVOS')),
+            hiredMatches: applySearch(matches.filter(match => getMatchViewTab(match, user?.type) === 'HIRED'))
         };
-    }, [matches, searchQuery]);
+    }, [matches, searchQuery, user?.type]);
 
     const displayMatches = activeTab === 'NUEVOS'
         ? filteredMatches.newMatches
