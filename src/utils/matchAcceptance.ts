@@ -98,3 +98,16 @@ export const parseMatchActionError = (status: number, rawBody: string): {
         ...(typeof body?.exclusive_until === 'string' ? { exclusive_until: body.exclusive_until } : {}),
     };
 };
+
+// Immediate in-memory guard for native confirmation callbacks. React state
+// alone does not block two taps before a re-render.
+export const acquireMatchAction = (inFlight: Set<string>, matchId: string | number): boolean => {
+    const key = String(matchId);
+    if (inFlight.has(key)) return false;
+    inFlight.add(key);
+    return true;
+};
+
+export const releaseMatchAction = (inFlight: Set<string>, matchId: string | number): void => {
+    inFlight.delete(String(matchId));
+};
