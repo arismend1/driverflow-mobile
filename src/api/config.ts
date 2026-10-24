@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { selectApiMode } from './apiMode';
 
 // --- API CONFIGURATION ---
 // MODOS:
@@ -13,8 +14,9 @@ import { Platform } from 'react-native';
 
 export type ApiMode = 'PRODUCTION' | 'EMULATOR' | 'DEVICE_ADB' | 'DEVICE_LAN';
 
-// ✅ Temporal para pruebas en físico por cable
-export const API_MODE = 'PRODUCTION' as ApiMode;
+// Debug builds use an isolated local backend through 'adb reverse tcp:3000 tcp:3000'.
+// Release builds retain the published production API. Never run match QA on production.
+export const API_MODE = selectApiMode(__DEV__) as ApiMode;
 
 const getBaseUrl = (): string => {
   switch (API_MODE) {
