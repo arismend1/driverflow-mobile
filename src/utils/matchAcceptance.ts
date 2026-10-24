@@ -68,3 +68,33 @@ export const confirmRecordedAcceptanceAfterConflict = async (
         return false;
     }
 };
+
+// Normalize an HTTP consent failure without mistaking a non-JSON server
+// response for a network outage. Never echo HTML or arbitrary raw bodies.
+export const parseMatchActionError = (status: number, rawBody: string): {
+    error: string;
+    message: string;
+    exclusive_until?: string;
+} => {
+    let body: any = null;
+    try {
+        body = JSON.parse(rawBody);
+    } catch {
+        // HTTP status remains authoritative when the body is malformed.
+    }
+    const fallback = status === 403
+        ? 'You are not authorized to perform this action.'
+        : status === 404
+            ? 'This opportunity is no longer available to your account.'
+            : status === 409
+                ? 'This opportunity changed. Refresh and try again.'
+                : 'The request could not be completed.';
+    const error = typeof body?.error === 'string' ? body.error : `http_${status}`;
+    const message = typeof body?.message === 'string' && body.message.trim()
+        ? body.message : fallback;
+    return {
+        error,
+        message,
+        ...(typeof body?.exclusive_until === 'string' ? { exclusive_until: body.exclusive_until } : {}),
+    };
+};
