@@ -26,6 +26,19 @@ Release status: **SECURITY BRANCH ONLY — NOT PUBLISHED OR DEPLOYED**
 
 The decision logic lives in `src/utils/matchAcceptance.ts` and is covered by `__tests__/matchAcceptance.test.ts` (ten unit cases as of this report). The screen's full native UI and real-device flows have not been exercised here.
 
+
+## Verified match-stage presentation and TypeScript validation — October 23, 2026
+
+The mobile/backend compatibility audit found a user-visible one-sided acceptance mismatch. For a company or driver who has accepted but whose counterpart has not yet accepted, the backend can intentionally leave the persisted match `status='NEW'` while saving the accepting actor's `company_step1_accepted_at` or `driver_step1_accepted_at`. The mobile screen previously classified *every* `NEW` match in the New tab, even if this actor already accepted. Its expanded “Waiting for response” panel also required `status='ACCEPTED'`, so it did not appear for these `NEW` records.
+
+**Branch-only presentation fix:** `src/utils/matchStages.ts` defines pure role-aware tab and waiting helpers (commit `c3a38a0`). `src/screens/MatchesScreen.tsx` now places one-sided accepted `NEW`, `VIEWED`, or `CONTACTED` matches into **In Progress** and displays the waiting panel until the other party accepts (commit `83745d3`). Unaccepted opportunities remain in **New**; subsequent consent, billing-required, shared, and hired states retain their normal tabs. There are no backend status, payment, Stripe, authorization, or local-acceptance writes in this presentation change.
+
+Added `__tests__/matchStages.test.ts` with 7 cases (commit `4fd6d82`). The mobile security workflow now executes both this suite and `__tests__/matchAcceptance.test.ts`, plus a full `npx tsc --noEmit --pretty false` type check (workflow commit `6da0376`).
+
+**GitHub Actions verified:** [mobile run 40048322115](https://github.com/arismend1/driverflow-mobile/actions/runs/40048322115) on commit `6da0376` passed **2 Jest suites, 17/17 tests, 0 failed**, and the complete no-emission TypeScript check succeeded. The test cases exercise both company and driver one-sided accepted matches, waiting messages and tab transitions, finished matching states, and denial of missing roles/timestamps. These are pure-logic unit tests; the complete rendered screen and real device are not yet tested.
+
+**Real-device testing constraints:** `src/api/config.ts` currently sets `API_MODE='PRODUCTION'`. The published app points to a live API and is *not* suitable for exercising undeployed branch-only security changes. A safe phone test requires a distinct staging/test-only backend with fictional accounts, a test-only configured mobile build, and test-only Stripe/Firebase settings where relevant. The debug APK compiled in the CI workflow uses dummy Firebase configuration and must **not** be treated as a functional staging build.
+
 ## Verified mobile unit test result — October 23, 2026
 
 **GitHub Actions run #5 passed**, on code commit `24c5286e57fe4bc22485516e7d33c610d76f63a1`: [View successful mobile run](https://github.com/arismend1/driverflow-mobile/actions/runs/39946361299). The actual job logs show `PASS __tests__/matchAcceptance.test.ts`, **1 Jest suite passed and 10 of 10 unit tests passed, zero failed**. The dependency-install step also passed after using `npm ci --ignore-scripts --legacy-peer-deps --no-audit --no-fund`.
