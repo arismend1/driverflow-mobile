@@ -46,11 +46,18 @@ describe('match acceptance conflict reconciliation', () => {
         }, 700, 'driver')).toBe(false);
     });
 
-    it('rejects closed, declined, stale or pre-confirmation match states', () => {
-        for (const status of ['NEW', 'VIEWED', 'CONTACTED', 'ACCEPTED', 'CLOSED', 'DECLINED', 'EXPIRED']) {
+    it('rejects closed, declined or expired match states', () => {
+        for (const status of ['CLOSED', 'DECLINED', 'EXPIRED']) {
             expect(hasRecordedOwnAcceptance({ ...match, status }, 700, 'driver')).toBe(false);
         }
         expect(hasRecordedOwnAcceptance(null, 700, 'empresa')).toBe(false);
+    });
+
+    it('recognizes own recorded acceptance while the other actor is still pending', () => {
+        for (const status of ['NEW', 'VIEWED', 'CONTACTED', 'ACCEPTED']) {
+            expect(hasRecordedOwnAcceptance({ ...match, status, driver_step1_accepted_at: null }, 700, 'empresa')).toBe(true);
+            expect(hasRecordedOwnAcceptance({ ...match, status, company_step1_accepted_at: null }, 700, 'empresa')).toBe(false);
+        }
     });
 
     it('accepts already-completed consent/payment states but does not authorize payment', () => {
@@ -92,12 +99,18 @@ describe('fresh API check after an acceptance conflict', () => {
             [],
             [{ ...match, match_id: 702 }],
             [{ ...match, company_step1_accepted_at: null }],
-            [{ ...match, status: 'ACCEPTED' }],
+            [{ ...match, status: 'CLOSED' }],
         ]) {
             expect(await confirmRecordedAcceptanceAfterConflict(
                 409, 'invalid_match_state', 700, 'empresa', async () => rows
             )).toBe(false);
         }
+    });
+
+    it('reconciles a 409 on NEW only after a fresh owned acceptance timestamp', async () => {
+        const pending = { ...match, status: 'NEW', driver_step1_accepted_at: null };
+        expect(await confirmRecordedAcceptanceAfterConflict(409, 'match_update_conflict', 700, 'empresa', async () => [pending])).toBe(true);
+        expect(await confirmRecordedAcceptanceAfterConflict(409, 'match_update_conflict', 700, 'driver', async () => [pending])).toBe(false);
     });
 
     it('fails closed when refresh throws, or fails to return a list', async () => {
