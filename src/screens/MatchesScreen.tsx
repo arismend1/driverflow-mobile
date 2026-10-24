@@ -19,7 +19,7 @@ import RNPrint from 'react-native-print';
 import { API_URL } from '../api/config';
 import { postPayAndShare } from '../api/client';
 import { AuthContext } from '../context/AuthContext';
-import { confirmRecordedAcceptanceAfterConflict } from '../utils/matchAcceptance';
+import { confirmRecordedAcceptanceAfterConflict, parseMatchActionError } from '../utils/matchAcceptance';
 import { getMatchViewTab, isWaitingForOtherAcceptance } from '../utils/matchStages';
 
 const PAYMENT_POLL_INTERVAL_MS = 2500;
@@ -195,8 +195,8 @@ export default function MatchesScreen() {
                             fetchMatches();
                             return;
                         }
-                        const error = await resp.json();
-                        if (error?.error === 'driver_locked') {
+                        const error = parseMatchActionError(resp.status, await resp.text());
+                        if (error.error === 'driver_locked') {
                             Alert.alert('Profile Temporarily Unavailable', `You are currently in an evaluation period with another company.\n\n⏳ Available again: ${error.exclusive_until || 'soon'}`);
                             return;
                         }
