@@ -2,6 +2,7 @@ import {
     confirmRecordedAcceptanceAfterConflict,
     hasRecordedOwnAcceptance,
     isRecoverableAcceptanceConflict,
+    parseMatchActionError,
 } from '../src/utils/matchAcceptance';
 
 const match = {
@@ -122,5 +123,30 @@ describe('fresh API check after an acceptance conflict', () => {
         expect(await confirmRecordedAcceptanceAfterConflict(
             409, 'match_update_conflict', 700, 'driver', async () => null
         )).toBe(false);
+    });
+});
+
+
+describe('match consent HTTP error parsing', () => {
+    it('preserves meaningful 403, 404 and 409 statuses even with non-JSON bodies', () => {
+        expect(parseMatchActionError(403, '<html>Forbidden</html>').message).toContain('not authorized');
+        expect(parseMatchActionError(404, '').message).toContain('no longer available');
+        expect(parseMatchActionError(409, 'gateway error').message).toContain('changed');
+    });
+
+    it('preserves structured driver-lock details without granting consent', () => {
+        expect(parseMatchActionError(409, JSON.stringify({
+            error: 'driver_locked', exclusive_until: '2026-10-25T00:00:00Z'
+        }))).toEqual({
+            error: 'driver_locked',
+            message: 'This opportunity changed. Refresh and try again.',
+            exclusive_until: '2026-10-25T00:00:00Z',
+        });
+    });
+
+    it('does not display arbitrary HTML bodies or invalid message values', () => {
+        const result = parseMatchActionError(500, '<script>bad</script>');
+        expect(result.message).toBe('The request could not be completed.');
+        expect(parseMatchActionError(409, '{"message":42}').message).toContain('changed');
     });
 });
