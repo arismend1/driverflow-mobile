@@ -12,7 +12,11 @@ export type MatchAcceptanceSnapshot = {
     driver_step1_accepted_at?: string | null;
 };
 
-const recordedConsentStates = new Set([
+const recordedAcceptanceStates = new Set([
+    'NEW',
+    'VIEWED',
+    'CONTACTED',
+    'ACCEPTED',
     'PREMATCH_READY',
     'SHARE_PENDING_DRIVER',
     'SHARE_PENDING_COMPANY',
@@ -37,7 +41,7 @@ export const hasRecordedOwnAcceptance = (
     if (!match || (actorType !== 'driver' && actorType !== 'empresa')) return false;
     const id = match.match_id ?? match.id;
     if (id === undefined || id === null || String(id) !== String(requestedMatchId)) return false;
-    if (!recordedConsentStates.has(match.status || '')) return false;
+    if (!recordedAcceptanceStates.has(match.status || '')) return false;
     const acceptance = actorType === 'driver'
         ? match.driver_step1_accepted_at
         : match.company_step1_accepted_at;
