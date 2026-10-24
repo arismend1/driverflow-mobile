@@ -3,6 +3,8 @@ import {
     hasRecordedOwnAcceptance,
     isRecoverableAcceptanceConflict,
     parseMatchActionError,
+    acquireMatchAction,
+    releaseMatchAction,
 } from '../src/utils/matchAcceptance';
 
 const match = {
@@ -148,5 +150,17 @@ describe('match consent HTTP error parsing', () => {
         const result = parseMatchActionError(500, '<script>bad</script>');
         expect(result.message).toBe('The request could not be completed.');
         expect(parseMatchActionError(409, '{"message":42}').message).toContain('changed');
+    });
+});
+
+
+describe('single-flight consent guard', () => {
+    it('blocks duplicate confirmation until the first request settles', () => {
+        const inFlight = new Set<string>();
+        expect(acquireMatchAction(inFlight, 700)).toBe(true);
+        expect(acquireMatchAction(inFlight, '700')).toBe(false);
+        expect(acquireMatchAction(inFlight, 701)).toBe(true);
+        releaseMatchAction(inFlight, 700);
+        expect(acquireMatchAction(inFlight, 700)).toBe(true);
     });
 });
