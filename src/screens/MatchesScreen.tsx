@@ -65,6 +65,7 @@ export default function MatchesScreen() {
     const [acceptingMatchId, setAcceptingMatchId] = useState<string | null>(null);
     const acceptingMatchRequests = useRef(new Set<string>());
     const confirmingMatchRequests = useRef(new Set<string>());
+    const payingMatchRequests = useRef(new Set<string>());
 
     const fetchMatches = useCallback(async (options: { silent?: boolean } = {}) => {
         try {
@@ -241,6 +242,8 @@ export default function MatchesScreen() {
             await fetchMatches({ silent: true });
             return;
         }
+        // Prevent concurrent sheets/PaymentIntent initialization before React re-renders.
+        if (!acquireMatchAction(payingMatchRequests.current, matchId)) return;
 
         let pinLockSuppressed = false;
         setPayingMatchId(matchId);
@@ -310,6 +313,7 @@ export default function MatchesScreen() {
             if (pinLockSuppressed) {
                 resumePinLock();
             }
+            releaseMatchAction(payingMatchRequests.current, matchId);
             setPayingMatchId(null);
             setPendingPaymentMatchId((current: any) => current === matchId ? null : current);
         }
