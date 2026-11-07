@@ -7,6 +7,10 @@ on:
     paths:
       - 'src/screens/MatchesScreen.tsx'
       - 'src/utils/matchAcceptance.ts'
+      - 'src/utils/matchPrivacy.ts'
+      - 'src/utils/matchStages.ts'
+      - '__tests__/matchPrivacy.test.ts'
+      - '__tests__/matchStages.test.ts'
       - 'src/api/config.ts'
       - 'src/api/apiMode.ts'
       - '__tests__/matchAcceptance.test.ts'
