@@ -154,6 +154,17 @@ describe('match consent HTTP error parsing', () => {
 });
 
 
+describe('single-flight pay-and-share guard', () => {
+    it('prevents two immediate payment starts for one match until cleanup', () => {
+        const inFlight = new Set<string>();
+        expect(acquireMatchAction(inFlight, 703)).toBe(true);
+        expect(acquireMatchAction(inFlight, '703')).toBe(false);
+        expect(acquireMatchAction(inFlight, 704)).toBe(true);
+        releaseMatchAction(inFlight, 703);
+        expect(acquireMatchAction(inFlight, '703')).toBe(true);
+    });
+});
+
 describe('single-flight consent guard', () => {
     it('blocks duplicate confirmation until the first request settles', () => {
         const inFlight = new Set<string>();
