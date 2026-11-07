@@ -8,7 +8,7 @@
 ## Condiciones indispensables antes de instalar
 
 - [ ] Preparar un backend **staging** independiente de Render/producción, con PostgreSQL temporal y registros ficticios. No copiar datos privados ni tarjetas reales.
-- [ ] Crear una compilación móvil de **pruebas** que use solamente la dirección HTTPS de ese staging. Actualmente `src/api/config.ts` indica `API_MODE = 'PRODUCTION'`; no usar la app publicada para validar cambios que aún no están desplegados.
+- [ ] Crear una compilación móvil de **pruebas** que apunte solamente a staging. El código actual usa `selectApiMode(__DEV__)`: debug selecciona `DEVICE_ADB` (backend local a través de `adb reverse tcp:3000 tcp:3000`) y release selecciona `PRODUCTION`. No usar la app publicada para validar cambios de las ramas de seguridad.
 - [ ] Configurar Firebase de pruebas adecuado a la app de staging si hay que verificar notificaciones. El `google-services.json` ficticio creado por CI sirve para comprobar compilación, **no** para probar notificaciones reales.
 - [ ] Verificar que pagos se ejecuten **exclusivamente** con claves y cuentas Stripe de prueba, o limitar QA a los estados previos al pago.
 - [ ] Tener dos cuentas ficticias: conductor A y compañía A; para autorización negativa, una compañía B independiente. Usar solo identificadores y contactos ficticios.
@@ -36,3 +36,9 @@ Guardar únicamente información ficticia: capturas sin datos personales, estado
 **No aprobado** si el teléfono muestra contactos antes de autorización, permite operar sobre matches ajenos, duplica aceptación por toques rápidos, o convierte un conflicto de backend en éxito sin verificar el consentimiento existente.
 
 **Pendiente:** este plan no reemplaza las pruebas manuales en un teléfono conectado ni autoriza publicar en Google Play. Nunca desplegar versiones de seguridad sin revisión y aprobación explícitas.
+
+## Actualización de CI — 7 de noviembre de 2026
+
+- El workflow `.github/workflows/mobile-android-debug-validation.yml` ahora se ejecuta ante cambios en `matchPrivacy.ts`, `matchStages.ts` y sus pruebas; conserva el APK debug como artefacto GitHub `driverflow-ci-debug-not-production` durante 7 días si el job pasa.
+- El APK usa `google-services.json` ficticio y solo confirma compilación; **no constituye un cliente staging con Firebase funcional**. La autenticación y notificaciones requieren backend/Firebase de pruebas válidos.
+- Ejecutar la prueba física en un teléfono sigue pendiente hasta tener backend staging separado de producción y cuentas ficticias. No confundir un estado verde de CI con una ejecución en dispositivo.
