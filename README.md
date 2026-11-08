@@ -31,6 +31,15 @@ adb reverse tcp:8081 tcp:8081
 adb reverse --list
 ```
 
+Para validar la preparación local sin iniciar sesión ni enviar datos, ejecutar en la raíz del repositorio:
+
+```powershell
+node scripts/check_android_qa_device.js
+```
+
+Este diagnóstico verifica que hay exactamente un dispositivo autorizado, `adb reverse` en el puerto 3000, `DriverFlow QA` instalada, `/health` respondiendo en la PC y un archivo Firebase QA con estructura válida. **No demuestra que el servidor use una base de datos ficticia ni que Firebase esté conectado**; eso debe comprobarse de forma independiente antes de iniciar sesión.
+
+
 - Puerto 3000: API aislada de pruebas en la PC.
 - Puerto 8081: Metro para una compilación React Native debug.
 - Solo las compilaciones debug permiten HTTP para la API de pruebas en loopback; release mantiene tráfico sin cifrar deshabilitado. El modo debug no ofrece una alternativa automática mediante IP fija de LAN.
