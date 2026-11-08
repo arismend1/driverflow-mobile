@@ -51,13 +51,13 @@ android {
             applicationIdSuffix ".qa"
             versionNameSuffix "-qa"
             // Plain HTTP is only for the disposable local API over adb reverse.
-            manifestPlaceholders = [usesCleartextTraffic: "true"]
+            manifestPlaceholders = [usesCleartextTraffic: "true", driverflowDeepLinkScheme: "driverflow-qa"]
             signingConfig signingConfigs.debug
         }
 
         release {
             // Production API must use HTTPS; do not permit plain HTTP traffic.
-            manifestPlaceholders = [usesCleartextTraffic: "false"]
+            manifestPlaceholders = [usesCleartextTraffic: "false", driverflowDeepLinkScheme: "driverflow"]
             signingConfig signingConfigs.release
             minifyEnabled false
             shrinkResources false
