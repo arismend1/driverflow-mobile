@@ -6,6 +6,7 @@ Aplicación React Native 0.83.1. Este repositorio contiene código de la aplicac
 
 - Android applicationId: `com.driverflow.official` (ver `android/app/build.gradle`).
 - En compilaciones **debug QA**, Gradle agrega `.qa`: identificador `com.driverflow.official.qa`. Esto permite instalar QA junto a la aplicación oficial, sin reemplazarla.
+- En el teléfono, la app de pruebas se muestra como **DriverFlow QA**; la versión oficial conserva el nombre **DriverFlow**.
 - Los enlaces profundos también están separados: `driverflow-qa://` en debug y `driverflow://` en release. Así QA no reclama enlaces destinados a producción.
 - Rama de QA aislada: `security-mobile-phase1-2026-10`.
 - El backend de QA se mantiene por separado en `arismend1/driverflow-backend`, rama `security-billing-phase1-2026-10`.
