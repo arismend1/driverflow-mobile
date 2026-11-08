@@ -18,6 +18,12 @@ on:
       - '.github/workflows/mobile-android-debug-validation.yml'
   workflow_dispatch:
 
+# Cancel obsolete debug builds on the same security branch. Otherwise
+# repeated fixes can leave several heavy Gradle jobs running concurrently.
+concurrency:
+  group: driverflow-android-qa-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
