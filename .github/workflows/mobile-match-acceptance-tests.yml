@@ -44,6 +44,8 @@ jobs:
           fi
           grep -Fq 'com.driverflow.official' README.md
           grep -Fq 'applicationId "com.driverflow.official"' android/app/build.gradle
+          grep -Fq 'applicationIdSuffix ".qa"' android/app/build.gradle
+          grep -Fq '"package_name": "com.driverflow.official.qa"' .github/workflows/mobile-android-debug-validation.yml
           grep -Fq 'adb reverse tcp:3000 tcp:3000' README.md
           grep -Fq 'ficticio' README.md
       - name: Run isolated mobile conflict-reconciliation tests
