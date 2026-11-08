@@ -61,7 +61,7 @@ jobs:
               {
                 "client_info": {
                   "mobilesdk_app_id": "1:123456789012:android:abcdef123456abcdef123456",
-                  "android_client_info": {"package_name": "com.driverflow.official"}
+                  "android_client_info": {"package_name": "com.driverflow.official.qa"}
                 },
                 "oauth_client": [],
                 "api_key": [{"current_key": "CI_DUMMY_DO_NOT_USE"}],
