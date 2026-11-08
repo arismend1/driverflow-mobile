@@ -1,0 +1,4 @@
+<resources>
+    <!-- Distinguish test installation from official DriverFlow on Android. -->
+    <string name="app_name">DriverFlow QA</string>
+</resources>
