@@ -50,10 +50,14 @@ android {
             // A test APK must never replace com.driverflow.official on a phone.
             applicationIdSuffix ".qa"
             versionNameSuffix "-qa"
+            // Plain HTTP is only for the disposable local API over adb reverse.
+            manifestPlaceholders = [usesCleartextTraffic: "true"]
             signingConfig signingConfigs.debug
         }
 
         release {
+            // Production API must use HTTPS; do not permit plain HTTP traffic.
+            manifestPlaceholders = [usesCleartextTraffic: "false"]
             signingConfig signingConfigs.release
             minifyEnabled false
             shrinkResources false
