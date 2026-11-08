@@ -11,6 +11,7 @@ on:
       - 'src/utils/matchPrivacy.ts'
       - 'src/api/config.ts'
       - 'src/api/apiMode.ts'
+      - 'README.md'
       - '__tests__/apiMode.test.ts'
       - '__tests__/matchAcceptance.test.ts'
       - '__tests__/matchStages.test.ts'
@@ -35,6 +36,16 @@ jobs:
           cache: npm
       - name: Install CI dependencies without package scripts
         run: npm ci --ignore-scripts --legacy-peer-deps --no-audit --no-fund
+      - name: Validate Android QA documentation and identity
+        shell: bash
+        run: |
+          if grep -nE '^(<<<<<<<|=======|>>>>>>>)' README.md; then
+            echo "Unresolved README merge conflict"; exit 1
+          fi
+          grep -Fq 'com.driverflow.official' README.md
+          grep -Fq 'applicationId "com.driverflow.official"' android/app/build.gradle
+          grep -Fq 'adb reverse tcp:3000 tcp:3000' README.md
+          grep -Fq 'ficticio' README.md
       - name: Run isolated mobile conflict-reconciliation tests
         run: npx jest __tests__/matchAcceptance.test.ts __tests__/matchStages.test.ts __tests__/matchPrivacy.test.ts __tests__/apiMode.test.ts --runInBand
       - name: Check TypeScript types without emitting app code
