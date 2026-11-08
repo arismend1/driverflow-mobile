@@ -21,6 +21,16 @@ function assertReverseForwarding(output) {
   return true;
 }
 
+function assertDisposableIdentity(status, identity) {
+  if (status !== 200 ||
+      identity?.mode !== 'disposable-http-integration-only' ||
+      identity?.database !== 'driverflow_security_test' ||
+      identity?.user !== 'driverflow_test') {
+    throw new Error('QA_LOCAL_API_NOT_DISPOSABLE');
+  }
+  return true;
+}
+
 function assertLocalHealth(status, body) {
   if (status !== 200 || body?.status !== 'ok') throw new Error('QA_LOCAL_API_HEALTH_UNAVAILABLE');
   return true;
@@ -30,6 +40,11 @@ async function runReadiness({
   adb = (args) => execFileSync('adb', args, { encoding: 'utf8', timeout: 10000 }),
   httpGet = async () => {
     const response = await fetch('http://127.0.0.1:3000/health',
+      { signal: AbortSignal.timeout(5000) });
+    return { status: response.status, body: await response.json() };
+  },
+  identityGet = async () => {
+    const response = await fetch('http://127.0.0.1:3000/__qa/identity',
       { signal: AbortSignal.timeout(5000) });
     return { status: response.status, body: await response.json() };
   },
@@ -47,13 +62,15 @@ async function runReadiness({
   }
   const health = await httpGet();
   assertLocalHealth(health.status, health.body);
+  const identity = await identityGet();
+  assertDisposableIdentity(identity.status, identity.body);
   return { serial, ready: true };
 }
 
 if (require.main === module) {
   runReadiness().then(() => {
-    console.log('QA_DEVICE_PREFLIGHT_OK: device, local reverse, app and health');
-    console.log('WARNING: database isolation, Firebase connectivity and notifications NOT verified');
+    console.log('QA_DEVICE_PREFLIGHT_OK: device, reverse, local app, health and disposable identity');
+    console.log('WARNING: Firebase connectivity, notifications and backend feature readiness NOT verified');
   }).catch(error => {
     // Do not print raw child-process error objects, response bodies or secrets.
     console.error(/^QA_|^FIREBASE_/.test(error.message)
@@ -62,4 +79,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { assertExactlyOneDevice, assertReverseForwarding, assertLocalHealth, runReadiness };
+module.exports = { assertExactlyOneDevice, assertReverseForwarding, assertLocalHealth, assertDisposableIdentity, runReadiness };
