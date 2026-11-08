@@ -37,7 +37,7 @@ Para validar la preparación local sin iniciar sesión ni enviar datos, ejecutar
 node scripts/check_android_qa_device.js
 ```
 
-Este diagnóstico verifica que hay exactamente un dispositivo autorizado, `adb reverse` en el puerto 3000, `DriverFlow QA` instalada, `/health` respondiendo en la PC y un archivo Firebase QA con estructura válida. **No demuestra que el servidor use una base de datos ficticia ni que Firebase esté conectado**; eso debe comprobarse de forma independiente antes de iniciar sesión.
+Este diagnóstico verifica que hay exactamente un dispositivo autorizado, `adb reverse` en el puerto 3000, `DriverFlow QA` instalada, `/health` respondiendo en la PC y un archivo Firebase QA con estructura válida. Además exige que `/__qa/identity` identifique la base temporal exacta `driverflow_security_test` y el usuario `driverflow_test`; una API de producción que solo responda correctamente a `/health` será rechazada. **Esto no demuestra que Firebase esté conectado ni que las funciones del backend estén listas**; ambas deben comprobarse aparte antes de iniciar sesión.
 
 
 - Puerto 3000: API aislada de pruebas en la PC.
