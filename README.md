@@ -31,6 +31,7 @@ adb reverse --list
 
 - Puerto 3000: API aislada de pruebas en la PC.
 - Puerto 8081: Metro para una compilación React Native debug.
+- Solo las compilaciones debug permiten HTTP para la API de pruebas en loopback; release mantiene tráfico sin cifrar deshabilitado. El modo debug no ofrece una alternativa automática mediante IP fija de LAN.
 - No se puede inferir que el backend está funcional por el simple hecho de que el comando `adb reverse` haya terminado correctamente.
 - Verificar `http://127.0.0.1:3000/health` **en la PC** antes de iniciar la app y probar con cuentas ficticias.
 - No introducir credenciales reales ni enlaces Stripe live.
