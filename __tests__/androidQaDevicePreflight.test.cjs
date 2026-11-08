@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { assertExactlyOneDevice, assertReverseForwarding, assertLocalHealth, runReadiness } =
+const { assertExactlyOneDevice, assertReverseForwarding, assertLocalHealth, assertDisposableIdentity, runReadiness } =
   require('../scripts/check_android_qa_device');
 
 test('ADB refuses zero, unauthorized or multiple devices', () => {
@@ -23,6 +23,15 @@ test('local API health refuses malformed and failed replies', () => {
   assert.equal(assertLocalHealth(200, { status: 'ok' }), true);
 });
 
+test('backend identity must match disposable database, not just healthy server', () => {
+  const good = { mode: 'disposable-http-integration-only',
+    database: 'driverflow_security_test', user: 'driverflow_test' };
+  assert.equal(assertDisposableIdentity(200, good), true);
+  assert.throws(() => assertDisposableIdentity(200, { status: 'ok' }), /NOT_DISPOSABLE/);
+  assert.throws(() => assertDisposableIdentity(200, { ...good, database: 'driverflow' }), /NOT_DISPOSABLE/);
+  assert.throws(() => assertDisposableIdentity(503, good), /NOT_DISPOSABLE/);
+});
+
 test('full device readiness uses only mock read-only checks', async () => {
   const calls = [];
   const result = await runReadiness({
@@ -34,6 +43,11 @@ test('full device readiness uses only mock read-only checks', async () => {
       return 'package:com.driverflow.official.qa\n';
     },
     httpGet: async () => ({ status: 200, body: { status: 'ok' } }),
+    identityGet: async () => ({ status: 200, body: {
+      mode: 'disposable-http-integration-only',
+      database: 'driverflow_security_test',
+      user: 'driverflow_test'
+    } }),
   });
   assert.equal(result.serial, 'QA123');
   assert.deepEqual(calls, [
