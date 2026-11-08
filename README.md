@@ -5,6 +5,7 @@ Aplicación React Native 0.83.1. Este repositorio contiene código de la aplicac
 ## Identidad y ramas
 
 - Android applicationId: `com.driverflow.official` (ver `android/app/build.gradle`).
+- En compilaciones **debug QA**, Gradle agrega `.qa`: identificador `com.driverflow.official.qa`. Esto permite instalar QA junto a la aplicación oficial, sin reemplazarla.
 - Rama de QA aislada: `security-mobile-phase1-2026-10`.
 - El backend de QA se mantiene por separado en `arismend1/driverflow-backend`, rama `security-billing-phase1-2026-10`.
 - No modificar `main`, `driverflow-stable`, producción, Stripe real, Render ni Google Play sin autorización específica.
@@ -42,7 +43,7 @@ npx jest __tests__/matchAcceptance.test.ts __tests__/matchStages.test.ts __tests
 npx tsc --noEmit
 ```
 
-Para compilar Android debug localmente se requiere un archivo `android/app/google-services.json` válido para un proyecto Firebase **de pruebas**, sin usar credenciales del proyecto real. Después, desde la raíz del repositorio, ejecutar `npx react-native run-android` con el dispositivo de pruebas conectado.
+Para compilar Android debug localmente se requiere un archivo `android/app/google-services.json` válido para un proyecto Firebase **de pruebas**, con aplicación Android registrada exactamente como `com.driverflow.official.qa`, sin usar credenciales del proyecto real. Después, desde la raíz del repositorio, ejecutar `npx react-native run-android` con el dispositivo de pruebas conectado.
 
 El workflow `.github/workflows/mobile-android-debug-validation.yml` crea expresamente un `google-services.json` **ficticio** solo para validar compilación. Su APK de CI **no tiene Firebase funcional** y su existencia no demuestra inicio de sesión ni notificaciones en un dispositivo. No distribuirla como versión operativa.
 
