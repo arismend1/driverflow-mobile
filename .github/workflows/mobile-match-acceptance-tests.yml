@@ -45,12 +45,13 @@ jobs:
           grep -Fq 'com.driverflow.official' README.md
           grep -Fq 'applicationId "com.driverflow.official"' android/app/build.gradle
           grep -Fq 'applicationIdSuffix ".qa"' android/app/build.gradle
-          grep -Fq 'manifestPlaceholders = [usesCleartextTraffic: "true"]' android/app/build.gradle
-          grep -Fq 'manifestPlaceholders = [usesCleartextTraffic: "false"]' android/app/build.gradle
+          grep -Fq 'manifestPlaceholders = [usesCleartextTraffic: "true", driverflowDeepLinkScheme: "driverflow-qa"]' android/app/build.gradle
+          grep -Fq 'manifestPlaceholders = [usesCleartextTraffic: "false", driverflowDeepLinkScheme: "driverflow"]' android/app/build.gradle
           if grep -Fq '192.168.1.99' src/api/config.ts; then
             echo "Stale hardcoded LAN address detected"; exit 1
           fi
           grep -Fq '"package_name": "com.driverflow.official.qa"' .github/workflows/mobile-android-debug-validation.yml
+          grep -Fq 'android:scheme="${driverflowDeepLinkScheme}"' android/app/src/main/AndroidManifest.xml
           grep -Fq 'adb reverse tcp:3000 tcp:3000' README.md
           grep -Fq 'ficticio' README.md
       - name: Run isolated mobile conflict-reconciliation tests
