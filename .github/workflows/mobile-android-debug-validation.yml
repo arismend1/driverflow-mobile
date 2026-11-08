@@ -89,8 +89,9 @@ jobs:
           AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
           test -x "$AAPT"
           "$AAPT" dump badging "$APK" | grep -q "^package: name='com.driverflow.official.qa'"
-          grep -Fq 'manifestPlaceholders = [usesCleartextTraffic: "true"]' android/app/build.gradle
-          grep -Fq 'manifestPlaceholders = [usesCleartextTraffic: "false"]' android/app/build.gradle
+          "$AAPT" dump xmltree "$APK" AndroidManifest.xml | grep -q 'driverflow-qa'
+          grep -Fq 'manifestPlaceholders = [usesCleartextTraffic: "true", driverflowDeepLinkScheme: "driverflow-qa"]' android/app/build.gradle
+          grep -Fq 'manifestPlaceholders = [usesCleartextTraffic: "false", driverflowDeepLinkScheme: "driverflow"]' android/app/build.gradle
           echo "QA app ID and build type HTTP policy verified"
       - name: Verify debug APK generated
         run: test -s android/app/build/outputs/apk/debug/app-debug.apk
