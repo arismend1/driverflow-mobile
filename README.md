@@ -46,7 +46,9 @@ npx jest __tests__/matchAcceptance.test.ts __tests__/matchStages.test.ts __tests
 npx tsc --noEmit
 ```
 
-Para compilar Android debug localmente se requiere un archivo `android/app/google-services.json` válido para un proyecto Firebase **de pruebas**, con aplicación Android registrada exactamente como `com.driverflow.official.qa`, sin usar credenciales del proyecto real. Después, desde la raíz del repositorio, ejecutar `npx react-native run-android` con el dispositivo de pruebas conectado.
+Para compilar Android debug localmente se requiere un archivo `android/app/google-services.json` válido para un proyecto Firebase **de pruebas**, con aplicación Android registrada exactamente como `com.driverflow.official.qa`, sin usar credenciales del proyecto real.
+
+Antes de instalar la APK en un dispositivo, ejecutar `node scripts/check_firebase_qa.js` en la raíz del repositorio. Este control rechaza el Firebase ficticio de CI y configuraciones con el identificador de producción. **Solo comprueba la estructura del archivo y la identidad Android:** no demuestra que el proyecto exista, que su clave funcione ni que lleguen notificaciones. No subir `google-services.json` a GitHub. Después, desde la raíz del repositorio, ejecutar `npx react-native run-android` con el dispositivo de pruebas conectado.
 
 El workflow `.github/workflows/mobile-android-debug-validation.yml` crea expresamente un `google-services.json` **ficticio** solo para validar compilación. Su APK de CI **no tiene Firebase funcional** y su existencia no demuestra inicio de sesión ni notificaciones en un dispositivo. No distribuirla como versión operativa.
 
