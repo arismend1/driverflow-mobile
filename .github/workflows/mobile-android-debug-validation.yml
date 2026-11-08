@@ -15,6 +15,7 @@ on:
       - 'src/api/apiMode.ts'
       - '__tests__/matchAcceptance.test.ts'
       - 'android/app/build.gradle'
+      - 'android/app/src/debug/res/values/strings.xml'
       - '.github/workflows/mobile-android-debug-validation.yml'
   workflow_dispatch:
 
@@ -89,6 +90,7 @@ jobs:
           AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
           test -x "$AAPT"
           "$AAPT" dump badging "$APK" | grep -q "^package: name='com.driverflow.official.qa'"
+          "$AAPT" dump badging "$APK" | grep -Fq "application-label:'DriverFlow QA'"
           "$AAPT" dump xmltree "$APK" AndroidManifest.xml | grep -q 'driverflow-qa'
           grep -Fq 'manifestPlaceholders = [usesCleartextTraffic: "true", driverflowDeepLinkScheme: "driverflow-qa"]' android/app/build.gradle
           grep -Fq 'manifestPlaceholders = [usesCleartextTraffic: "false", driverflowDeepLinkScheme: "driverflow"]' android/app/build.gradle
