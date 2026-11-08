@@ -14,7 +14,7 @@ function validateFirebaseQaConfig(config) {
   }
   const projectId = config.project_info?.project_id;
   const projectNumber = String(config.project_info?.project_number || '');
-  if (!projectId || !/^\\d{6,}$/.test(projectNumber)) {
+  if (!projectId || !/^\d{6,}$/.test(projectNumber)) {
     throw new Error('FIREBASE_QA_INVALID_PROJECT');
   }
   if (INVALID_MARKERS.some(marker =>
@@ -29,7 +29,7 @@ function validateFirebaseQaConfig(config) {
   if (selected.length !== 1 || clients.length !== 1) {
     throw new Error('FIREBASE_QA_PACKAGE_MISMATCH_OR_MIXED_CONFIG');
   }
-  if (!/^1:\\d+:android:[a-fA-F0-9]+$/.test(
+  if (!/^1:\d+:android:[a-fA-F0-9]+$/.test(
     selected[0]?.client_info?.mobilesdk_app_id || ''
   )) {
     throw new Error('FIREBASE_QA_INVALID_MOBILE_APP_ID');
