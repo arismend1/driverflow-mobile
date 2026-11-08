@@ -14,6 +14,8 @@ on:
       - 'README.md'
       - 'scripts/check_firebase_qa.js'
       - '__tests__/firebaseQaPreflight.test.cjs'
+      - 'scripts/check_android_qa_device.js'
+      - '__tests__/androidQaDevicePreflight.test.cjs'
       - '__tests__/apiMode.test.ts'
       - '__tests__/matchAcceptance.test.ts'
       - '__tests__/matchStages.test.ts'
@@ -58,6 +60,8 @@ jobs:
           grep -Fq 'ficticio' README.md
       - name: Verify isolated Firebase QA preflight does not accept CI dummy or production
         run: node --test __tests__/firebaseQaPreflight.test.cjs
+      - name: Verify device QA preflight with synthetic ADB and HTTP
+        run: node --test __tests__/androidQaDevicePreflight.test.cjs
       - name: Run isolated mobile conflict-reconciliation tests
         run: npx jest __tests__/matchAcceptance.test.ts __tests__/matchStages.test.ts __tests__/matchPrivacy.test.ts __tests__/apiMode.test.ts --runInBand
       - name: Check TypeScript types without emitting app code
