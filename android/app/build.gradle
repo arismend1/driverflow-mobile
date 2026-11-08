@@ -46,6 +46,10 @@ android {
 
     buildTypes {
         debug {
+            // QA debug installs beside the official production application.
+            // A test APK must never replace com.driverflow.official on a phone.
+            applicationIdSuffix ".qa"
+            versionNameSuffix "-qa"
             signingConfig signingConfigs.debug
         }
 
