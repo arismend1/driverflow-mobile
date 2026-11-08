@@ -12,6 +12,8 @@ on:
       - 'src/api/config.ts'
       - 'src/api/apiMode.ts'
       - 'README.md'
+      - 'scripts/check_firebase_qa.js'
+      - '__tests__/firebaseQaPreflight.test.cjs'
       - '__tests__/apiMode.test.ts'
       - '__tests__/matchAcceptance.test.ts'
       - '__tests__/matchStages.test.ts'
@@ -54,6 +56,8 @@ jobs:
           grep -Fq 'android:scheme="${driverflowDeepLinkScheme}"' android/app/src/main/AndroidManifest.xml
           grep -Fq 'adb reverse tcp:3000 tcp:3000' README.md
           grep -Fq 'ficticio' README.md
+      - name: Verify isolated Firebase QA preflight does not accept CI dummy or production
+        run: node --test __tests__/firebaseQaPreflight.test.cjs
       - name: Run isolated mobile conflict-reconciliation tests
         run: npx jest __tests__/matchAcceptance.test.ts __tests__/matchStages.test.ts __tests__/matchPrivacy.test.ts __tests__/apiMode.test.ts --runInBand
       - name: Check TypeScript types without emitting app code
