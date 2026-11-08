@@ -1,95 +1,53 @@
-<<<<<<< HEAD
-# DriverFlow Mobile App
+# DriverFlow — Aplicación móvil Android
 
-Proyecto React Native oficial para DriverFlow.
+Aplicación React Native 0.83.1. Este repositorio contiene código de la aplicación existente, no un proyecto nuevo.
 
-## Estructura
-- `android/`: Proyecto nativo Android.
-- `src/`: Código fuente React Native (components, screens).
+## Identidad y ramas
 
-## Requisitos
-- Node.js LTS
-- JDK 17+
-- Android Studio / Android SDK
+- Android applicationId: `com.driverflow.official` (ver `android/app/build.gradle`).
+- Rama de QA aislada: `security-mobile-phase1-2026-10`.
+- El backend de QA se mantiene por separado en `arismend1/driverflow-backend`, rama `security-billing-phase1-2026-10`.
+- No modificar `main`, `driverflow-stable`, producción, Stripe real, Render ni Google Play sin autorización específica.
 
-## Configuración
-El `applicationId` oficial es: `com.driverflow.app`.
+## Requisitos para pruebas locales
 
-## Ejecución (Android)
-```bash
-# Instalar dependencias
-npm install
+Node.js 22, JDK 17, Android SDK/API 36, un teléfono Android con depuración USB o un emulador, ADB y un backend **aislado** de pruebas que esté escuchando en el puerto 3000.
 
-# Ejecutar en emulador/dispositivo
-npx react-native run-android
+Las pruebas GitHub Actions del backend con PostgreSQL desechable no levantan un servidor permanente. No son una URL accesible desde el teléfono. Antes de iniciar sesión, el backend de pruebas debe tener el esquema necesario y cuentas ficticias; nunca apuntar el teléfono de QA a producción.
+
+## Configuración de API
+
+`src/api/apiMode.ts` selecciona `DEVICE_ADB` cuando `__DEV__` es verdadero y `PRODUCTION` en modo release.
+
+En Android debug, `DEVICE_ADB` utiliza `http://127.0.0.1:3000`. Ese localhost pertenece al teléfono. Para conectarlo al backend local de la PC es necesario configurar **ADB reverse**, no usar la IP de producción.
+
+```powershell
+adb devices
+adb reverse tcp:3000 tcp:3000
+adb reverse tcp:8081 tcp:8081
+adb reverse --list
 ```
 
-## Build (Release)
-Para generar el App Bundle (.aab):
-```bash
-cd android
-./gradlew bundleRelease
-```
-El archivo se generará en `android/app/build/outputs/bundle/release/app-release.aab`.
-=======
-# BizTrack Mobile App
+- Puerto 3000: API aislada de pruebas en la PC.
+- Puerto 8081: Metro para una compilación React Native debug.
+- No se puede inferir que el backend está funcional por el simple hecho de que el comando `adb reverse` haya terminado correctamente.
+- Verificar `http://127.0.0.1:3000/health` **en la PC** antes de iniciar la app y probar con cuentas ficticias.
+- No introducir credenciales reales ni enlaces Stripe live.
 
-Aplicación móvil oficial de BizTrack construida con React Native (Expo).
+## Compilación y pruebas
 
-## Conexión Backend
-Esta app está configurada para conectarse al backend en producción:
-- **URL**: `https://biztrack-backend-eebz.onrender.com/api`
-- **Archivo de Configuración**: `src/constants/api.js`
-
-## Estructura del Proyecto
-- `App.js`: Entrada principal y navegación.
-- `src/api/`: Cliente HTTP (Axios) con interceptores de seguridad.
-- `src/context/`: Gestión de estado global (AuthContext).
-- `src/screens/`: Pantallas (Login, Register, Dashboard).
-- `src/constants/`: Variables de configuración.
-
-## Instrucciones de Instalación
-
-### 1. Requisitos Previos
-- Node.js instalado.
-- Celular Android o Emulador.
-
-### 2. Instalar Dependencias
-Si acabas de clonar el proyecto, ejecuta:
-```bash
-npm install
+```powershell
+npm ci --legacy-peer-deps
+npx jest __tests__/matchAcceptance.test.ts __tests__/matchStages.test.ts __tests__/matchPrivacy.test.ts __tests__/apiMode.test.ts --runInBand
+npx tsc --noEmit
 ```
 
-### 3. Correr la App en Desarrollo
-Para iniciar el servidor de desarrollo:
-```bash
-npx expo start
-```
-- Escanea el código QR con la app **Expo Go** en tu Android.
-- O presiona `a` para abrir en Emulador Android.
+Para compilar Android debug localmente se requiere un archivo `android/app/google-services.json` válido para un proyecto Firebase **de pruebas**, sin usar credenciales del proyecto real. Después, desde la raíz del repositorio, ejecutar `npx react-native run-android` con el dispositivo de pruebas conectado.
 
-### 4. Generar APK / AAB para Google Play
-Para generar el archivo lista para producción:
+El workflow `.github/workflows/mobile-android-debug-validation.yml` crea expresamente un `google-services.json` **ficticio** solo para validar compilación. Su APK de CI **no tiene Firebase funcional** y su existencia no demuestra inicio de sesión ni notificaciones en un dispositivo. No distribuirla como versión operativa.
 
-1. Instalar EAS CLI:
-   ```bash
-   npm install -g eas-cli
-   ```
-2. Iniciar sesión en Expo:
-   ```bash
-   eas login
-   ```
-3. Configurar el proyecto:
-   ```bash
-   eas build:configure
-   ```
-4. Generar la build (Android):
-   ```bash
-   eas build -p android
-   ```
-   - Esto generará un archivo `.aab` listo para subir a la Google Play Console.
+## Límites de QA
 
-## Notas Importantes
-- La app maneja autenticación persistente.
-- Si hay errores de conexión, verifica que el backend en Render esté activo (puede tardar unos segundos en despertar si está dormido).
->>>>>>> 9cc9bda66741ca4f160429359f4273107ce06219
+Las pruebas automatizadas actuales comprueban compilación, selección de API y lógica de oportunidades. Todavía hace falta validar conectividad con backend persistente de pruebas, Firebase de pruebas, inicio de sesión real en teléfono, notificaciones y el flujo integral Android. Ningún resultado CI autoriza publicar en Google Play.
+
+Los antiguos bloques de instrucciones de BizTrack/Expo y los marcadores de conflicto se han eliminado porque no describen este proyecto.
