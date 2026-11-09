@@ -20,3 +20,13 @@ export const resolvePinStartupState = (
   }
   return { appLocked: false, pinGate: null };
 };
+
+/**
+ * A correct PIN can unlock the locally restored session without another
+ * password login. The backend still verifies the bearer token on API calls.
+ * Never use a mismatched, missing or non-persisted token to unlock.
+ */
+export const hasRestoredSecureSession = (
+  activeToken: string | null,
+  persistedToken: string | null,
+): boolean => Boolean(activeToken && persistedToken && activeToken === persistedToken);
