@@ -12,6 +12,9 @@ on:
       - 'src/api/config.ts'
       - 'src/api/apiMode.ts'
       - 'src/security/secureAuthStorage.ts'
+      - 'src/security/pinStartupState.ts'
+      - 'src/screens/PinScreen.tsx'
+      - 'src/components/PinLockOverlay.tsx'
       - 'src/context/AuthContext.tsx'
       - 'README.md'
       - 'scripts/check_firebase_qa.js'
@@ -20,6 +23,7 @@ on:
       - '__tests__/androidQaDevicePreflight.test.cjs'
       - '__tests__/apiMode.test.ts'
       - '__tests__/secureAuthStorage.test.ts'
+      - '__tests__/pinStartupState.test.ts'
       - '__tests__/matchAcceptance.test.ts'
       - '__tests__/matchStages.test.ts'
       - '__tests__/matchPrivacy.test.ts'
@@ -66,6 +70,6 @@ jobs:
       - name: Verify device QA preflight with synthetic ADB and HTTP
         run: node --test __tests__/androidQaDevicePreflight.test.cjs
       - name: Run isolated mobile authentication and match checks
-        run: npx jest __tests__/secureAuthStorage.test.ts __tests__/matchAcceptance.test.ts __tests__/matchStages.test.ts __tests__/matchPrivacy.test.ts __tests__/apiMode.test.ts --runInBand
+        run: npx jest __tests__/secureAuthStorage.test.ts __tests__/pinStartupState.test.ts __tests__/matchAcceptance.test.ts __tests__/matchStages.test.ts __tests__/matchPrivacy.test.ts __tests__/apiMode.test.ts --runInBand
       - name: Check TypeScript types without emitting app code
         run: npx tsc --noEmit --pretty false
