@@ -56,7 +56,10 @@ export default function PinScreen() {
             await clearPinGate();
             unlockApp();
             setPin('');
-            console.log(`[PIN] unlockApp() called — appLocked should now be false`);
+            // The PIN route is registered even after pinGate clears; explicitly
+            // navigate to Home so React Navigation does not keep the old keypad.
+            navigation.navigate('Home');
+            console.log(`[PIN] PIN verified; navigating to Home`);
             return;
         }
 
