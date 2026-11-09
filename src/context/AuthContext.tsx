@@ -13,6 +13,7 @@ import {
     removeSecureAuthValue,
     setSecureAuthValue,
 } from '../security/secureAuthStorage';
+import { resolvePinStartupState } from '../security/pinStartupState';
 import messaging from '@react-native-firebase/messaging';
 import notifee, { AndroidImportance } from '@notifee/react-native';
 import { login as apiLogin, register as apiRegister, request, setLegalAcceptanceInterceptor } from '../api/client';
@@ -177,24 +178,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                     return;
                 }
 
+                const pinStartup = resolvePinStartupState(!!token, hasStoredPin, hasRememberedCredentials);
+                setAppLocked(pinStartup.appLocked);
+                setPinGate(pinStartup.pinGate);
+
                 if (token) {
                     setUserToken(token);
-                    if (hasStoredPin) {
-                        setAppLocked(true);
-                        setPinGate('enter');
-                    } else {
+                    if (!hasStoredPin) {
                         console.log("[PIN] bootstrap active session without PIN, forcing creation");
-                        setPinGate('create');
                     }
                     // --- HOOK: Push Notification Registration (Bootstrap) ---
                     console.log("[PUSH] Bootstrap: Session found, calling registerPushToken...");
                     registerPushToken(token).catch((err) => {
                         console.error("[PUSH] Bootstrap: Error in call chain:", err);
                     });
-                } else if (hasRememberedCredentials) {
-                    setPinGate(hasStoredPin ? 'enter' : 'create');
-                } else {
-                    setPinGate(null);
                 }
             } catch (e) {
                 console.error('Error bootstrapping Auth state', e);
@@ -208,12 +205,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     useEffect(() => {
         const subscription = AppState.addEventListener('change', nextAppState => {
-            if ((nextAppState === 'background' || nextAppState === 'inactive') && userToken && !suppressLockRef.current) {
+            if ((nextAppState === 'background' || nextAppState === 'inactive') && userToken && hasPin && !suppressLockRef.current) {
                 console.log("[AUTH] App backgrounded, locking...");
                 setAppLocked(true);
-                if (!hasPin) {
-                    setPinGate('create');
-                }
             } else if ((nextAppState === 'background' || nextAppState === 'inactive') && suppressLockRef.current) {
                 console.log("[AUTH] App backgrounded but PIN lock SUPPRESSED (camera/gallery active)");
             }
@@ -489,7 +483,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     };
 
     const verifyPinAndLogin = async (enteredPin: string): Promise<boolean> => {
-        setIsLoading(true);
+        // Keep the PIN overlay mounted during verification. The overlay owns its spinner.
         try {
             const savedPin = await getSecureAuthValue(STORAGE_KEYS.savedPin);
 
@@ -556,8 +550,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         } catch (error: any) {
             console.error("[AUTH] verifyPinAndLogin failed", error?.message || error);
             return false;
-        } finally {
-            setIsLoading(false);
         }
     };
 
