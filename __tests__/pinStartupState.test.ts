@@ -1,4 +1,4 @@
-import { resolvePinStartupState } from '../src/security/pinStartupState';
+import { hasRestoredSecureSession, resolvePinStartupState } from '../src/security/pinStartupState';
 
 describe('PIN startup regression (restored QA session)', () => {
   it('shows only PinLockOverlay when token and PIN are restored', () => {
@@ -29,5 +29,18 @@ describe('PIN startup regression (restored QA session)', () => {
     expect(resolvePinStartupState(false, false, false)).toEqual({
       appLocked: false, pinGate: null,
     });
+  });
+});
+
+describe('PIN unlock with an already authenticated Keychain session', () => {
+  it('allows a matching persisted session without retrying remembered credentials', () => {
+    expect(hasRestoredSecureSession('synthetic-session', 'synthetic-session')).toBe(true);
+  });
+
+  it('never treats a missing or different persisted token as authorization', () => {
+    expect(hasRestoredSecureSession(null, 'synthetic-session')).toBe(false);
+    expect(hasRestoredSecureSession('synthetic-session', null)).toBe(false);
+    expect(hasRestoredSecureSession('synthetic-session', 'different-session')).toBe(false);
+    expect(hasRestoredSecureSession('', '')).toBe(false);
   });
 });
