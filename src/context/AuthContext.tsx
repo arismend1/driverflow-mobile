@@ -13,7 +13,7 @@ import {
     removeSecureAuthValue,
     setSecureAuthValue,
 } from '../security/secureAuthStorage';
-import { resolvePinStartupState } from '../security/pinStartupState';
+import { hasRestoredSecureSession, resolvePinStartupState } from '../security/pinStartupState';
 import messaging from '@react-native-firebase/messaging';
 import notifee, { AndroidImportance } from '@notifee/react-native';
 import { login as apiLogin, register as apiRegister, request, setLegalAcceptanceInterceptor } from '../api/client';
@@ -496,17 +496,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
             if (!pinMatch) return false;
 
-            // PIN matches — check if we have saved credentials for re-login
+            // Prefer unlocking an already restored, securely persisted session.
+            // Backend authentication still applies to every protected API request.
+            const persistedToken = await getSecureAuthValue(STORAGE_KEYS.token);
+            if (hasRestoredSecureSession(userToken, persistedToken)) {
+                return true;
+            }
+
+            // No restored session: fall back to re-login with remembered credentials.
             const email = await getSecureAuthValue(STORAGE_KEYS.savedEmail);
             const password = await getSecureAuthValue(STORAGE_KEYS.savedPassword);
             const type = (await getSecureAuthValue(STORAGE_KEYS.savedType)) as 'driver' | 'empresa' | null;
 
 
             if (!email || !password || !type) {
-                // A matching PIN alone must never grant access without a session.
-                // The stored token is checked as well as the in-memory session.
-                const persistedToken = await getSecureAuthValue(STORAGE_KEYS.token);
-                return !!(userToken && persistedToken && userToken === persistedToken);
+                // PIN without either a restored session or full login credentials
+                // must not grant access.
+                return false;
             }
 
             // Full re-login with saved credentials
