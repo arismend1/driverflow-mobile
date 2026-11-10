@@ -1,5 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Keychain from 'react-native-keychain';
+import { restoreStoredPin, saveAndVerifyPin, verifyStoredPin } from '../src/security/pinStorage';
+import { resolvePinStartupState, hasRestoredSecureSession } from '../src/security/pinStartupState';
 import {
   clearSecureAuthValues,
   getSecureAuthValue,
@@ -113,5 +115,34 @@ describe('secure authentication storage migration', () => {
       .rejects.toThrow('SECURE_AUTH_CLEAR_INCOMPLETE');
     expect(await getSecureAuthValue('auth_token')).toBeNull();
     expect(await getSecureAuthValue('saved_pin')).toBe('1234');
+  });
+});
+
+
+describe('PIN create, cold restart and unlock', () => {
+  it('creates PIN, restores the same Keychain key after a fresh bootstrap, and unlocks the persisted session', async () => {
+    await setSecureAuthValue('auth_token', 'synthetic-qa-token');
+    await saveAndVerifyPin('4932');
+
+    // Simulate a fresh JS/AuthProvider instance: no in-memory PIN or token.
+    const restoredPin = await restoreStoredPin();
+    const restoredToken = await migrateLegacyAuthValue('auth_token');
+    expect(restoredPin).toBe('4932');
+    expect(resolvePinStartupState(!!restoredToken, !!restoredPin, false)).toEqual({
+      appLocked: true, pinGate: null,
+    });
+    expect(await verifyStoredPin('4932')).toBe('correct');
+    expect(hasRestoredSecureSession(restoredToken, await getSecureAuthValue('auth_token'))).toBe(true);
+    expect(await verifyStoredPin('0000')).toBe('incorrect');
+  });
+
+  it('never claims PIN creation succeeded if secure storage cannot read the write back', async () => {
+    jest.mocked(Keychain.getGenericPassword).mockResolvedValueOnce(false);
+    await expect(saveAndVerifyPin('4932')).rejects.toThrow('PIN_NOT_PERSISTED');
+  });
+
+  it('refuses malformed PIN and missing saved PIN without granting entry', async () => {
+    await expect(saveAndVerifyPin('12')).rejects.toThrow('PIN_INVALID_FORMAT');
+    expect(await verifyStoredPin('1234')).toBe('unavailable');
   });
 });
