@@ -17,6 +17,7 @@ export default function PinLockOverlay() {
     const [secondsRemaining, setSecondsRemaining] = useState(0);
     const [protectionReady, setProtectionReady] = useState(false);
     const [protectionError, setProtectionError] = useState(false);
+    const [sessionError, setSessionError] = useState(false);
     const [isVerifying, setIsVerifying] = useState(false);
     const verificationInFlight = useRef(false);
 
@@ -80,9 +81,16 @@ export default function PinLockOverlay() {
         verificationInFlight.current = true;
         setIsVerifying(true);
         try {
-        const success = await verifyPinAndLogin(enteredPin);
+        const result = await verifyPinAndLogin(enteredPin);
+        if (result === 'reauth_required') {
+            // The PIN may be correct, but the session/QA password cannot be restored.
+            // Never call this an incorrect PIN or charge the attempt counter.
+            setSessionError(true);
+            setPin('');
+            return;
+        }
 
-        if (!success) {
+        if (result === 'invalid_pin') {
             const nextAttempts = failedAttempts + 1;
             if (nextAttempts >= MAX_PIN_ATTEMPTS) {
                 const until = Date.now() + PIN_LOCK_MS;
@@ -100,6 +108,7 @@ export default function PinLockOverlay() {
             return;
         }
 
+        if (result !== 'verified') throw new Error('UNKNOWN_PIN_VERIFICATION_RESULT');
         await AsyncStorage.multiRemove([PIN_FAILURE_KEY, PIN_LOCK_UNTIL_KEY]);
         setFailedAttempts(0);
         setLockUntil(0);
@@ -123,13 +132,13 @@ export default function PinLockOverlay() {
     };
 
     const handleKeyPress = (num: string) => {
-        if (protectionReady && !protectionError && !isVerifying && !verificationInFlight.current && lockUntil <= Date.now() && pin.length < 4) {
+        if (protectionReady && !protectionError && !sessionError && !isVerifying && !verificationInFlight.current && lockUntil <= Date.now() && pin.length < 4) {
             setPin(prev => prev + num);
         }
     };
 
     const handleBackspace = () => {
-        if (protectionReady && !protectionError && !isVerifying && !verificationInFlight.current && lockUntil <= Date.now()) {
+        if (protectionReady && !protectionError && !sessionError && !isVerifying && !verificationInFlight.current && lockUntil <= Date.now()) {
             setPin(prev => prev.slice(0, -1));
         }
     };
@@ -155,6 +164,8 @@ export default function PinLockOverlay() {
                 {userInfo?.name ? <Text style={styles.subtitle}>Hello, {userInfo.name}</Text> : null}
                 {protectionError
                     ? <Text style={styles.errorText}>PIN verification unavailable. Switch account to sign in again.</Text>
+                    : sessionError
+                    ? <Text style={styles.errorText}>Session expired or unavailable. Switch account and sign in again.</Text>
                     : !protectionReady
                         ? <Text style={styles.subtitle}>Checking PIN security...</Text>
                         : secondsRemaining > 0
@@ -173,7 +184,7 @@ export default function PinLockOverlay() {
                     </TouchableOpacity>
                 ))}
 
-                <TouchableOpacity style={styles.numKey} onPress={() => { if (protectionReady && !protectionError && !isVerifying && lockUntil <= Date.now()) setPin(''); }}>
+                <TouchableOpacity style={styles.numKey} onPress={() => { if (protectionReady && !protectionError && !sessionError && !isVerifying && lockUntil <= Date.now()) setPin(''); }}>
                     <Text style={styles.actionText}>Clear</Text>
                 </TouchableOpacity>
 
