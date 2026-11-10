@@ -17,7 +17,10 @@ const unlockApp = jest.fn();
 let view: ReactTestRenderer.ReactTestRenderer;
 
 const visibleText = (): string =>
-  view.root.findAllByType(Text).map(node => String(node.props.children)).join(' ');
+  view.root.findAllByType(Text).map(node => {
+    const children = node.props.children;
+    return Array.isArray(children) ? children.join('') : String(children);
+  }).join(' ');
 
 const pressDigit = async (digit: string) => {
   const key = view.root.findAllByType(TouchableOpacity).find(button =>
