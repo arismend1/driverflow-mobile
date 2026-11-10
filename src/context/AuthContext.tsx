@@ -14,6 +14,7 @@ import {
     setSecureAuthValue,
 } from '../security/secureAuthStorage';
 import { hasRestoredSecureSession, resolvePinStartupState } from '../security/pinStartupState';
+import { restoreStoredPin, saveAndVerifyPin, verifyStoredPin } from '../security/pinStorage';
 import messaging from '@react-native-firebase/messaging';
 import notifee, { AndroidImportance } from '@notifee/react-native';
 import { login as apiLogin, register as apiRegister, request, setLegalAcceptanceInterceptor } from '../api/client';
@@ -24,6 +25,8 @@ interface UserInfo {
     type: 'driver' | 'empresa';
     search_status?: string;
 }
+
+export type PinVerificationResult = 'verified' | 'invalid_pin' | 'reauth_required';
 
 interface AuthContextType {
     userToken: string | null;
@@ -40,7 +43,7 @@ interface AuthContextType {
         remember?: boolean
     ) => Promise<void>;
 
-    verifyPinAndLogin: (pin: string) => Promise<boolean>;
+    verifyPinAndLogin: (pin: string) => Promise<PinVerificationResult>;
     savePin: (pin: string) => Promise<void>;
     register: (data: any) => Promise<any>;
     logout: () => Promise<void>;
@@ -69,7 +72,7 @@ export const AuthContext = createContext<AuthContextType>({
     isLoading: true,
     hasPin: false,
     login: async () => { },
-    verifyPinAndLogin: async () => false,
+    verifyPinAndLogin: async () => 'reauth_required',
     savePin: async () => { },
     register: async () => { },
     logout: async () => { },
@@ -148,7 +151,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             setIsLoading(true);
             try {
                 // 1) Estado PIN
-                const pin = await migrateLegacyAuthValue(STORAGE_KEYS.savedPin);
+                const pin = await restoreStoredPin();
                 const email = await migrateLegacyAuthValue(STORAGE_KEYS.savedEmail);
                 const password = await migrateLegacyAuthValue(STORAGE_KEYS.savedPassword);
                 const type = await migrateLegacyAuthValue(STORAGE_KEYS.savedType);
@@ -477,30 +480,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     const savePin = async (pin: string) => {
         // console.log("[PIN] saving pin len", pin?.length);
-        await setSecureAuthValue(STORAGE_KEYS.savedPin, pin);
+        await saveAndVerifyPin(pin);
         setHasPin(true);
         setPinReady(true);
     };
 
-    const verifyPinAndLogin = async (enteredPin: string): Promise<boolean> => {
+    const verifyPinAndLogin = async (enteredPin: string): Promise<PinVerificationResult> => {
         // Keep the PIN overlay mounted during verification. The overlay owns its spinner.
         try {
-            const savedPin = await getSecureAuthValue(STORAGE_KEYS.savedPin);
-
-            if (savedPin === null) {
-                // FAIL-OPEN: no PIN saved — treat as unlock, redirect handled by navigator
-                return false;
-            }
-
-            const pinMatch = savedPin === enteredPin;
-
-            if (!pinMatch) return false;
+            const pinResult = await verifyStoredPin(enteredPin);
+            if (pinResult === 'unavailable') return 'reauth_required';
+            if (pinResult === 'incorrect') return 'invalid_pin';
 
             // Prefer unlocking an already restored, securely persisted session.
             // Backend authentication still applies to every protected API request.
             const persistedToken = await getSecureAuthValue(STORAGE_KEYS.token);
             if (hasRestoredSecureSession(userToken, persistedToken)) {
-                return true;
+                return 'verified';
             }
 
             // No restored session: fall back to re-login with remembered credentials.
@@ -510,9 +506,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
 
             if (!email || !password || !type) {
-                // PIN without either a restored session or full login credentials
-                // must not grant access.
-                return false;
+                // A correct PIN is not enough when the authenticated session is absent.
+                return 'reauth_required';
             }
 
             // Full re-login with saved credentials
@@ -522,13 +517,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 const rt = res.data.token || null;
                 if (rt) {
                     await seedPendingLegalSession(rt, res.data, type);
-                    return true;
+                    return 'verified';
                 }
             }
 
             if (!res.ok) {
-
-                return false;
+                // Do not penalize a correct PIN for expired QA credentials or API errors.
+                return 'reauth_required';
             }
 
             const { token, id, name, type: serverType } = res.data as any;
@@ -552,10 +547,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 registerPushToken(token).catch(() => {});
             }, 1000);
             
-            return true;
+            return 'verified';
         } catch (error: any) {
             console.error("[AUTH] verifyPinAndLogin failed", error?.message || error);
-            return false;
+            return 'reauth_required';
         }
     };
 
