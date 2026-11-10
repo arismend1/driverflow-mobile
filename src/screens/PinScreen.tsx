@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, StyleProp, ViewStyle } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
+import PinLockOverlay from '../components/PinLockOverlay';
 
 type Step = 'enter' | 'create' | 'confirm';
 
@@ -9,7 +10,7 @@ export default function PinScreen() {
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
 
-    const { hasPin, savePin, verifyPinAndLogin, logout, userInfo, clearPinGate, unlockApp, clearSavedCredentials } = useAuth();
+    const { hasPin, savePin, logout, userInfo, clearPinGate, unlockApp, clearSavedCredentials } = useAuth();
 
     // mode puede venir de Login: { mode: 'create' }
     const forcedMode: 'create' | undefined = route?.params?.mode === 'create' ? 'create' : undefined;
@@ -38,31 +39,6 @@ export default function PinScreen() {
     }, [pin]);
 
     const handlePinComplete = async (enteredPin: string) => {
-        if (step === 'enter') {
-            console.log(`[PIN] step=enter | entered length=${enteredPin.length}`);
-            console.log(`[PIN] calling verifyPinAndLogin...`);
-
-            const success = await verifyPinAndLogin(enteredPin);
-
-            console.log(`[PIN] verifyPinAndLogin result=${success}`);
-
-            if (!success) {
-                console.log(`[PIN] PIN FAILED — triggering error`);
-                triggerError();
-                return;
-            }
-
-            console.log(`[PIN] PIN OK — clearing gate and unlocking`);
-            await clearPinGate();
-            unlockApp();
-            setPin('');
-            // The PIN route is registered even after pinGate clears; explicitly
-            // navigate to Home so React Navigation does not keep the old keypad.
-            navigation.navigate('Home');
-            console.log(`[PIN] PIN verified; navigating to Home`);
-            return;
-        }
-
         if (step === 'create') {
             setConfirmPin(enteredPin);
             setPin('');
@@ -122,6 +98,10 @@ export default function PinScreen() {
 
     const showSubtitle = step === 'enter' && userInfo?.name;
     const showError = isError && (step === 'enter' ? 'Incorrect PIN. Try again.' : 'PINs do not match.');
+
+    // The entry route and the cold-start modal must share one keypad,
+    // durable failed-attempt counter, and 30-second lockout UI.
+    if (step === 'enter') return <PinLockOverlay />;
 
     return (
         <View style={styles.container}>
