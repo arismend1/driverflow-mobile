@@ -13,7 +13,8 @@ import {
     removeSecureAuthValue,
     setSecureAuthValue,
 } from '../security/secureAuthStorage';
-import { hasRestoredSecureSession, resolvePinStartupState } from '../security/pinStartupState';
+import { resolvePinStartupState } from '../security/pinStartupState';
+import { resumePinSession } from '../security/resumePinSession';
 import { restoreStoredPin, saveAndVerifyPin, verifyStoredPin } from '../security/pinStorage';
 import { renewStoredSession, revokeStoredSessionBestEffort, saveLoginRefreshToken } from '../security/renewableSession';
 import messaging from '@react-native-firebase/messaging';
@@ -511,15 +512,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
             // Prefer unlocking an already restored, securely persisted session.
             // Backend authentication still applies to every protected API request.
-            const persistedToken = await getSecureAuthValue(STORAGE_KEYS.token);
-            if (hasRestoredSecureSession(userToken, persistedToken)) {
-                return 'verified';
-            }
-
-            // A valid PIN can renew a backend session without the remembered password.
-            const renewedAccess = await renewStoredSession(persistedToken);
-            if (renewedAccess) {
-                setUserToken(renewedAccess);
+            const resumedAccess = await resumePinSession(userToken);
+            if (resumedAccess) {
+                setUserToken(resumedAccess);
                 return 'verified';
             }
 
