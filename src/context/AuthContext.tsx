@@ -173,7 +173,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 setHasPin(hasStoredPin);
 
                 // 2) Restaurar sesión (TOKEN + USERINFO)
-                const token = await migrateLegacyAuthValue(STORAGE_KEYS.token);
+                const storedAccess = await migrateLegacyAuthValue(STORAGE_KEYS.token);
+                const storedRefresh = await getSecureAuthValue(STORAGE_KEYS.refreshToken);
+                // Refresh only when there is no access JWT; PIN still gates local UI.
+                const token = storedAccess || (storedRefresh ? await renewStoredSession(null) : null);
                 const userInfoRaw = await AsyncStorage.getItem(STORAGE_KEYS.userInfo);
                 const restricted = await migrateLegacyAuthValue(STORAGE_KEYS.restrictedToken);
                 setPinReady(hasStoredPin);
