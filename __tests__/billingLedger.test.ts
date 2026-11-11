@@ -86,10 +86,13 @@ describe('billing API client with 205 invoices', () => {
   beforeEach(() => {
     requestedOffsets.length = 0;
     (globalThis as any).fetch = jest.fn(async (url: string) => {
-      const parsed = new URL(url);
-      expect(parsed.pathname).toBe('/api/billing/invoices/me');
-      expect(parsed.searchParams.get('limit')).toBe('100');
-      const offset = Number(parsed.searchParams.get('offset'));
+      const pathAndQuery = url.replace('http://127.0.0.1:3000', '').split('?');
+      expect(pathAndQuery[0]).toBe('/api/billing/invoices/me');
+      const pairs = Object.fromEntries(
+        (pathAndQuery[1] || '').split('&').map(part => part.split('=')),
+      );
+      expect(pairs.limit).toBe('100');
+      const offset = Number(pairs.offset);
       requestedOffsets.push(offset);
       return {
         status: 200,
