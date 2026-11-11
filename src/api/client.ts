@@ -299,10 +299,6 @@ export const applyToRequest = async (requestId: number, token: string) => {
     return request('/apply_for_request', 'POST', { request_id: requestId }, token);
 };
 
-export const confirmRequest = async (requestId: number, token: string) => {
-    return request('/approve_driver', 'POST', { request_id: requestId }, token);
-};
-
 // --- BILLING API (Phase 4.1) ---
 export interface BillingSummary {
     pending_count: number;
