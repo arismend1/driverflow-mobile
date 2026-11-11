@@ -3,6 +3,7 @@ import * as Keychain from 'react-native-keychain';
 
 export type SecureAuthKey =
   | 'auth_token'
+  | 'refresh_token'
   | 'restricted_token'
   | 'saved_pin'
   | 'saved_email'
