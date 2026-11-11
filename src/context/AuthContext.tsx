@@ -15,9 +15,10 @@ import {
 } from '../security/secureAuthStorage';
 import { hasRestoredSecureSession, resolvePinStartupState } from '../security/pinStartupState';
 import { restoreStoredPin, saveAndVerifyPin, verifyStoredPin } from '../security/pinStorage';
+import { renewStoredSession, revokeStoredSessionBestEffort, saveLoginRefreshToken } from '../security/renewableSession';
 import messaging from '@react-native-firebase/messaging';
 import notifee, { AndroidImportance } from '@notifee/react-native';
-import { login as apiLogin, register as apiRegister, request, setLegalAcceptanceInterceptor } from '../api/client';
+import { login as apiLogin, register as apiRegister, request, setLegalAcceptanceInterceptor, setSessionRenewalHandler } from '../api/client';
 
 interface UserInfo {
     id: number;
@@ -61,7 +62,7 @@ interface AuthContextType {
     // Phase 2 Legal Flow
     needsLegalAccept: boolean;
     restrictedToken: string | null;
-    completeLegalAcceptance: (unlockedToken: string) => Promise<void>;
+    completeLegalAcceptance: (unlockedToken: string, refreshToken?: string) => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType>({
@@ -99,6 +100,7 @@ interface AuthProviderProps {
 
 const STORAGE_KEYS = {
     token: 'auth_token',
+    refreshToken: 'refresh_token',
     userInfo: 'auth_user_info',
     savedPin: 'saved_pin',
     savedEmail: 'saved_email',
@@ -134,6 +136,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     useEffect(() => {
         needsLegalAcceptRef.current = needsLegalAccept;
     }, [needsLegalAccept]);
+
+    // A renewed JWT replaces the current access token without re-entering the PIN.
+    useEffect(() => {
+        setSessionRenewalHandler(async oldAccessToken => {
+            const next = await renewStoredSession(oldAccessToken);
+            if (next) setUserToken(next);
+            return next;
+        });
+        return () => setSessionRenewalHandler(null);
+    }, []);
 
     // --- GLOBAL LEGAL INTERCEPTOR ---
     useEffect(() => {
@@ -435,7 +447,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             const finalType: 'driver' | 'empresa' = (serverType || type) as any;
             const info: UserInfo = { id, name, type: finalType, search_status: search_status || 'ON' };
 
-            // GUARDAR EN ASYNCSTORAGE PRIMERO
+            // Save and verify the new backend refresh credential in Keychain.
+            // Remembered credentials remain intact until explicit migration approval.
+            await saveLoginRefreshToken((res.data as any).refreshToken);
             await setSecureAuthValue(STORAGE_KEYS.token, token);
             await AsyncStorage.setItem('auth_user_info', JSON.stringify(info));
 
@@ -499,7 +513,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 return 'verified';
             }
 
-            // No restored session: fall back to re-login with remembered credentials.
+            // A valid PIN can renew a backend session without the remembered password.
+            const renewedAccess = await renewStoredSession(persistedToken);
+            if (renewedAccess) {
+                setUserToken(renewedAccess);
+                return 'verified';
+            }
+
+            // No renewable session: preserve the legacy remembered-login fallback.
             const email = await getSecureAuthValue(STORAGE_KEYS.savedEmail);
             const password = await getSecureAuthValue(STORAGE_KEYS.savedPassword);
             const type = (await getSecureAuthValue(STORAGE_KEYS.savedType)) as 'driver' | 'empresa' | null;
@@ -532,6 +553,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             const finalType: 'driver' | 'empresa' = (serverType || type) as any;
             const info: UserInfo = { id, name, type: finalType, search_status: res.data.search_status || 'ON' };
 
+            await saveLoginRefreshToken((res.data as any).refreshToken);
             await setSecureAuthValue(STORAGE_KEYS.token, token);
             await AsyncStorage.setItem('auth_user_info', JSON.stringify(info));
 
@@ -573,6 +595,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 clearTimeout(suppressTimeoutRef.current);
                 suppressTimeoutRef.current = null;
             }
+            // Best-effort remote revocation; local clearing still proceeds offline.
+            const remoteRevoked = await revokeStoredSessionBestEffort();
+            if (!remoteRevoked) console.warn('[AUTH] Remote session revocation unavailable');
             setUserToken(null);
             setUserInfo(null);
             setNeedsLegalAccept(false);
@@ -586,6 +611,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             const cleanupResults = await Promise.allSettled([
                 clearSecureAuthValues([
                     STORAGE_KEYS.token,
+                    STORAGE_KEYS.refreshToken,
                     STORAGE_KEYS.restrictedToken,
                     STORAGE_KEYS.savedEmail,
                     STORAGE_KEYS.savedPassword,
@@ -657,7 +683,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         updateUserSearchStatus,
         needsLegalAccept,
         restrictedToken,
-        completeLegalAcceptance: async (unlockedToken: string) => {
+        completeLegalAcceptance: async (unlockedToken: string, refreshToken?: string) => {
             if (!userInfo) {
                 const userInfoRaw = await AsyncStorage.getItem(STORAGE_KEYS.userInfo);
                 if (userInfoRaw) {
@@ -668,6 +694,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 }
             }
 
+            await saveLoginRefreshToken(refreshToken);
             await setSecureAuthValue(STORAGE_KEYS.token, unlockedToken);
             await removeSecureAuthValue(STORAGE_KEYS.restrictedToken);
             setUserToken(unlockedToken);
