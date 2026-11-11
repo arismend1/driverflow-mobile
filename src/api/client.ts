@@ -23,6 +23,12 @@ export const DiagnosticsState = {
 // --- GLOBAL LEGAL INTERCEPTOR ---
 export type LegalAcceptanceInterceptor = (token: string) => void;
 let onRequiresLegalAcceptance: LegalAcceptanceInterceptor | null = null;
+export type SessionRenewalHandler = (oldAccessToken: string) => Promise<string | null>;
+let onRenewSession: SessionRenewalHandler | null = null;
+export const setSessionRenewalHandler = (handler: SessionRenewalHandler | null): void => {
+    onRenewSession = handler;
+};
+
 
 export const setLegalAcceptanceInterceptor = (interceptor: LegalAcceptanceInterceptor) => {
     onRequiresLegalAcceptance = interceptor;
@@ -33,7 +39,8 @@ export const request = async <T = any>(
     endpoint: string,
     method: string,
     body?: any,
-    token?: string
+    token?: string,
+    renewalAttempted: boolean = false
 ): Promise<ApiResponse<T>> => {
     try {
         const headers: any = {
@@ -83,6 +90,17 @@ export const request = async <T = any>(
                     requestId,
                     endpoint,
                 };
+            }
+        }
+
+        // Renew an expired access token only for safe GETs. Never replay an
+        // acceptance, payment or consent POST without an explicit user action.
+        if (!response.ok && status === 403 && data?.is_expired === true &&
+            method.toUpperCase() === 'GET' && token && !renewalAttempted &&
+            onRenewSession && endpoint !== '/api/session/refresh') {
+            const nextToken = await onRenewSession(token);
+            if (nextToken && nextToken !== token) {
+                return request<T>(endpoint, method, body, nextToken, true);
             }
         }
 
