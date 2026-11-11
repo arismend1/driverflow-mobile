@@ -1,6 +1,5 @@
 // Jest runs in Node; the RN TypeScript config deliberately omits @types/node.
-// Declare the Node test harness boundary without changing application typings.
-declare const require: (id: string) => any;
+// Jest provides require; only __dirname needs a local test-harness declaration.
 declare const __dirname: string;
 const fs = require('node:fs');
 const path = require('node:path');
