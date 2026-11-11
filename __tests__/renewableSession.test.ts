@@ -19,15 +19,15 @@ const response = (status:number, data:any) => ({
     ok:status>=200&&status<300,status,headers:{get:()=>null},
     json:async()=>data,text:async()=>JSON.stringify(data),
 }) as unknown as Response;
-const originalFetch=global.fetch;
+const originalFetch=globalThis.fetch;
 beforeEach(()=>{Object.keys(secrets).forEach(k=>delete secrets[k]);setSessionRenewalHandler(null);});
-afterEach(()=>{global.fetch=originalFetch;setSessionRenewalHandler(null);});
+afterEach(()=>{globalThis.fetch=originalFetch;setSessionRenewalHandler(null);});
 
 test('mobile renew: two simultaneous calls use one rotated refresh and store both tokens',async()=>{
     secrets.auth_token='oldAccess'; secrets.refresh_token='r'.repeat(43);
     const fetcher=jest.fn().mockResolvedValue(response(200,
         {ok:true,token:'newAccess',refreshToken:'s'.repeat(43)}));
-    global.fetch=fetcher as any;
+    globalThis.fetch=fetcher as any;
     const [a,b]=await Promise.all([renewStoredSession('oldAccess'),renewStoredSession('oldAccess')]);
     expect(a).toBe('newAccess');expect(b).toBe('newAccess');
     expect(fetcher).toHaveBeenCalledTimes(1);
@@ -38,7 +38,7 @@ test('mobile renew: two simultaneous calls use one rotated refresh and store bot
 
 test('mobile renew: server-revoked refresh requires login and does not resurrect access',async()=>{
     secrets.auth_token='oldAccess';secrets.refresh_token='r'.repeat(43);
-    global.fetch=jest.fn().mockResolvedValue(response(401,{error:'REFRESH_REPLAY'})) as any;
+    globalThis.fetch=jest.fn().mockResolvedValue(response(401,{error:'REFRESH_REPLAY'})) as any;
     expect(await renewStoredSession('oldAccess')).toBeNull();
     expect(secrets.refresh_token).toBeUndefined();
     expect(secrets.auth_token).toBe('oldAccess');
@@ -47,7 +47,7 @@ test('mobile renew: server-revoked refresh requires login and does not resurrect
 test('mobile renew: offline error retains token and remembered password',async()=>{
     secrets.refresh_token='r'.repeat(43);
     secrets.saved_password='legacy-transition-fallback';
-    global.fetch=jest.fn().mockRejectedValue(new Error('offline')) as any;
+    globalThis.fetch=jest.fn().mockRejectedValue(new Error('offline')) as any;
     expect(await renewStoredSession('oldAccess')).toBeNull();
     expect(secrets.refresh_token).toBe('r'.repeat(43));
     expect(secrets.saved_password).toBe('legacy-transition-fallback');
@@ -60,7 +60,7 @@ test('PIN restart: correct PIN restores backend session with no saved email/pass
     await saveLoginRefreshToken('r'.repeat(43));
     expect(secrets.saved_email).toBeUndefined();
     expect(secrets.saved_password).toBeUndefined();
-    global.fetch=jest.fn().mockResolvedValue(response(200,{ok:true,
+    globalThis.fetch=jest.fn().mockResolvedValue(response(200,{ok:true,
         token:'jwtAccessAfterPin',refreshToken:'s'.repeat(43)})) as any;
     expect(await resumePinSession(null)).toBe('jwtAccessAfterPin');
     expect(secrets.auth_token).toBe('jwtAccessAfterPin');
@@ -72,7 +72,7 @@ test('mobile GET: expired access renewed and replayed once, never POST',async()=
     const fetcher=jest.fn().mockResolvedValueOnce(response(403,{is_expired:true}))
         .mockResolvedValueOnce(response(200,{ok:true,list:[1]}))
         .mockResolvedValueOnce(response(403,{is_expired:true}));
-    global.fetch=fetcher as any;
+    globalThis.fetch=fetcher as any;
     const res=await request('/matches/candidates','GET',undefined,'oldJWT');
     expect(res.ok).toBe(true);
     expect(fetcher).toHaveBeenCalledTimes(2);
@@ -87,11 +87,11 @@ test('mobile GET: expired access renewed and replayed once, never POST',async()=
 test('mobile GET: expired access never loops renewal indefinitely',async()=>{
     const refresh=jest.fn().mockResolvedValue('newJWT');
     setSessionRenewalHandler(refresh);
-    global.fetch=jest.fn().mockResolvedValue(response(403,{is_expired:true})) as any;
+    globalThis.fetch=jest.fn().mockResolvedValue(response(403,{is_expired:true})) as any;
     const result=await request('/protected','GET',undefined,'oldJWT');
     expect(result.ok).toBe(false);
     expect(refresh).toHaveBeenCalledTimes(1);
-    expect(global.fetch).toHaveBeenCalledTimes(2);
+    expect(globalThis.fetch).toHaveBeenCalledTimes(2);
 });
 
 test('new login refresh clears previous-account refresh but preserves remembered password',async()=>{
