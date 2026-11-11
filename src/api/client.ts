@@ -1,4 +1,5 @@
 import { API_URL } from './config';
+import { loadAllBillingInvoices, summarizeBillingLedger } from './invoiceLedger';
 
 // --- TYPES ---
 export interface ApiResponse<T = any> {
@@ -296,50 +297,31 @@ export interface BillingSummary {
     currency: string;
 }
 
-export const getBillingSummary = async (token: string): Promise<BillingSummary> => {
-    const res = await request('/api/billing/invoices/me?limit=100', 'GET', undefined, token);
-    if (!res.ok) throw new Error(res.error || 'Failed to fetch summary');
-
-    const invoices = (res.data as any[]) || [];
-    let pendingCount = 0;
-    let pendingCents = 0;
-    let paidCount = 0;
-    let paidCents = 0;
-
-    invoices.forEach((inv: any) => {
-        const amount = Number(inv.total_cents ?? inv.amount_cents ?? 0) || 0;
-        if (inv.status === 'charged' || inv.status === 'paid') {
-            paidCount++;
-            paidCents += amount;
-        } else if (inv.status === 'pending') {
-            pendingCount++;
-            pendingCents += amount;
-        }
+const getCompleteBillingInvoiceList = async (token: string) =>
+    loadAllBillingInvoices(async (limit, offset) => {
+        const res = await request(
+            `/api/billing/invoices/me?limit=${limit}&offset=${offset}`,
+            'GET', undefined, token,
+        );
+        if (!res.ok) throw new Error(res.error || 'Failed to fetch invoices');
+        return res.data;
     });
 
-    return {
-        pending_count: pendingCount,
-        pending_amount_cents: pendingCents,
-        paid_count: paidCount,
-        paid_amount_cents: paidCents,
-        currency: invoices.length > 0 ? invoices[0].currency : 'usd',
-    };
+export const getBillingSummary = async (token: string): Promise<BillingSummary> => {
+    const invoices = await getCompleteBillingInvoiceList(token);
+    return summarizeBillingLedger(invoices);
 };
 
 export const getBillingTickets = async (token: string, status?: string) => {
-    const res = await request('/api/billing/invoices/me?limit=100', 'GET', undefined, token);
-    if (!res.ok) throw new Error(res.error || 'Failed to fetch invoices');
-
-    let invoices = (res.data as any[]) || [];
+    let invoices = await getCompleteBillingInvoiceList(token);
     if (status) {
         if (status === 'paid') {
-            invoices = invoices.filter((inv: any) => inv.status === 'charged' || inv.status === 'paid');
+            invoices = invoices.filter((inv) => inv.status === 'charged' || inv.status === 'paid');
         } else if (status === 'pending') {
-            invoices = invoices.filter((inv: any) => inv.status === 'pending');
+            invoices = invoices.filter((inv) => inv.status === 'pending');
         }
     }
-
-    return invoices.map((inv: any) => ({
+    return invoices.map((inv) => ({
         ...inv,
         billing_status: inv.status === 'charged' ? 'paid' : inv.status,
         request_id: `${inv.week_start} to ${inv.week_end}`,
