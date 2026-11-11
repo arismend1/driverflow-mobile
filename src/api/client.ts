@@ -1,4 +1,5 @@
 import { API_URL } from './config';
+import { fetchWithPolicy } from './requestPolicy';
 import { loadAllBillingInvoices, summarizeBillingLedger } from './invoiceLedger';
 
 // --- TYPES ---
@@ -45,7 +46,7 @@ export const request = async <T = any>(
 
         const fullUrl = `${API_URL}${endpoint}`;
 
-        const response = await fetch(fullUrl, {
+        const response = await fetchWithPolicy(fullUrl, {
             method,
             headers,
             body: body ? JSON.stringify(body) : undefined,
@@ -68,8 +69,6 @@ export const request = async <T = any>(
                     console.error(`[REQUEST] failure ${status} on ${endpoint}`);
                 }
                 console.warn('[REQ] NON_JSON_RESPONSE on', endpoint);
-                const snippet = text.replace(/\n|\r/g, ' ').trim().slice(0, 200);
-
                 DiagnosticsState.lastError = {
                     status,
                     endpoint,
@@ -81,7 +80,6 @@ export const request = async <T = any>(
                     ok: false,
                     status,
                     error: 'NON_JSON_RESPONSE',
-                    raw: snippet,
                     requestId,
                     endpoint,
                 };
@@ -157,15 +155,14 @@ export const request = async <T = any>(
         DiagnosticsState.lastError = {
             status: 0,
             endpoint,
-            message: networkError?.message || 'NETWORK_ERROR',
+            message: networkError?.name === 'AbortError' ? 'REQUEST_TIMEOUT' : 'NETWORK_ERROR',
             timestamp: new Date().toISOString(),
         };
 
         return {
             ok: false,
             status: 0,
-            error: 'NETWORK_ERROR',
-            raw: networkError?.message,
+            error: networkError?.name === 'AbortError' ? 'REQUEST_TIMEOUT' : 'NETWORK_ERROR',
             endpoint,
         };
     }
