@@ -26,7 +26,7 @@ export default function LegalAcceptanceScreen() {
 
             // res.data.token contains the unlocked JWT
             if (res.data && res.data.token) {
-                await completeLegalAcceptance(res.data.token);
+                await completeLegalAcceptance(res.data.token, res.data.refreshToken);
             } else {
                 throw new Error("Server did not return a valid unlocked token.");
             }
