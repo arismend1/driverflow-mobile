@@ -1,5 +1,9 @@
-import fs from 'node:fs';
-import path from 'node:path';
+// Jest runs in Node; the RN TypeScript config deliberately omits @types/node.
+// Declare the Node test harness boundary without changing application typings.
+declare const require: (id: string) => any;
+declare const __dirname: string;
+const fs = require('node:fs');
+const path = require('node:path');
 
 const file = (relative: string) => fs.readFileSync(path.resolve(__dirname,'..',relative),'utf8');
 
