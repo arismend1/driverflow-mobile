@@ -68,11 +68,11 @@ describe('Phase 2 transport reliability contract', () => {
 });
 
 describe('Phase 2 shared API client error hygiene', () => {
-  const originalFetch = global.fetch;
-  afterEach(() => { global.fetch = originalFetch; DiagnosticsState.lastError = null; });
+  const originalFetch = globalThis.fetch;
+  afterEach(() => { globalThis.fetch = originalFetch; DiagnosticsState.lastError = null; });
 
   it('returns a stable timeout code without exposing internal network diagnostics', async () => {
-    global.fetch = jest.fn().mockRejectedValue(Object.assign(
+    globalThis.fetch = jest.fn().mockRejectedValue(Object.assign(
       new Error('SECRET_LOCAL_NETWORK_ADDRESS'), {name:'AbortError'})) as any;
     const result = await request('/test', 'POST', {safe:true});
     expect(result).toMatchObject({ok:false,status:0,error:'REQUEST_TIMEOUT'});
@@ -82,7 +82,7 @@ describe('Phase 2 shared API client error hygiene', () => {
   });
 
   it('does not expose HTML error bodies from proxy or backend', async () => {
-    global.fetch = jest.fn().mockResolvedValue(simulatedResponse(500,
+    globalThis.fetch = jest.fn().mockResolvedValue(simulatedResponse(500,
       '<html>SECRET_STACK_TRACE</html>')) as any;
     const result = await request('/test', 'POST', {});
     expect(result).toMatchObject({ok:false,status:500,error:'NON_JSON_RESPONSE'});
