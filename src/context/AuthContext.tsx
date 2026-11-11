@@ -142,7 +142,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     useEffect(() => {
         setSessionRenewalHandler(async oldAccessToken => {
             const next = await renewStoredSession(oldAccessToken);
-            if (next) setUserToken(next);
+            if (next) {
+                setUserToken(next);
+            } else if (!(await getSecureAuthValue(STORAGE_KEYS.refreshToken))) {
+                // Confirmed missing/rejected refresh, not merely an offline error.
+                // Expired access is no longer a valid authenticated session.
+                await removeSecureAuthValue(STORAGE_KEYS.token);
+                setUserToken(null);
+            }
             return next;
         });
         return () => setSessionRenewalHandler(null);
