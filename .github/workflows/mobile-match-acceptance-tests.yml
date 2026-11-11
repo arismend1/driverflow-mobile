@@ -71,7 +71,7 @@ jobs:
         run: node --test __tests__/firebaseQaPreflight.test.cjs
       - name: Verify device QA preflight with synthetic ADB and HTTP
         run: node --test __tests__/androidQaDevicePreflight.test.cjs
-      - name: Run entire mobile Jest suite: auth, PIN, billing helpers and match compatibility
+      - name: 'Run entire mobile Jest suite: auth, PIN, billing helpers and match compatibility'
         run: npx jest --runInBand --ci
       - name: Check TypeScript types without emitting app code
         run: npx tsc --noEmit --pretty false
