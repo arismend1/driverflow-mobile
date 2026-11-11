@@ -14,6 +14,8 @@ on:
       - '__tests__/billingLedger.test.ts'
       - 'src/api/invoiceLedger.ts'
       - 'src/api/client.ts'
+      - 'src/api/requestPolicy.ts'
+      - '__tests__/requestPolicy.test.ts'
       - 'src/security/secureAuthStorage.ts'
       - 'src/security/pinStartupState.ts'
       - 'src/security/pinStorage.ts'
